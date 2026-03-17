@@ -157,15 +157,15 @@
 
 .board {
   padding: var(--space-14);
-  overflow: hidden;
+  overflow: visible;
   background: rgba(255, 255, 255, 0.5);
 }
 
 .board-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(292px, 1fr));
-  gap: var(--space-14);
-  overflow-x: auto;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-12);
+  overflow: visible;
   padding-bottom: var(--space-4);
 }
 
@@ -277,27 +277,25 @@
   font-size: var(--font-size-13);
 }
 
-.matter-card__meta {
-  display: grid;
-  gap: var(--space-8);
-}
-
-.matter-card__meta-item {
-  display: grid;
-  gap: 0.15rem;
-}
-
-.matter-card__meta dt {
-  color: var(--ink-400);
-  font-size: var(--font-size-11);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.matter-card__meta dd {
+.matter-card__file-number {
   color: var(--ink-700);
   font-weight: 500;
   font-size: var(--font-size-13);
+}
+
+.matter-card__activity-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-top: var(--space-4);
+  color: var(--ink-500);
+  font-size: var(--font-size-12);
+}
+
+.matter-card__activity-line strong {
+  color: var(--ink-700);
+  font-weight: 500;
 }
 
 .matter-card__actions {

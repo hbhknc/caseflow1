@@ -43,16 +43,11 @@ export function MatterCard({
         <div className="matter-card__stack">
           <h4>{matter.decedentName}</h4>
           <p className="matter-card__client">{matter.clientName}</p>
-          <dl className="matter-card__meta">
-            <div className="matter-card__meta-item">
-              <dt>File Number</dt>
-              <dd>{matter.fileNumber}</dd>
-            </div>
-            <div className="matter-card__meta-item">
-              <dt>Last Activity</dt>
-              <dd>{formatDate(matter.lastActivityAt)}</dd>
-            </div>
-          </dl>
+          <p className="matter-card__file-number">{matter.fileNumber}</p>
+          <p className="matter-card__activity-line">
+            <span>Last activity</span>
+            <strong>{formatDate(matter.lastActivityAt)}</strong>
+          </p>
         </div>
       </button>
       <div className="matter-card__actions" ref={moveMenuRef}>
