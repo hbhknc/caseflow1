@@ -16,10 +16,9 @@ export function AppShell() {
       <div className="app-shell">
         <header className="app-header">
           <div className="app-header__body">
-            <div className="app-header__identity">
-              <h1>CaseFlow</h1>
-              <p className="subtitle">Matters Managed.</p>
-            </div>
+          <div className="app-header__identity">
+            <h1>CaseFlow v1.0</h1>
+          </div>
             <div className="app-header__actions">
               {headerToolbar ? <div className="header-toolbar">{headerToolbar}</div> : null}
               <nav className="top-nav" aria-label="Primary">

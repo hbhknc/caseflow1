@@ -93,12 +93,6 @@
   color: var(--ink-400);
 }
 
-.subtitle {
-  max-width: 44rem;
-  color: var(--ink-500);
-  font-size: var(--font-size-14);
-}
-
 .top-nav {
   display: inline-flex;
   align-items: center;
@@ -284,18 +278,10 @@
 }
 
 .matter-card__activity-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-8);
   margin-top: var(--space-4);
   color: var(--ink-500);
   font-size: var(--font-size-12);
-}
-
-.matter-card__activity-line strong {
-  color: var(--ink-700);
-  font-weight: 500;
+  font-style: italic;
 }
 
 .matter-card__actions {

@@ -45,8 +45,7 @@ export function MatterCard({
           <p className="matter-card__client">{matter.clientName}</p>
           <p className="matter-card__file-number">{matter.fileNumber}</p>
           <p className="matter-card__activity-line">
-            <span>Last activity</span>
-            <strong>{formatDate(matter.lastActivityAt)}</strong>
+            Last activity {formatDate(matter.lastActivityAt)}
           </p>
         </div>
       </button>
