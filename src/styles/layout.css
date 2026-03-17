@@ -48,6 +48,14 @@
   gap: var(--space-20);
 }
 
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
 .app-header__identity {
   display: grid;
   gap: var(--space-8);
@@ -102,6 +110,13 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
+.header-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
 .nav-link {
   padding: 0.55rem 0.9rem;
   border-radius: 10px;
@@ -138,49 +153,6 @@
 .panel,
 .settings-panel {
   padding: var(--space-18);
-}
-
-.toolbar {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: var(--space-20);
-}
-
-.toolbar__intro {
-  display: grid;
-  gap: var(--space-10);
-}
-
-.toolbar__meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  color: var(--ink-500);
-  font-size: var(--font-size-12);
-}
-
-.toolbar__meta span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 0.72rem;
-  border-radius: var(--radius-pill);
-  background: rgba(20, 21, 24, 0.04);
-}
-
-.toolbar__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  flex-wrap: wrap;
-}
-
-.board-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 410px;
-  gap: var(--space-18);
-  align-items: start;
 }
 
 .board {
@@ -361,12 +333,31 @@
 }
 
 .drawer {
-  position: sticky;
-  top: var(--space-18);
   padding: var(--space-18);
   display: grid;
   gap: var(--space-18);
   background: rgba(255, 255, 255, 0.76);
+}
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: start;
+  justify-content: center;
+  padding: 5rem var(--space-20) var(--space-20);
+  background: rgba(17, 18, 22, 0.16);
+  backdrop-filter: blur(12px);
+  animation: fade-in var(--transition-base);
+}
+
+.drawer-modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 6rem);
+  overflow: auto;
+  border-radius: var(--radius-24);
+  box-shadow: 0 30px 70px rgba(16, 17, 22, 0.22);
 }
 
 .drawer__header {
@@ -500,12 +491,8 @@
 }
 
 @media (max-width: 1400px) {
-  .board-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .drawer {
-    position: static;
+  .app-header__body {
+    align-items: start;
   }
 }
 
@@ -519,7 +506,7 @@
   }
 
   .app-header__body,
-  .toolbar {
+  .app-header__actions {
     display: grid;
   }
 
@@ -530,5 +517,15 @@
 
   .search-field {
     min-width: 100%;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }

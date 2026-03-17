@@ -4,7 +4,7 @@ INSERT INTO matters (
   ('matter_seed_001', 'Eleanor Whitfield', 'Marcus Whitfield', 'PR-2026-0014', 'notice_admin', '2026-02-03T14:20:00.000Z', '2026-03-12T16:45:00.000Z', '2026-03-12T16:45:00.000Z', 0, NULL),
   ('matter_seed_002', 'Harold McIntyre', 'Olivia McIntyre', 'PR-2026-0018', 'inventory_collection', '2026-02-10T10:05:00.000Z', '2026-03-14T11:10:00.000Z', '2026-03-14T11:10:00.000Z', 0, NULL),
   ('matter_seed_003', 'Lucille Carver', 'Daniel Carver', 'PR-2026-0021', 'accounting_closing', '2026-02-18T08:30:00.000Z', '2026-03-15T15:00:00.000Z', '2026-03-15T15:00:00.000Z', 0, NULL),
-  ('matter_seed_004', 'Samuel Kent', 'Rachel Kent', 'PR-2026-0025', 'intake', '2026-03-01T13:40:00.000Z', '2026-03-16T09:20:00.000Z', '2026-03-16T09:20:00.000Z', 0, NULL),
+  ('matter_seed_004', 'John Doe', 'Jane Doe', '26 E 000321-950', 'intake', '2026-03-01T13:40:00.000Z', '2026-03-16T09:20:00.000Z', '2026-03-16T09:20:00.000Z', 0, NULL),
   ('matter_seed_005', 'Florence Avery', 'Jon Avery', 'PR-2025-0119', 'closed', '2025-11-12T11:00:00.000Z', '2026-03-10T12:30:00.000Z', '2026-03-10T12:30:00.000Z', 0, NULL);
 
 INSERT INTO matter_notes (id, matter_id, body, created_at, created_by) VALUES
@@ -38,4 +38,3 @@ INSERT INTO audit_events (id, entity_type, entity_id, action, details_json, crea
   ('audit_seed_001', 'matter', 'matter_seed_001', 'matter.created', '{"stage":"notice_admin"}', '2026-02-03T14:20:00.000Z'),
   ('audit_seed_002', 'matter_note', 'note_seed_001', 'note.created', '{"matterId":"matter_seed_001"}', '2026-03-12T16:45:00.000Z'),
   ('audit_seed_003', 'matter', 'matter_seed_005', 'matter.updated', '{"fromStage":"accounting_closing","toStage":"closed"}', '2026-03-10T12:00:00.000Z');
-

@@ -79,7 +79,9 @@ export function useMattersBoard(): UseMattersBoardResult {
       const items = await listMatters();
       const activeMatters = items.filter((matter) => !matter.archived);
       setMatters(activeMatters);
-      setSelectedMatterId((current) => current ?? activeMatters[0]?.id ?? null);
+      setSelectedMatterId((current) =>
+        current && activeMatters.some((matter) => matter.id === current) ? current : null
+      );
       setError(null);
     } catch (caughtError) {
       setError(
@@ -167,4 +169,3 @@ export function useMattersBoard(): UseMattersBoardResult {
     archiveMatter: handleArchiveMatter
   };
 }
-

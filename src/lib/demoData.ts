@@ -39,9 +39,9 @@ export const demoMatters: Matter[] = [
   },
   {
     id: "matter_seed_004",
-    decedentName: "Samuel Kent",
-    clientName: "Rachel Kent",
-    fileNumber: "PR-2026-0025",
+    decedentName: "John Doe",
+    clientName: "Jane Doe",
+    fileNumber: "26 E 000321-950",
     stage: "intake",
     createdAt: "2026-03-01T13:40:00.000Z",
     lastActivityAt: "2026-03-16T09:20:00.000Z",
@@ -133,4 +133,3 @@ export function createDemoMatter(input: {
     archivedAt: null
   };
 }
-

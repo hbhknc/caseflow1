@@ -6,7 +6,7 @@ const matterStore = [...demoMatters];
 const noteStore = structuredClone(demoNotes);
 
 export function shouldUseDemoFallback() {
-  return import.meta.env.DEV && (import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? "true") === "true";
+  return (import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? "true") === "true";
 }
 
 export async function listDemoMatters(): Promise<Matter[]> {
@@ -112,4 +112,3 @@ export async function getDemoStatus(): Promise<AppStatus> {
     timestamp: new Date().toISOString()
   };
 }
-
