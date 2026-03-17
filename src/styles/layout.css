@@ -172,6 +172,15 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(246, 247, 249, 0.88));
 }
 
+.board-column--drag-target {
+  border-color: rgba(33, 108, 255, 0.2);
+  box-shadow:
+    0 0 0 1px rgba(33, 108, 255, 0.08),
+    0 18px 34px rgba(33, 108, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(239, 245, 255, 0.92));
+}
+
 .board-column__header {
   display: flex;
   align-items: start;
@@ -226,6 +235,7 @@
 .matter-card {
   border-radius: var(--radius-18);
   overflow: visible;
+  cursor: grab;
   transition:
     transform var(--transition-base),
     box-shadow var(--transition-base),
@@ -243,6 +253,14 @@
   box-shadow:
     0 0 0 1px rgba(33, 108, 255, 0.08),
     0 14px 32px rgba(33, 108, 255, 0.14);
+}
+
+.matter-card--dragging {
+  opacity: 1;
+  cursor: grabbing;
+  box-shadow:
+    0 0 0 1px rgba(33, 108, 255, 0.08),
+    0 20px 36px rgba(18, 19, 24, 0.14);
 }
 
 .matter-card__button {

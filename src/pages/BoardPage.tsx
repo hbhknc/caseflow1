@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppChrome } from "@/app/AppChrome";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
@@ -7,10 +7,13 @@ import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
 import { TaskListModal } from "@/features/tasks/components/TaskListModal";
 import { useMattersBoard } from "@/hooks/useMattersBoard";
 import { STAGES } from "@/utils/stages";
+import type { Matter, MatterStage } from "@/types/matter";
 
 export function BoardPage() {
   const board = useMattersBoard();
   const { setHeaderToolbar } = useAppChrome();
+  const [draggingMatterId, setDraggingMatterId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<MatterStage | null>(null);
 
   useEffect(() => {
     setHeaderToolbar(
@@ -54,8 +57,60 @@ export function BoardPage() {
                 stage={stage}
                 matters={board.filteredMatters.filter((matter) => matter.stage === stage)}
                 selectedMatterId={board.selectedMatter?.id ?? null}
+                draggingMatterId={draggingMatterId}
+                isDragTarget={dragOverStage === stage}
                 onSelectMatter={board.selectMatter}
                 onMoveMatter={board.moveMatter}
+                onDragStart={(event, matter) => {
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", matter.id);
+                  event.dataTransfer.setData("application/caseflow-stage", matter.stage);
+
+                  const dragPreview = event.currentTarget.cloneNode(true) as HTMLElement;
+                  const { width, height } = event.currentTarget.getBoundingClientRect();
+                  dragPreview.style.width = `${width}px`;
+                  dragPreview.style.height = `${height}px`;
+                  dragPreview.style.position = "fixed";
+                  dragPreview.style.top = "-1000px";
+                  dragPreview.style.left = "-1000px";
+                  dragPreview.style.opacity = "1";
+                  dragPreview.style.pointerEvents = "none";
+                  dragPreview.style.transform = "none";
+                  dragPreview.style.boxShadow = "0 18px 38px rgba(18, 19, 24, 0.16)";
+                  document.body.appendChild(dragPreview);
+                  event.dataTransfer.setDragImage(dragPreview, width / 2, 24);
+                  requestAnimationFrame(() => document.body.removeChild(dragPreview));
+
+                  setDraggingMatterId(matter.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingMatterId(null);
+                  setDragOverStage(null);
+                }}
+                onStageDragEnter={setDragOverStage}
+                onStageDragLeave={(stageToClear) => {
+                  if (dragOverStage === stageToClear) {
+                    setDragOverStage(null);
+                  }
+                }}
+                onStageDrop={async (nextStage) => {
+                  if (!draggingMatterId) {
+                    return;
+                  }
+
+                  const draggedMatter = board.matters.find(
+                    (matter: Matter) => matter.id === draggingMatterId
+                  );
+                  if (!draggedMatter || draggedMatter.stage === nextStage) {
+                    setDraggingMatterId(null);
+                    setDragOverStage(null);
+                    return;
+                  }
+
+                  await board.moveMatter(draggingMatterId, nextStage);
+                  setDraggingMatterId(null);
+                  setDragOverStage(null);
+                }}
               />
             ))}
           </div>

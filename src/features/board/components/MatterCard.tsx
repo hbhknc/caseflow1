@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { DragEvent } from "react";
 import { formatDate } from "@/lib/dates";
 import { STAGES, formatStageLabel } from "@/utils/stages";
 import type { Matter, MatterStage } from "@/types/matter";
@@ -6,15 +7,21 @@ import type { Matter, MatterStage } from "@/types/matter";
 type MatterCardProps = {
   matter: Matter;
   isSelected: boolean;
+  isDragging: boolean;
   onSelect: () => void;
   onMoveMatter: (matterId: string, stage: MatterStage) => Promise<void>;
+  onDragStart: (event: DragEvent<HTMLElement>, matter: Matter) => void;
+  onDragEnd: () => void;
 };
 
 export function MatterCard({
   matter,
   isSelected,
+  isDragging,
   onSelect,
-  onMoveMatter
+  onMoveMatter,
+  onDragStart,
+  onDragEnd
 }: MatterCardProps) {
   const [isMoveMenuOpen, setIsMoveMenuOpen] = useState(false);
   const moveMenuRef = useRef<HTMLDivElement | null>(null);
@@ -37,7 +44,16 @@ export function MatterCard({
 
   return (
     <article
-      className={isSelected ? "matter-card matter-card--selected" : "matter-card"}
+      draggable
+      className={
+        isDragging
+          ? "matter-card matter-card--dragging"
+          : isSelected
+            ? "matter-card matter-card--selected"
+            : "matter-card"
+      }
+      onDragStart={(event) => onDragStart(event, matter)}
+      onDragEnd={onDragEnd}
     >
       <button type="button" className="matter-card__button" onClick={onSelect}>
         <div className="matter-card__stack">
