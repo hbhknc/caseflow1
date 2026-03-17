@@ -10,6 +10,7 @@ import {
   saveMatter,
   saveMatterNote
 } from "@/services/matters";
+import { STAGES } from "@/utils/stages";
 import type {
   Matter,
   MatterFormInput,
@@ -86,6 +87,18 @@ export function useMattersBoard(): UseMattersBoardResult {
     [matters, selectedMatterId]
   );
 
+  function sortMatters(items: Matter[]) {
+    return [...items].sort((left, right) => {
+      const stageDelta = STAGES.indexOf(left.stage) - STAGES.indexOf(right.stage);
+
+      if (stageDelta !== 0) {
+        return stageDelta;
+      }
+
+      return right.lastActivityAt.localeCompare(left.lastActivityAt);
+    });
+  }
+
   async function hydrateBoard() {
     try {
       setIsLoading(true);
@@ -140,8 +153,36 @@ export function useMattersBoard(): UseMattersBoardResult {
   }
 
   async function handleMoveMatter(matterId: string, stage: MatterStage) {
-    await moveMatterStage(matterId, stage);
-    await hydrateBoard();
+    const previousMatters = matters;
+    const optimisticTimestamp = new Date().toISOString();
+
+    setMatters((current) =>
+      sortMatters(
+        current.map((matter) =>
+          matter.id === matterId
+            ? {
+                ...matter,
+                stage,
+                lastActivityAt: optimisticTimestamp
+              }
+            : matter
+        )
+      )
+    );
+
+    try {
+      const updatedMatter = await moveMatterStage(matterId, stage);
+      setMatters((current) =>
+        sortMatters(
+          current.map((matter) => (matter.id === matterId ? updatedMatter : matter))
+        )
+      );
+    } catch (caughtError) {
+      setMatters(previousMatters);
+      setError(
+        caughtError instanceof Error ? caughtError.message : "Unable to move matter."
+      );
+    }
   }
 
   async function handleAddNote(matterId: string, body: string, addToTaskList: boolean) {
