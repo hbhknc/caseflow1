@@ -225,7 +225,7 @@
 
 .matter-card {
   border-radius: var(--radius-18);
-  overflow: hidden;
+  overflow: visible;
   transition:
     transform var(--transition-base),
     box-shadow var(--transition-base),
@@ -286,6 +286,7 @@
 
 .matter-card__actions {
   position: relative;
+  z-index: 2;
   padding: 0 var(--space-14) var(--space-14);
 }
 
