@@ -20,10 +20,11 @@ export function BoardColumn({
   return (
     <section className="board-column">
       <header className="board-column__header">
-        <div>
+        <div className="board-column__title-group">
           <h3>{formatStageLabel(stage)}</h3>
-          <p>{matters.length} matters</p>
+          <p>Probate stage</p>
         </div>
+        <span className="board-column__count">{matters.length}</span>
       </header>
       <div className="board-column__body">
         {matters.map((matter) => (
@@ -42,4 +43,3 @@ export function BoardColumn({
     </section>
   );
 }
-

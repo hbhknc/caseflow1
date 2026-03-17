@@ -21,7 +21,7 @@ export function NotesTimeline({ notes }: NotesTimelineProps) {
       {notes.map((note) => (
         <li key={note.id} className="note-card">
           <div className="note-card__meta">
-            <strong>{note.createdBy ?? "Firm staff"}</strong>
+            <span className="note-card__author">{note.createdBy ?? "Firm staff"}</span>
             <span>{formatDateTime(note.createdAt)}</span>
           </div>
           <p>{note.body}</p>
@@ -30,4 +30,3 @@ export function NotesTimeline({ notes }: NotesTimelineProps) {
     </ol>
   );
 }
-

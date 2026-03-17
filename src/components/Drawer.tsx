@@ -10,7 +10,8 @@ export function Drawer({ title, subtitle, actions, children }: DrawerProps) {
   return (
     <aside className="drawer">
       <header className="drawer__header">
-        <div>
+        <div className="drawer__title-block">
+          <p className="drawer__eyebrow">Inspector</p>
           <h2>{title}</h2>
           {subtitle ? <p>{subtitle}</p> : null}
         </div>
@@ -20,4 +21,3 @@ export function Drawer({ title, subtitle, actions, children }: DrawerProps) {
     </aside>
   );
 }
-

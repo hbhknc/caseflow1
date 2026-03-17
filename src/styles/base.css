@@ -1,9 +1,11 @@
 :root {
-  font-family: "Segoe UI", "Inter", system-ui, sans-serif;
+  font-family: var(--font-sans);
   color: var(--ink-900);
   background:
-    radial-gradient(circle at top right, rgba(135, 165, 198, 0.18), transparent 24rem),
-    linear-gradient(180deg, #eef3f9 0%, #e6edf5 42%, #dde6f0 100%);
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.85), transparent 28rem),
+    radial-gradient(circle at top right, rgba(232, 236, 245, 0.72), transparent 26rem),
+    linear-gradient(180deg, #f7f7f9 0%, #eff1f5 48%, #eceef2 100%);
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -22,6 +24,7 @@ body,
 
 body {
   margin: 0;
+  min-width: 1280px;
 }
 
 button,
@@ -59,3 +62,18 @@ textarea {
   resize: vertical;
 }
 
+::selection {
+  background: rgba(33, 108, 255, 0.16);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

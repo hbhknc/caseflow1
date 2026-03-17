@@ -11,16 +11,32 @@ export function BoardPage() {
   return (
     <div className="board-page">
       <section className="toolbar panel">
-        <div className="section-heading">
-          <h2>Probate Board</h2>
-          <p>
-            Active probate matters stay visible until they are moved to Closed and archived.
-          </p>
+        <div className="toolbar__intro">
+          <div className="section-heading">
+            <h2>Probate Board</h2>
+            <p>
+              Active probate matters stay visible until they are moved to Closed and archived.
+            </p>
+          </div>
+          <div className="toolbar__meta">
+            <span>{board.filteredMatters.length} visible matters</span>
+            <span>{board.matters.length} active total</span>
+          </div>
         </div>
         <div className="toolbar__actions">
           <SearchField value={board.searchTerm} onChange={board.setSearchTerm} />
           <button type="button" className="button" onClick={board.openCreateMatter}>
-            New Case
+            <span className="button__icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path
+                  d="M9 3.5v11M3.5 9h11"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+            <span>New Case</span>
           </button>
         </div>
       </section>
@@ -89,4 +105,3 @@ export function BoardPage() {
     </div>
   );
 }
-

@@ -20,24 +20,27 @@ export function MatterCard({
       className={isSelected ? "matter-card matter-card--selected" : "matter-card"}
     >
       <button type="button" className="matter-card__button" onClick={onSelect}>
+        <p className="matter-card__eyebrow">Estate matter</p>
         <div className="matter-card__top">
-          <h4>{matter.decedentName}</h4>
-          <span>{matter.fileNumber}</span>
+          <div>
+            <h4>{matter.decedentName}</h4>
+            <p className="matter-card__client">{matter.clientName}</p>
+          </div>
+          <span className="matter-card__file">{matter.fileNumber}</span>
         </div>
-        <p className="matter-card__client">{matter.clientName}</p>
         <dl className="matter-card__meta">
           <div>
-            <dt>Activity</dt>
+            <dt>Last activity</dt>
             <dd>{formatDate(matter.lastActivityAt)}</dd>
           </div>
           <div>
-            <dt>Stage</dt>
+            <dt>Current stage</dt>
             <dd>{formatStageLabel(matter.stage)}</dd>
           </div>
         </dl>
       </button>
       <label className="matter-card__move">
-        <span>Move to</span>
+        <span>Move matter</span>
         <select
           value={matter.stage}
           onChange={(event) =>
@@ -54,4 +57,3 @@ export function MatterCard({
     </article>
   );
 }
-

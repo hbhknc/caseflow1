@@ -73,7 +73,7 @@ export function MatterDrawer({
       return "Select a case card to review and update matter details.";
     }
 
-    return `${matter.clientName} • ${matter.fileNumber}`;
+    return `${matter.clientName} | ${matter.fileNumber}`;
   }, [isCreateMode, matter]);
 
   if (!matter && !isCreateMode) {
@@ -224,7 +224,7 @@ export function MatterDrawer({
 
       {!isCreateMode && matter ? (
         <>
-          <section className="info-grid">
+          <section className="info-grid info-grid--inspector">
             <div>
               <span>Created</span>
               <strong>{formatDateTime(matter.createdAt)}</strong>
@@ -243,14 +243,19 @@ export function MatterDrawer({
             </div>
           </section>
 
-          <section className="stack">
-            <div className="section-heading">
-              <h3>Activity Log</h3>
-              <p>Notes are stored as separate, timestamped entries.</p>
+          <section className="drawer-section stack">
+            <div className="section-heading section-heading--split">
+              <div>
+                <h3>Activity Log</h3>
+                <p>Notes are stored as separate, timestamped entries.</p>
+              </div>
+              <button type="submit" form="note-form" className="button button--secondary">
+                Add Note
+              </button>
             </div>
-            <form className="stack" onSubmit={handleAddNote}>
+            <form id="note-form" className="stack note-composer" onSubmit={handleAddNote}>
               <label className="field">
-                <span>Add note</span>
+                <span>New activity</span>
                 <textarea
                   rows={4}
                   placeholder="Enter a case activity note..."
@@ -258,9 +263,6 @@ export function MatterDrawer({
                   onChange={(event) => setNoteBody(event.target.value)}
                 />
               </label>
-              <button type="submit" className="button button--secondary">
-                Add note
-              </button>
             </form>
             <NotesTimeline notes={notes} />
           </section>
@@ -269,4 +271,3 @@ export function MatterDrawer({
     </Drawer>
   );
 }
-
