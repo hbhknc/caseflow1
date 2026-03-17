@@ -1,0 +1,15 @@
+$schema = "./node_modules/wrangler/config-schema.json"
+
+name = "caseflow"
+compatibility_date = "2026-03-17"
+pages_build_output_dir = "./dist"
+
+[vars]
+APP_NAME = "CaseFlow"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "caseflow"
+database_id = "replace-with-production-d1-database-id"
+preview_database_id = "replace-with-preview-d1-database-id"
+

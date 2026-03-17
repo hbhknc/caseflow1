@@ -1,0 +1,34 @@
+{
+  "name": "caseflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CaseFlow is a private internal matter management app for probate workflow.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "node ./node_modules/vite/bin/vite.js",
+    "build": "node ./node_modules/typescript/bin/tsc --noEmit && node ./node_modules/vite/bin/vite.js build",
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
+    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
+    "pages:dev": "wrangler pages dev",
+    "db:migrate:local": "wrangler d1 migrations apply caseflow --local",
+    "db:seed:local": "wrangler d1 execute caseflow --local --file=./migrations/0002_seed.sql",
+    "db:migrate:remote": "wrangler d1 migrations apply caseflow --remote",
+    "db:seed:remote": "wrangler d1 execute caseflow --remote --file=./migrations/0002_seed.sql"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260303.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "typescript": "^5.8.2",
+    "vite": "^7.0.0"
+  }
+}

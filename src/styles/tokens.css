@@ -1,0 +1,14 @@
+:root {
+  --surface-1: rgba(255, 255, 255, 0.86);
+  --surface-2: rgba(246, 249, 252, 0.9);
+  --ink-900: #1d2633;
+  --ink-800: #263243;
+  --ink-700: #3b4a60;
+  --ink-600: #55667d;
+  --ink-500: #70839b;
+  --accent-500: #5a7ea8;
+  --border-soft: rgba(116, 139, 167, 0.26);
+  --border-strong: rgba(91, 111, 136, 0.38);
+  --shadow-panel: 0 14px 34px rgba(32, 52, 80, 0.12);
+}
+
