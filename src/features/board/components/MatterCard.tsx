@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { formatDate } from "@/lib/dates";
 import { STAGES, formatStageLabel } from "@/utils/stages";
 import type { Matter, MatterStage } from "@/types/matter";
@@ -15,45 +16,72 @@ export function MatterCard({
   onSelect,
   onMoveMatter
 }: MatterCardProps) {
+  const [isMoveMenuOpen, setIsMoveMenuOpen] = useState(false);
+  const moveMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isMoveMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!moveMenuRef.current?.contains(event.target as Node)) {
+        setIsMoveMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isMoveMenuOpen]);
+
   return (
     <article
       className={isSelected ? "matter-card matter-card--selected" : "matter-card"}
     >
       <button type="button" className="matter-card__button" onClick={onSelect}>
-        <p className="matter-card__eyebrow">Estate matter</p>
-        <div className="matter-card__top">
-          <div>
-            <h4>{matter.decedentName}</h4>
-            <p className="matter-card__client">{matter.clientName}</p>
-          </div>
-          <span className="matter-card__file">{matter.fileNumber}</span>
+        <div className="matter-card__stack">
+          <h4>{matter.decedentName}</h4>
+          <p className="matter-card__client">{matter.clientName}</p>
+          <dl className="matter-card__meta">
+            <div className="matter-card__meta-item">
+              <dt>File Number</dt>
+              <dd>{matter.fileNumber}</dd>
+            </div>
+            <div className="matter-card__meta-item">
+              <dt>Last Activity</dt>
+              <dd>{formatDate(matter.lastActivityAt)}</dd>
+            </div>
+          </dl>
         </div>
-        <dl className="matter-card__meta">
-          <div>
-            <dt>Last activity</dt>
-            <dd>{formatDate(matter.lastActivityAt)}</dd>
-          </div>
-          <div>
-            <dt>Current stage</dt>
-            <dd>{formatStageLabel(matter.stage)}</dd>
-          </div>
-        </dl>
       </button>
-      <label className="matter-card__move">
-        <span>Move matter</span>
-        <select
-          value={matter.stage}
-          onChange={(event) =>
-            void onMoveMatter(matter.id, event.target.value as MatterStage)
-          }
+      <div className="matter-card__actions" ref={moveMenuRef}>
+        <button
+          type="button"
+          className="matter-card__move-button"
+          aria-expanded={isMoveMenuOpen}
+          onClick={() => setIsMoveMenuOpen((current) => !current)}
         >
-          {STAGES.map((stage) => (
-            <option key={stage} value={stage}>
-              {formatStageLabel(stage)}
-            </option>
-          ))}
-        </select>
-      </label>
+          Move Matter
+        </button>
+        {isMoveMenuOpen ? (
+          <div className="matter-card__move-menu" role="menu" aria-label="Move matter">
+            {STAGES.filter((stage) => stage !== matter.stage).map((stage) => (
+              <button
+                key={stage}
+                type="button"
+                className="matter-card__move-option"
+                onClick={async () => {
+                  setIsMoveMenuOpen(false);
+                  await onMoveMatter(matter.id, stage);
+                }}
+              >
+                {formatStageLabel(stage)}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }
