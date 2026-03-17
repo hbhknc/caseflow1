@@ -60,7 +60,6 @@ export function BoardPage() {
                 draggingMatterId={draggingMatterId}
                 isDragTarget={dragOverStage === stage}
                 onSelectMatter={board.selectMatter}
-                onMoveMatter={board.moveMatter}
                 onDragStart={(event, matter) => {
                   event.dataTransfer.effectAllowed = "move";
                   event.dataTransfer.setData("text/plain", matter.id);

@@ -142,7 +142,6 @@ export function useMattersBoard(): UseMattersBoardResult {
   async function handleMoveMatter(matterId: string, stage: MatterStage) {
     await moveMatterStage(matterId, stage);
     await hydrateBoard();
-    setSelectedMatterId(matterId);
   }
 
   async function handleAddNote(matterId: string, body: string, addToTaskList: boolean) {

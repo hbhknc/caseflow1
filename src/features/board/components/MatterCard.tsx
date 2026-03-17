@@ -1,15 +1,12 @@
-import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { formatDate } from "@/lib/dates";
-import { STAGES, formatStageLabel } from "@/utils/stages";
-import type { Matter, MatterStage } from "@/types/matter";
+import type { Matter } from "@/types/matter";
 
 type MatterCardProps = {
   matter: Matter;
   isSelected: boolean;
   isDragging: boolean;
   onSelect: () => void;
-  onMoveMatter: (matterId: string, stage: MatterStage) => Promise<void>;
   onDragStart: (event: DragEvent<HTMLElement>, matter: Matter) => void;
   onDragEnd: () => void;
 };
@@ -19,29 +16,9 @@ export function MatterCard({
   isSelected,
   isDragging,
   onSelect,
-  onMoveMatter,
   onDragStart,
   onDragEnd
 }: MatterCardProps) {
-  const [isMoveMenuOpen, setIsMoveMenuOpen] = useState(false);
-  const moveMenuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!isMoveMenuOpen) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!moveMenuRef.current?.contains(event.target as Node)) {
-        setIsMoveMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [isMoveMenuOpen]);
-
   return (
     <article
       draggable
@@ -65,33 +42,6 @@ export function MatterCard({
           </p>
         </div>
       </button>
-      <div className="matter-card__actions" ref={moveMenuRef}>
-        <button
-          type="button"
-          className="matter-card__move-button"
-          aria-expanded={isMoveMenuOpen}
-          onClick={() => setIsMoveMenuOpen((current) => !current)}
-        >
-          Move Matter
-        </button>
-        {isMoveMenuOpen ? (
-          <div className="matter-card__move-menu" role="menu" aria-label="Move matter">
-            {STAGES.filter((stage) => stage !== matter.stage).map((stage) => (
-              <button
-                key={stage}
-                type="button"
-                className="matter-card__move-option"
-                onClick={async () => {
-                  setIsMoveMenuOpen(false);
-                  await onMoveMatter(matter.id, stage);
-                }}
-              >
-                {formatStageLabel(stage)}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
     </article>
   );
 }

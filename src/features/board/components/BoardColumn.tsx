@@ -10,7 +10,6 @@ type BoardColumnProps = {
   draggingMatterId: string | null;
   isDragTarget: boolean;
   onSelectMatter: (matterId: string) => void;
-  onMoveMatter: (matterId: string, stage: MatterStage) => Promise<void>;
   onDragStart: (event: DragEvent<HTMLElement>, matter: Matter) => void;
   onDragEnd: () => void;
   onStageDragEnter: (stage: MatterStage) => void;
@@ -25,7 +24,6 @@ export function BoardColumn({
   draggingMatterId,
   isDragTarget,
   onSelectMatter,
-  onMoveMatter,
   onDragStart,
   onDragEnd,
   onStageDragEnter,
@@ -66,7 +64,6 @@ export function BoardColumn({
             isSelected={matter.id === selectedMatterId}
             isDragging={matter.id === draggingMatterId}
             onSelect={() => onSelectMatter(matter.id)}
-            onMoveMatter={onMoveMatter}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
           />
