@@ -53,7 +53,7 @@ export const demoMatters: Matter[] = [
     decedentName: "Florence Avery",
     clientName: "Jon Avery",
     fileNumber: "PR-2025-0119",
-    stage: "closed",
+    stage: "accounting_closing",
     createdAt: "2025-11-12T11:00:00.000Z",
     lastActivityAt: "2026-03-10T12:30:00.000Z",
     archived: false,

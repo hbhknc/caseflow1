@@ -1,23 +1,17 @@
 import type { MatterStage } from "@/types/matter";
 
-export const STAGES: MatterStage[] = [
-  "intake",
-  "qualified_opened",
-  "notice_admin",
-  "inventory_collection",
-  "accounting_closing",
-  "closed"
+export const STAGE_DEFINITIONS: Array<{ id: MatterStage; label: string }> = [
+  { id: "intake", label: "Intake" },
+  { id: "qualified_opened", label: "Qualified / Opened" },
+  { id: "notice_admin", label: "Notice / Admin" },
+  { id: "inventory_collection", label: "Inventory / Collection" },
+  { id: "accounting_closing", label: "Accounting / Closing" }
 ];
 
-const labels: Record<MatterStage, string> = {
-  intake: "Intake",
-  qualified_opened: "Qualified / Opened",
-  notice_admin: "Notice / Admin",
-  inventory_collection: "Inventory / Collection",
-  accounting_closing: "Accounting / Closing",
-  closed: "Closed"
-};
+export const STAGES: MatterStage[] = STAGE_DEFINITIONS.map((stage) => stage.id);
+
+export const ARCHIVE_READY_STAGE: MatterStage = "accounting_closing";
 
 export function formatStageLabel(stage: MatterStage): string {
-  return labels[stage];
+  return STAGE_DEFINITIONS.find((definition) => definition.id === stage)?.label ?? stage;
 }

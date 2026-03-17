@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatusPill } from "@/components/StatusPill";
 import { NotesTimeline } from "@/features/notes/components/NotesTimeline";
 import { formatDateTime } from "@/lib/dates";
-import { STAGES, formatStageLabel } from "@/utils/stages";
+import { ARCHIVE_READY_STAGE, STAGES, formatStageLabel } from "@/utils/stages";
 import type { Matter, MatterFormInput, MatterNote, MatterStage } from "@/types/matter";
 
 type MatterDrawerProps = {
@@ -155,7 +155,7 @@ export function MatterDrawer({
                 </button>
               ) : matter ? (
                 <>
-                  {matter.stage === "closed" && !matter.archived ? (
+                  {matter.stage === ARCHIVE_READY_STAGE && !matter.archived ? (
                     <button type="button" className="button button--secondary" onClick={handleArchive}>
                       Archive
                     </button>

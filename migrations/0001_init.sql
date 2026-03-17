@@ -11,8 +11,7 @@ CREATE TABLE IF NOT EXISTS matters (
       'qualified_opened',
       'notice_admin',
       'inventory_collection',
-      'accounting_closing',
-      'closed'
+      'accounting_closing'
     )
   ),
   created_at TEXT NOT NULL,
@@ -70,4 +69,3 @@ CREATE INDEX IF NOT EXISTS idx_matter_stage_history_matter_changed
 
 CREATE INDEX IF NOT EXISTS idx_audit_events_entity
   ON audit_events(entity_type, entity_id, created_at DESC);
-

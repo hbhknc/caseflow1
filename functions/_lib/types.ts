@@ -8,8 +8,7 @@ export type MatterStage =
   | "qualified_opened"
   | "notice_admin"
   | "inventory_collection"
-  | "accounting_closing"
-  | "closed";
+  | "accounting_closing";
 
 export type MatterRecord = {
   id: string;
@@ -43,4 +42,3 @@ export type MatterNoteInput = {
   matterId: string;
   body: string;
 };
-

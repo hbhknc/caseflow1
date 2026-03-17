@@ -3,8 +3,7 @@ export type MatterStage =
   | "qualified_opened"
   | "notice_admin"
   | "inventory_collection"
-  | "accounting_closing"
-  | "closed";
+  | "accounting_closing";
 
 export type Matter = {
   id: string;
@@ -32,4 +31,3 @@ export type MatterFormInput = {
   fileNumber: string;
   stage: MatterStage;
 };
-

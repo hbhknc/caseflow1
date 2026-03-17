@@ -1,4 +1,4 @@
-import { isMatterStage } from "./stages";
+import { ARCHIVE_READY_STAGE, isMatterStage } from "./stages";
 import type {
   MatterInput,
   MatterNoteInput,
@@ -96,7 +96,6 @@ export async function listMatters(db: D1Database) {
            WHEN 'notice_admin' THEN 3
            WHEN 'inventory_collection' THEN 4
            WHEN 'accounting_closing' THEN 5
-           WHEN 'closed' THEN 6
            ELSE 99
          END,
          last_activity_at DESC`
@@ -262,8 +261,8 @@ export async function archiveMatter(db: D1Database, matterId: string) {
     return null;
   }
 
-  if (existing.stage !== "closed") {
-    throw new Error("Only closed matters can be archived.");
+  if (existing.stage !== ARCHIVE_READY_STAGE) {
+    throw new Error("Only matters in Accounting / Closing can be archived.");
   }
 
   const timestamp = nowIso();
