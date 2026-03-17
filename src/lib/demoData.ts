@@ -1,5 +1,5 @@
 import type { AppStatus } from "@/types/api";
-import type { Matter, MatterNote, MatterStage } from "@/types/matter";
+import type { Matter, MatterNote, MatterStage, MatterTask } from "@/types/matter";
 
 const now = "2026-03-17T09:00:00.000Z";
 
@@ -114,6 +114,29 @@ export const demoStatus: AppStatus = {
   timestamp: now,
   authMode: "Not configured"
 };
+
+export const demoTasks: MatterTask[] = [
+  {
+    id: "task_seed_001",
+    matterId: "matter_seed_003",
+    matterName: "Lucille Carver",
+    clientName: "Daniel Carver",
+    fileNumber: "PR-2026-0021",
+    body: "Prepare final accounting exhibits for attorney review.",
+    createdAt: "2026-03-15T15:10:00.000Z",
+    completedAt: null
+  },
+  {
+    id: "task_seed_002",
+    matterId: "matter_seed_004",
+    matterName: "John Doe",
+    clientName: "Jane Doe",
+    fileNumber: "26 E 000321-950",
+    body: "Collect intake packet signatures and confirm venue details.",
+    createdAt: "2026-03-16T09:30:00.000Z",
+    completedAt: null
+  }
+];
 
 export function createDemoMatter(input: {
   decedentName: string;

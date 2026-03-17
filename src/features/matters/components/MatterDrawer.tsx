@@ -17,7 +17,7 @@ type MatterDrawerProps = {
   onUpdateMatter: (matterId: string, input: MatterFormInput) => Promise<void>;
   onDeleteMatter: (matterId: string) => Promise<void>;
   onArchiveMatter: (matterId: string) => Promise<void>;
-  onAddNote: (matterId: string, body: string) => Promise<void>;
+  onAddNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
 };
 
 function buildInitialState(matter: Matter | null): MatterFormInput {
@@ -52,10 +52,12 @@ export function MatterDrawer({
 }: MatterDrawerProps) {
   const [draft, setDraft] = useState<MatterFormInput>(buildInitialState(matter));
   const [noteBody, setNoteBody] = useState("");
+  const [addNoteToTaskList, setAddNoteToTaskList] = useState(false);
 
   useEffect(() => {
     setDraft(buildInitialState(matter));
     setNoteBody("");
+    setAddNoteToTaskList(false);
   }, [matter, isCreateMode]);
 
   const panelTitle = useMemo(() => {
@@ -137,8 +139,9 @@ export function MatterDrawer({
       return;
     }
 
-    await onAddNote(matter.id, noteBody.trim());
+    await onAddNote(matter.id, noteBody.trim(), addNoteToTaskList);
     setNoteBody("");
+    setAddNoteToTaskList(false);
   }
 
   return (
@@ -265,16 +268,24 @@ export function MatterDrawer({
                 <form id="note-form" className="stack note-composer" onSubmit={handleAddNote}>
                   <label className="field">
                     <span>New activity</span>
-                    <textarea
-                      rows={4}
-                      placeholder="Enter a case activity note..."
-                      value={noteBody}
-                      onChange={(event) => setNoteBody(event.target.value)}
-                    />
-                  </label>
-                </form>
-                <NotesTimeline notes={notes} />
-              </section>
+                <textarea
+                  rows={4}
+                  placeholder="Enter a case activity note..."
+                  value={noteBody}
+                  onChange={(event) => setNoteBody(event.target.value)}
+                />
+              </label>
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={addNoteToTaskList}
+                  onChange={(event) => setAddNoteToTaskList(event.target.checked)}
+                />
+                <span>Add this note to the task list</span>
+              </label>
+            </form>
+            <NotesTimeline notes={notes} />
+          </section>
             </>
           ) : null}
         </Drawer>

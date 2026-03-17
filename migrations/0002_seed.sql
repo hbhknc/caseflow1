@@ -14,6 +14,10 @@ INSERT INTO matter_notes (id, matter_id, body, created_at, created_by) VALUES
   ('note_seed_004', 'matter_seed_003', 'Draft final accounting circulated for internal review.', '2026-03-15T15:00:00.000Z', 'Probate Team'),
   ('note_seed_005', 'matter_seed_005', 'Order approving final report entered. File ready for archive.', '2026-03-10T12:30:00.000Z', 'Probate Team');
 
+INSERT INTO task_items (id, matter_id, body, created_at, completed_at, source_note_id) VALUES
+  ('task_seed_001', 'matter_seed_003', 'Prepare final accounting exhibits for attorney review.', '2026-03-15T15:10:00.000Z', NULL, NULL),
+  ('task_seed_002', 'matter_seed_004', 'Collect intake packet signatures and confirm venue details.', '2026-03-16T09:30:00.000Z', NULL, NULL);
+
 INSERT INTO matter_stage_history (id, matter_id, from_stage, to_stage, changed_at, changed_by) VALUES
   ('history_seed_001', 'matter_seed_001', NULL, 'intake', '2026-02-03T14:20:00.000Z', 'Probate Team'),
   ('history_seed_002', 'matter_seed_001', 'intake', 'qualified_opened', '2026-02-21T09:00:00.000Z', 'Probate Team'),

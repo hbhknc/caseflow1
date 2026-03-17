@@ -4,7 +4,8 @@ import type {
   MatterNoteInput,
   MatterNoteRecord,
   MatterRecord,
-  MatterStage
+  MatterStage,
+  MatterTaskRecord
 } from "./types";
 
 function nowIso() {
@@ -305,6 +306,38 @@ export async function listNotes(db: D1Database, matterId: string) {
   return results.map(mapNote);
 }
 
+export async function listTasks(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT
+         task_items.id,
+         task_items.matter_id,
+         task_items.body,
+         task_items.created_at,
+         task_items.completed_at,
+         task_items.source_note_id,
+         matters.decedent_name,
+         matters.client_name,
+         matters.file_number
+       FROM task_items
+       INNER JOIN matters ON matters.id = task_items.matter_id
+       WHERE task_items.completed_at IS NULL
+       ORDER BY task_items.created_at DESC`
+    )
+    .all<MatterTaskRecord>();
+
+  return results.map((row) => ({
+    id: row.id,
+    matterId: row.matter_id,
+    matterName: row.decedent_name,
+    clientName: row.client_name,
+    fileNumber: row.file_number,
+    body: row.body,
+    createdAt: row.created_at,
+    completedAt: row.completed_at
+  }));
+}
+
 export async function createNote(db: D1Database, payload: Partial<MatterNoteInput>) {
   if (!payload.matterId?.trim()) {
     throw new Error("Matter id is required.");
@@ -330,6 +363,16 @@ export async function createNote(db: D1Database, payload: Partial<MatterNoteInpu
     )
     .bind(noteId, payload.matterId, payload.body.trim(), timestamp, "Firm staff")
     .run();
+
+  if (payload.addToTaskList) {
+    await db
+      .prepare(
+        `INSERT INTO task_items (id, matter_id, body, created_at, completed_at, source_note_id)
+         VALUES (?1, ?2, ?3, ?4, NULL, ?5)`
+      )
+      .bind(crypto.randomUUID(), payload.matterId, payload.body.trim(), timestamp, noteId)
+      .run();
+  }
 
   await db
     .prepare(

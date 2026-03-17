@@ -1,9 +1,16 @@
-import { createDemoMatter, demoMatters, demoNotes, demoStatus } from "@/lib/demoData";
+import { createDemoMatter, demoMatters, demoNotes, demoStatus, demoTasks } from "@/lib/demoData";
 import type { AppStatus } from "@/types/api";
-import type { Matter, MatterFormInput, MatterNote, MatterStage } from "@/types/matter";
+import type {
+  Matter,
+  MatterFormInput,
+  MatterNote,
+  MatterStage,
+  MatterTask
+} from "@/types/matter";
 
 const matterStore = [...demoMatters];
 const noteStore = structuredClone(demoNotes);
+const taskStore = [...demoTasks];
 
 export function shouldUseDemoFallback() {
   return (import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? "true") === "true";
@@ -85,7 +92,11 @@ export async function listDemoNotes(matterId: string): Promise<MatterNote[]> {
   );
 }
 
-export async function addDemoNote(matterId: string, body: string): Promise<MatterNote> {
+export async function addDemoNote(
+  matterId: string,
+  body: string,
+  addToTaskList = false
+): Promise<MatterNote> {
   const matter = matterStore.find((item) => item.id === matterId);
 
   if (!matter) {
@@ -103,7 +114,26 @@ export async function addDemoNote(matterId: string, body: string): Promise<Matte
   noteStore[matterId] = [note, ...(noteStore[matterId] ?? [])];
   matter.lastActivityAt = note.createdAt;
 
+  if (addToTaskList) {
+    taskStore.unshift({
+      id: crypto.randomUUID(),
+      matterId,
+      matterName: matter.decedentName,
+      clientName: matter.clientName,
+      fileNumber: matter.fileNumber,
+      body,
+      createdAt: note.createdAt,
+      completedAt: null
+    });
+  }
+
   return note;
+}
+
+export async function listDemoTasks(): Promise<MatterTask[]> {
+  return [...taskStore]
+    .filter((task) => !task.completedAt)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
 export async function getDemoStatus(): Promise<AppStatus> {

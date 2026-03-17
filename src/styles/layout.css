@@ -394,6 +394,10 @@
   box-shadow: 0 30px 70px rgba(16, 17, 22, 0.22);
 }
 
+.task-modal {
+  width: min(680px, 100%);
+}
+
 .drawer__header {
   display: flex;
   justify-content: space-between;
@@ -515,6 +519,50 @@
 
 .note-card p {
   padding-left: var(--space-10);
+  color: var(--ink-700);
+  line-height: 1.5;
+}
+
+.task-list {
+  display: grid;
+  gap: var(--space-10);
+  list-style: none;
+}
+
+.task-card {
+  display: grid;
+  gap: var(--space-10);
+  padding: var(--space-14);
+  border-radius: var(--radius-16);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--border-subtle);
+}
+
+.task-card__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.task-card__header h3 {
+  font-size: var(--font-size-15);
+  letter-spacing: -0.02em;
+}
+
+.task-card__header p,
+.task-card__meta {
+  color: var(--ink-500);
+  font-size: var(--font-size-12);
+}
+
+.task-card__header span {
+  color: var(--ink-600);
+  font-size: var(--font-size-12);
+  font-weight: 600;
+}
+
+.task-card__body {
   color: var(--ink-700);
   line-height: 1.5;
 }

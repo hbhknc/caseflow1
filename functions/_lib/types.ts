@@ -31,6 +31,18 @@ export type MatterNoteRecord = {
   created_by: string | null;
 };
 
+export type MatterTaskRecord = {
+  id: string;
+  matter_id: string;
+  body: string;
+  created_at: string;
+  completed_at: string | null;
+  source_note_id: string | null;
+  decedent_name: string;
+  client_name: string;
+  file_number: string;
+};
+
 export type MatterInput = {
   decedentName: string;
   clientName: string;
@@ -41,4 +53,5 @@ export type MatterInput = {
 export type MatterNoteInput = {
   matterId: string;
   body: string;
+  addToTaskList?: boolean;
 };

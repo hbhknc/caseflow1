@@ -6,10 +6,17 @@ import {
   deleteDemoMatterRecord,
   listDemoMatters,
   listDemoNotes,
+  listDemoTasks,
   moveDemoMatterRecord,
   updateDemoMatterRecord
 } from "@/services/demoApi";
-import type { Matter, MatterFormInput, MatterNote, MatterStage } from "@/types/matter";
+import type {
+  Matter,
+  MatterFormInput,
+  MatterNote,
+  MatterStage,
+  MatterTask
+} from "@/types/matter";
 
 export async function listMatters(): Promise<Matter[]> {
   const response = await requestJsonWithFallback<{ matters: Matter[] }>(
@@ -104,17 +111,27 @@ export async function listMatterNotes(matterId: string): Promise<MatterNote[]> {
 
 export async function saveMatterNote(
   matterId: string,
-  body: string
+  body: string,
+  addToTaskList = false
 ): Promise<MatterNote> {
   const response = await requestJsonWithFallback<{ note: MatterNote }>(
     "/notes",
     {
       method: "POST",
-      body: { matterId, body }
+      body: { matterId, body, addToTaskList }
     },
-    async () => ({ note: await addDemoNote(matterId, body) })
+    async () => ({ note: await addDemoNote(matterId, body, addToTaskList) })
   );
 
   return response.note;
 }
 
+export async function listTasks(): Promise<MatterTask[]> {
+  const response = await requestJsonWithFallback<{ tasks: MatterTask[] }>(
+    "/tasks",
+    {},
+    async () => ({ tasks: await listDemoTasks() })
+  );
+
+  return response.tasks;
+}

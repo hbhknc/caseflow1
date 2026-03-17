@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
 import { BoardColumn } from "@/features/board/components/BoardColumn";
 import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
+import { TaskListModal } from "@/features/tasks/components/TaskListModal";
 import { useMattersBoard } from "@/hooks/useMattersBoard";
 import { STAGES } from "@/utils/stages";
 
@@ -15,6 +16,9 @@ export function BoardPage() {
     setHeaderToolbar(
       <>
         <SearchField value={board.searchTerm} onChange={board.setSearchTerm} />
+        <button type="button" className="button button--ghost" onClick={() => void board.openTaskList()}>
+          <span>Tasks</span>
+        </button>
         <button type="button" className="button" onClick={board.openCreateMatter}>
           <span className="button__icon" aria-hidden="true">
             <svg viewBox="0 0 18 18" fill="none">
@@ -80,6 +84,10 @@ export function BoardPage() {
           onAddNote={board.addNote}
         />
       )}
+
+      {board.isTaskListOpen ? (
+        <TaskListModal tasks={board.tasks} onClose={board.closeTaskList} />
+      ) : null}
     </div>
   );
 }

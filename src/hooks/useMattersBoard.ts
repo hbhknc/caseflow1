@@ -5,29 +5,40 @@ import {
   deleteMatter,
   listMatterNotes,
   listMatters,
+  listTasks,
   moveMatterStage,
   saveMatter,
   saveMatterNote
 } from "@/services/matters";
-import type { Matter, MatterFormInput, MatterNote, MatterStage } from "@/types/matter";
+import type {
+  Matter,
+  MatterFormInput,
+  MatterNote,
+  MatterStage,
+  MatterTask
+} from "@/types/matter";
 
 type UseMattersBoardResult = {
   matters: Matter[];
   filteredMatters: Matter[];
   selectedMatter: Matter | null;
   selectedMatterNotes: MatterNote[];
+  tasks: MatterTask[];
   searchTerm: string;
   isCreateMode: boolean;
+  isTaskListOpen: boolean;
   isLoading: boolean;
   error: string | null;
   setSearchTerm: (value: string) => void;
   selectMatter: (matterId: string | null) => void;
   openCreateMatter: () => void;
   closeCreateMatter: () => void;
+  openTaskList: () => Promise<void>;
+  closeTaskList: () => void;
   createMatter: (input: MatterFormInput) => Promise<void>;
   updateMatter: (matterId: string, input: MatterFormInput) => Promise<void>;
   moveMatter: (matterId: string, stage: MatterStage) => Promise<void>;
-  addNote: (matterId: string, body: string) => Promise<void>;
+  addNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
   deleteMatter: (matterId: string) => Promise<void>;
   archiveMatter: (matterId: string) => Promise<void>;
 };
@@ -36,8 +47,10 @@ export function useMattersBoard(): UseMattersBoardResult {
   const [matters, setMatters] = useState<Matter[]>([]);
   const [selectedMatterId, setSelectedMatterId] = useState<string | null>(null);
   const [selectedMatterNotes, setSelectedMatterNotes] = useState<MatterNote[]>([]);
+  const [tasks, setTasks] = useState<MatterTask[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateMode, setIsCreateMode] = useState(false);
+  const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,6 +116,17 @@ export function useMattersBoard(): UseMattersBoardResult {
     }
   }
 
+  async function hydrateTasks() {
+    try {
+      const items = await listTasks();
+      setTasks(items);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error ? caughtError.message : "Unable to load tasks."
+      );
+    }
+  }
+
   async function handleCreateMatter(input: MatterFormInput) {
     await createMatter(input);
     setIsCreateMode(false);
@@ -121,9 +145,9 @@ export function useMattersBoard(): UseMattersBoardResult {
     setSelectedMatterId(matterId);
   }
 
-  async function handleAddNote(matterId: string, body: string) {
-    await saveMatterNote(matterId, body);
-    await Promise.all([hydrateBoard(), hydrateNotes(matterId)]);
+  async function handleAddNote(matterId: string, body: string, addToTaskList: boolean) {
+    await saveMatterNote(matterId, body, addToTaskList);
+    await Promise.all([hydrateBoard(), hydrateNotes(matterId), hydrateTasks()]);
     setSelectedMatterId(matterId);
   }
 
@@ -146,8 +170,10 @@ export function useMattersBoard(): UseMattersBoardResult {
     filteredMatters,
     selectedMatter,
     selectedMatterNotes,
+    tasks,
     searchTerm,
     isCreateMode,
+    isTaskListOpen,
     isLoading,
     error,
     setSearchTerm,
@@ -161,6 +187,11 @@ export function useMattersBoard(): UseMattersBoardResult {
       setSelectedMatterNotes([]);
     },
     closeCreateMatter: () => setIsCreateMode(false),
+    openTaskList: async () => {
+      await hydrateTasks();
+      setIsTaskListOpen(true);
+    },
+    closeTaskList: () => setIsTaskListOpen(false),
     createMatter: handleCreateMatter,
     updateMatter: handleUpdateMatter,
     moveMatter: handleMoveMatter,

@@ -25,6 +25,17 @@ export type MatterNote = {
   createdBy: string | null;
 };
 
+export type MatterTask = {
+  id: string;
+  matterId: string;
+  matterName: string;
+  clientName: string;
+  fileNumber: string;
+  body: string;
+  createdAt: string;
+  completedAt: string | null;
+};
+
 export type MatterFormInput = {
   decedentName: string;
   clientName: string;

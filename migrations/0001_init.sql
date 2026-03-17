@@ -30,6 +30,17 @@ CREATE TABLE IF NOT EXISTS matter_notes (
   FOREIGN KEY (matter_id) REFERENCES matters(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS task_items (
+  id TEXT PRIMARY KEY,
+  matter_id TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  completed_at TEXT,
+  source_note_id TEXT,
+  FOREIGN KEY (matter_id) REFERENCES matters(id) ON DELETE CASCADE,
+  FOREIGN KEY (source_note_id) REFERENCES matter_notes(id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS matter_stage_history (
   id TEXT PRIMARY KEY,
   matter_id TEXT NOT NULL,
@@ -63,6 +74,9 @@ CREATE INDEX IF NOT EXISTS idx_matters_last_activity
 
 CREATE INDEX IF NOT EXISTS idx_matter_notes_matter_created
   ON matter_notes(matter_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_task_items_created
+  ON task_items(created_at DESC, completed_at);
 
 CREATE INDEX IF NOT EXISTS idx_matter_stage_history_matter_changed
   ON matter_stage_history(matter_id, changed_at DESC);
