@@ -164,7 +164,7 @@
 }
 
 .board-column {
-  min-height: 560px;
+  min-height: 700px;
   display: grid;
   grid-template-rows: auto 1fr;
   border-radius: var(--radius-20);
