@@ -14,17 +14,19 @@
     "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit",
     "pages:dev": "wrangler pages dev",
     "db:migrate:local": "wrangler d1 migrations apply caseflow --local",
-    "db:seed:local": "wrangler d1 execute caseflow --local --file=./migrations/0002_seed.sql",
+    "db:seed:local": "wrangler d1 execute caseflow --local --file=./migrations/dev_seed.sql",
     "db:migrate:remote": "wrangler d1 migrations apply caseflow --remote",
-    "db:seed:remote": "wrangler d1 execute caseflow --remote --file=./migrations/0002_seed.sql"
+    "db:seed:remote": "wrangler d1 execute caseflow --remote --file=./migrations/dev_seed.sql"
   },
   "dependencies": {
+    "papaparse": "5.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.3.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260303.0",
+    "@types/papaparse": "5.5.2",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",

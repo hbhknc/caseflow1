@@ -84,6 +84,31 @@ export type MatterInput = {
   stage: MatterStage;
 };
 
+export type MatterImportRowInput = {
+  rowNumber: number;
+  decedentName: string;
+  clientName: string;
+  fileNumber: string;
+  stage: MatterStage;
+  createdAt?: string;
+  lastActivityAt?: string;
+};
+
+export type MatterImportIssue = {
+  rowNumber: number;
+  fileNumber: string;
+  message: string;
+};
+
+export type MatterImportSummary = {
+  importedCount: number;
+  skippedCount: number;
+  invalidCount: number;
+  importedFileNumbers: string[];
+  skippedRows: MatterImportIssue[];
+  invalidRows: MatterImportIssue[];
+};
+
 export type MatterNoteInput = {
   matterId: string;
   body: string;

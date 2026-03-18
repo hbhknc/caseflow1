@@ -3,6 +3,9 @@ import type {
   AccountRecord,
   AppSettingRecord,
   BoardSettings,
+  MatterImportIssue,
+  MatterImportRowInput,
+  MatterImportSummary,
   MatterInput,
   MatterNoteInput,
   MatterNoteRecord,
@@ -114,6 +117,77 @@ function assertMatterInput(input: Partial<MatterInput>): MatterInput {
     fileNumber: input.fileNumber.trim(),
     stage: input.stage
   };
+}
+
+function normalizeImportTimestamp(value: string | undefined, label: string) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = Date.parse(trimmed);
+
+  if (Number.isNaN(parsed)) {
+    throw new Error(`${label} must be a valid date.`);
+  }
+
+  return new Date(parsed).toISOString();
+}
+
+async function insertMatterRecord(
+  db: D1Database,
+  input: {
+    boardId: string;
+    decedentName: string;
+    clientName: string;
+    fileNumber: string;
+    stage: MatterStage;
+    createdAt: string;
+    lastActivityAt: string;
+    auditAction: string;
+    auditDetails: Record<string, unknown>;
+  }
+) {
+  const matterId = crypto.randomUUID();
+  const updatedAt = input.lastActivityAt;
+
+  await db
+    .prepare(
+      `INSERT INTO matters (
+        id, board_id, decedent_name, client_name, file_number, stage, created_at, updated_at, last_activity_at, archived, archived_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, NULL)`
+    )
+    .bind(
+      matterId,
+      input.boardId,
+      input.decedentName,
+      input.clientName,
+      input.fileNumber,
+      input.stage,
+      input.createdAt,
+      updatedAt,
+      input.lastActivityAt
+    )
+    .run();
+
+  await db
+    .prepare(
+      `INSERT INTO matter_stage_history (id, matter_id, from_stage, to_stage, changed_at, changed_by)
+       VALUES (?1, ?2, NULL, ?3, ?4, ?5)`
+    )
+    .bind(crypto.randomUUID(), matterId, input.stage, input.createdAt, "System")
+    .run();
+
+  await insertAuditEvent(
+    db,
+    input.auditAction,
+    "matter",
+    matterId,
+    JSON.stringify(input.auditDetails)
+  );
+
+  return matterId;
 }
 
 async function getMatterRecord(db: D1Database, matterId: string, accountId?: string) {
@@ -802,41 +876,18 @@ export async function createMatter(
   if (!board) {
     throw new Error("Board not found.");
   }
-  const matterId = crypto.randomUUID();
   const timestamp = nowIso();
-
-  await db
-    .prepare(
-      `INSERT INTO matters (
-        id, board_id, decedent_name, client_name, file_number, stage, created_at, updated_at, last_activity_at, archived, archived_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?7, 0, NULL)`
-    )
-    .bind(
-      matterId,
-      input.boardId,
-      input.decedentName,
-      input.clientName,
-      input.fileNumber,
-      input.stage,
-      timestamp
-    )
-    .run();
-
-  await db
-    .prepare(
-      `INSERT INTO matter_stage_history (id, matter_id, from_stage, to_stage, changed_at, changed_by)
-       VALUES (?1, ?2, NULL, ?3, ?4, ?5)`
-    )
-    .bind(crypto.randomUUID(), matterId, input.stage, timestamp, "System")
-    .run();
-
-  await insertAuditEvent(
-    db,
-    "matter.created",
-    "matter",
-    matterId,
-    JSON.stringify({ stage: input.stage })
-  );
+  const matterId = await insertMatterRecord(db, {
+    boardId: input.boardId,
+    decedentName: input.decedentName,
+    clientName: input.clientName,
+    fileNumber: input.fileNumber,
+    stage: input.stage,
+    createdAt: timestamp,
+    lastActivityAt: timestamp,
+    auditAction: "matter.created",
+    auditDetails: { stage: input.stage }
+  });
 
   const record = await getMatterRecord(db, matterId);
   if (!record) {
@@ -844,6 +895,131 @@ export async function createMatter(
   }
 
   return mapMatter(record);
+}
+
+export async function importMatters(
+  db: D1Database,
+  accountId: string,
+  boardId: string,
+  rows: MatterImportRowInput[]
+): Promise<MatterImportSummary> {
+  if (!boardId.trim()) {
+    throw new Error("Board id is required.");
+  }
+
+  if (rows.length === 0) {
+    throw new Error("At least one import row is required.");
+  }
+
+  if (rows.length > 1000) {
+    throw new Error("Imports are limited to 1000 rows at a time.");
+  }
+
+  const board = await getPracticeBoardRecord(db, boardId, accountId);
+  if (!board) {
+    throw new Error("Board not found.");
+  }
+
+  const normalizedRows = rows.map((row) => ({
+    rowNumber: row.rowNumber,
+    decedentName: row.decedentName.trim(),
+    clientName: row.clientName.trim(),
+    fileNumber: row.fileNumber.trim(),
+    stage: row.stage,
+    createdAt: normalizeImportTimestamp(row.createdAt, "createdAt"),
+    lastActivityAt: normalizeImportTimestamp(row.lastActivityAt, "lastActivityAt")
+  }));
+
+  const invalidRows: MatterImportIssue[] = [];
+  const skippedRows: MatterImportIssue[] = [];
+  const importedFileNumbers: string[] = [];
+  const seenFileNumbers = new Set<string>();
+  const existingLookup = new Set<string>();
+  const fileNumbers = normalizedRows.map((row) => row.fileNumber.toLowerCase());
+
+  if (fileNumbers.length > 0) {
+    const placeholders = fileNumbers.map((_, index) => `?${index + 1}`).join(", ");
+    const { results } = await db
+      .prepare(
+        `SELECT file_number
+         FROM matters
+         WHERE lower(file_number) IN (${placeholders})`
+      )
+      .bind(...fileNumbers)
+      .all<{ file_number: string }>();
+
+    for (const result of results) {
+      existingLookup.add(result.file_number.toLowerCase());
+    }
+  }
+
+  for (const row of normalizedRows) {
+    if (!row.decedentName || !row.clientName || !row.fileNumber || !row.stage) {
+      invalidRows.push({
+        rowNumber: row.rowNumber,
+        fileNumber: row.fileNumber,
+        message: "Missing one or more required fields."
+      });
+      continue;
+    }
+
+    if (!isMatterStage(row.stage)) {
+      invalidRows.push({
+        rowNumber: row.rowNumber,
+        fileNumber: row.fileNumber,
+        message: "Stage is not a valid CaseFlow stage."
+      });
+      continue;
+    }
+
+    if (seenFileNumbers.has(row.fileNumber.toLowerCase())) {
+      invalidRows.push({
+        rowNumber: row.rowNumber,
+        fileNumber: row.fileNumber,
+        message: "Duplicate file number appears more than once in the upload."
+      });
+      continue;
+    }
+
+    if (existingLookup.has(row.fileNumber.toLowerCase())) {
+      skippedRows.push({
+        rowNumber: row.rowNumber,
+        fileNumber: row.fileNumber,
+        message: "File number already exists in CaseFlow and was skipped."
+      });
+      continue;
+    }
+
+    seenFileNumbers.add(row.fileNumber.toLowerCase());
+    const createdAt = row.createdAt ?? nowIso();
+    const lastActivityAt = row.lastActivityAt ?? createdAt;
+
+    await insertMatterRecord(db, {
+      boardId,
+      decedentName: row.decedentName,
+      clientName: row.clientName,
+      fileNumber: row.fileNumber,
+      stage: row.stage,
+      createdAt,
+      lastActivityAt,
+      auditAction: "matter.imported",
+      auditDetails: {
+        stage: row.stage,
+        source: "csv-import",
+        boardId
+      }
+    });
+    importedFileNumbers.push(row.fileNumber);
+  }
+
+  return {
+    importedCount: importedFileNumbers.length,
+    skippedCount: skippedRows.length,
+    invalidCount: invalidRows.length,
+    importedFileNumbers,
+    skippedRows,
+    invalidRows
+  };
 }
 
 export async function updateMatter(

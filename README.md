@@ -96,10 +96,11 @@ This is not a public marketing site. It is a firm-only operational web applicati
 - Kanban-style probate board with stage buckets
 - Matter cards showing decedent, client, file number, and last activity
 - Search across decedent name, client name, and file number
+- Board-scoped CSV import for migrating matters from a prior platform
 - Right-side matter drawer for create, edit, delete, archive, and note entry
 - Reverse-chronological activity log with separate note timestamps
 - Pages Functions endpoints for matters, notes, and app status
-- D1 migrations for schema plus starter seed data
+- D1 migrations for schema and production-safe defaults
 
 ## Local Setup
 
@@ -130,11 +131,11 @@ This repository now expects the Pages Functions API to handle authentication and
 
 ### Local Pages Functions + D1 workflow
 
-1. Create a local or remote D1 database named `caseflow`.
+1. Create a local or remote D1 database named `caseflow` or `caseflow-prod`.
 2. Update the placeholder `database_id` values in `wrangler.toml`.
 3. Set `AUTH_USERNAME`, `AUTH_PASSWORD`, and a strong `SESSION_SECRET` in `wrangler.toml` or local secrets.
 4. Apply the schema migrations.
-5. Seed the starter data.
+5. Optionally seed demo data for local/dev environments only.
 6. Build the frontend and run Pages locally.
 
 ```bash
@@ -155,6 +156,7 @@ Note: this repository does not pin `wrangler` inside `package.json` because curr
 - `GET /api/auth/session`
 - `GET /api/matters`
 - `POST /api/matters`
+- `POST /api/matters/import`
 - `PUT /api/matters/:id`
 - `PATCH /api/matters/:id`
 - `DELETE /api/matters/:id`
@@ -166,11 +168,13 @@ Note: this repository does not pin `wrangler` inside `package.json` because curr
 ## D1 Notes
 
 - `migrations/0001_init.sql` creates the initial schema.
-- `migrations/0002_seed.sql` adds a realistic starter dataset.
+- `migrations/0002_seed.sql` now contains only production-safe app defaults.
+- `migrations/dev_seed.sql` is the optional demo dataset for local/dev testing.
 - `migrations/0006_add_accounts_and_practice_boards.sql` provisions the seeded account and owned boards.
 - Archived matters are excluded from the main board by default.
 - Stage history and audit events are captured now so later workflow reporting has a clean foundation.
 - Boards, matters, notes, tasks, archive data, and stats are now scoped to the authenticated account.
+- CSV import expects `decedentName`, `clientName`, `fileNumber`, and `stage`, with optional `createdAt` and `lastActivityAt`.
 
 ## Cloudflare Pages Deployment
 

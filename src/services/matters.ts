@@ -12,6 +12,7 @@ import {
   unarchiveDemoMatterRecord,
   updateDemoMatterRecord
 } from "@/services/demoApi";
+import type { MatterImportRowInput, MatterImportSummary } from "@/types/api";
 import type {
   Matter,
   MatterFormInput,
@@ -162,4 +163,22 @@ export async function listTasks(boardId: string): Promise<MatterTask[]> {
   );
 
   return response.tasks;
+}
+
+export async function importMatters(
+  boardId: string,
+  rows: MatterImportRowInput[]
+): Promise<MatterImportSummary> {
+  const response = await requestJsonWithFallback<{ summary: MatterImportSummary }>(
+    "/matters/import",
+    {
+      method: "POST",
+      body: { boardId, rows }
+    },
+    async () => {
+      throw new Error("Matter import requires the authenticated API.");
+    }
+  );
+
+  return response.summary;
 }

@@ -6,6 +6,7 @@ import { SearchField } from "@/components/SearchField";
 import { ArchiveModal } from "@/features/archive/components/ArchiveModal";
 import { BoardColumn } from "@/features/board/components/BoardColumn";
 import { BoardsModal } from "@/features/board/components/BoardsModal";
+import { ImportModal } from "@/features/import/components/ImportModal";
 import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { StatsModal } from "@/features/stats/components/StatsModal";
@@ -39,6 +40,7 @@ export function BoardPage() {
   const [draggingMatterId, setDraggingMatterId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<MatterStage | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   const stageLabels = createStageLabelMap(currentBoard.stageLabels);
 
@@ -76,6 +78,11 @@ export function BoardPage() {
   function handleOpenSettings() {
     captureFocusOrigin();
     setIsSettingsOpen(true);
+  }
+
+  function handleOpenImport() {
+    captureFocusOrigin();
+    setIsImportOpen(true);
   }
 
   function handleOpenCreateMatter() {
@@ -160,6 +167,26 @@ export function BoardPage() {
             </svg>
           </span>
           <span>Boards</span>
+        </button>
+        <button
+          type="button"
+          className="sidebar-menu__item"
+          aria-label="Import"
+          title="Import"
+          onClick={handleOpenImport}
+        >
+          <span className="sidebar-menu__icon" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none">
+              <path
+                d="M9 3.5v7M6.5 8l2.5 2.5L11.5 8M4.5 13.5h9"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span>Import</span>
         </button>
         <button
           type="button"
@@ -461,6 +488,18 @@ export function BoardPage() {
           }}
           onClose={() => {
             setIsSettingsOpen(false);
+            restoreFocusOrigin();
+          }}
+        />
+      ) : null}
+
+      {isImportOpen ? (
+        <ImportModal
+          boardName={currentBoard.name}
+          stageLabels={stageLabels}
+          onImport={(preview) => board.importMatters(preview.rows)}
+          onClose={() => {
+            setIsImportOpen(false);
             restoreFocusOrigin();
           }}
         />

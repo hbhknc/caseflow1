@@ -3,6 +3,7 @@ import {
   archiveMatter,
   createMatter,
   deleteMatter,
+  importMatters as importMattersApi,
   listArchivedMatters,
   listMatterNotes,
   listMatters,
@@ -13,7 +14,7 @@ import {
   unarchiveMatter
 } from "@/services/matters";
 import { getMatterStats } from "@/services/stats";
-import type { MatterStats } from "@/types/api";
+import type { MatterImportRowInput, MatterImportSummary, MatterStats } from "@/types/api";
 import { STAGES } from "@/utils/stages";
 import type {
   Matter,
@@ -58,6 +59,7 @@ type UseMattersBoardResult = {
   deleteMatter: (matterId: string) => Promise<void>;
   archiveMatter: (matterId: string) => Promise<void>;
   unarchiveMatter: (matterId: string) => Promise<void>;
+  importMatters: (rows: MatterImportRowInput[]) => Promise<MatterImportSummary>;
 };
 
 export function useMattersBoard(boardId: string): UseMattersBoardResult {
@@ -276,6 +278,12 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     await hydrateStats();
   }
 
+  async function handleImportMatters(rows: MatterImportRowInput[]) {
+    const summary = await importMattersApi(boardId, rows);
+    await Promise.all([hydrateBoard(), hydrateArchive(), hydrateStats()]);
+    return summary;
+  }
+
   return {
     matters,
     filteredMatters,
@@ -326,6 +334,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     addNote: handleAddNote,
     deleteMatter: handleDeleteMatter,
     archiveMatter: handleArchiveMatter,
-    unarchiveMatter: handleUnarchiveMatter
+    unarchiveMatter: handleUnarchiveMatter,
+    importMatters: handleImportMatters
   };
 }
