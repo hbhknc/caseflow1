@@ -58,6 +58,17 @@ export const demoMatters: Matter[] = [
     lastActivityAt: "2026-03-10T12:30:00.000Z",
     archived: false,
     archivedAt: null
+  },
+  {
+    id: "matter_seed_006",
+    decedentName: "Margaret Sloan",
+    clientName: "Thomas Sloan",
+    fileNumber: "PR-2025-0084",
+    stage: "accounting_closing",
+    createdAt: "2025-07-08T09:15:00.000Z",
+    lastActivityAt: "2026-01-18T14:30:00.000Z",
+    archived: true,
+    archivedAt: "2026-01-18T14:30:00.000Z"
   }
 ];
 
@@ -103,6 +114,15 @@ export const demoNotes: Record<string, MatterNote[]> = {
       matterId: "matter_seed_005",
       body: "Order approving final report entered. File ready for archive.",
       createdAt: "2026-03-10T12:30:00.000Z",
+      createdBy: "Probate Team"
+    }
+  ],
+  matter_seed_006: [
+    {
+      id: "note_seed_006",
+      matterId: "matter_seed_006",
+      body: "Matter archived after approved final accounting and discharge order.",
+      createdAt: "2026-01-18T14:30:00.000Z",
       createdBy: "Probate Team"
     }
   ]

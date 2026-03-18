@@ -84,6 +84,16 @@ async function insertAuditEvent(
     .run();
 }
 
+function calculateAveragePerYear(timestamps: string[]) {
+  if (timestamps.length === 0) {
+    return 0;
+  }
+
+  const years = timestamps.map((timestamp) => new Date(timestamp).getUTCFullYear());
+  const span = Math.max(...years) - Math.min(...years) + 1;
+  return Number((timestamps.length / span).toFixed(1));
+}
+
 export async function listMatters(db: D1Database) {
   const { results } = await db
     .prepare(
@@ -104,6 +114,42 @@ export async function listMatters(db: D1Database) {
     .all<MatterRecord>();
 
   return results.map(mapMatter);
+}
+
+export async function getMatterStats(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT id, created_at, archived, archived_at
+       FROM matters`
+    )
+    .all<Pick<MatterRecord, "id" | "created_at" | "archived" | "archived_at">>();
+
+  const archivedMatters = results.filter(
+    (matter) => Boolean(matter.archived) && matter.archived_at
+  );
+
+  const averageCaseLengthDays =
+    archivedMatters.length === 0
+      ? null
+      : Math.round(
+          archivedMatters.reduce((total, matter) => {
+            const openedAt = new Date(matter.created_at).getTime();
+            const archivedAt = new Date(matter.archived_at ?? matter.created_at).getTime();
+            return total + (archivedAt - openedAt) / (1000 * 60 * 60 * 24);
+          }, 0) / archivedMatters.length
+        );
+
+  return {
+    totalCasesOpened: results.length,
+    totalCasesArchived: archivedMatters.length,
+    averageCasesOpenedPerYear: calculateAveragePerYear(
+      results.map((matter) => matter.created_at)
+    ),
+    averageCasesArchivedPerYear: calculateAveragePerYear(
+      archivedMatters.map((matter) => matter.archived_at ?? matter.created_at)
+    ),
+    averageCaseLengthDays
+  };
 }
 
 export async function createMatter(db: D1Database, payload: Partial<MatterInput>) {

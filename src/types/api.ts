@@ -5,3 +5,10 @@ export type AppStatus = {
   authMode: string;
 };
 
+export type MatterStats = {
+  totalCasesOpened: number;
+  totalCasesArchived: number;
+  averageCasesOpenedPerYear: number;
+  averageCasesArchivedPerYear: number;
+  averageCaseLengthDays: number | null;
+};

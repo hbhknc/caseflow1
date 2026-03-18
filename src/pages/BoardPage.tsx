@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAppChrome } from "@/app/AppChrome";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
@@ -51,6 +52,9 @@ export function BoardPage() {
         <button type="button" className="button button--ghost" onClick={() => void handleOpenTaskList()}>
           <span>Tasks</span>
         </button>
+        <Link to="/stats" className="button button--ghost">
+          Stats
+        </Link>
         <button type="button" className="button" onClick={handleOpenCreateMatter}>
           <span className="button__icon" aria-hidden="true">
             <svg viewBox="0 0 18 18" fill="none">

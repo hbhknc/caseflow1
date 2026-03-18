@@ -1,5 +1,5 @@
 import { createDemoMatter, demoMatters, demoNotes, demoStatus, demoTasks } from "@/lib/demoData";
-import type { AppStatus } from "@/types/api";
+import type { AppStatus, MatterStats } from "@/types/api";
 import type {
   Matter,
   MatterFormInput,
@@ -134,6 +134,45 @@ export async function listDemoTasks(): Promise<MatterTask[]> {
   return [...taskStore]
     .filter((task) => !task.completedAt)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+function calculateAveragePerYear(timestamps: string[]) {
+  if (timestamps.length === 0) {
+    return 0;
+  }
+
+  const years = timestamps.map((timestamp) => new Date(timestamp).getUTCFullYear());
+  const span = Math.max(...years) - Math.min(...years) + 1;
+  return Number((timestamps.length / span).toFixed(1));
+}
+
+export async function getDemoMatterStats(): Promise<MatterStats> {
+  const archivedMatters = matterStore.filter(
+    (matter) => matter.archived && matter.archivedAt
+  );
+
+  const averageCaseLengthDays =
+    archivedMatters.length === 0
+      ? null
+      : Math.round(
+          archivedMatters.reduce((total, matter) => {
+            const openedAt = new Date(matter.createdAt).getTime();
+            const archivedAt = new Date(matter.archivedAt ?? matter.createdAt).getTime();
+            return total + (archivedAt - openedAt) / (1000 * 60 * 60 * 24);
+          }, 0) / archivedMatters.length
+        );
+
+  return {
+    totalCasesOpened: matterStore.length,
+    totalCasesArchived: archivedMatters.length,
+    averageCasesOpenedPerYear: calculateAveragePerYear(
+      matterStore.map((matter) => matter.createdAt)
+    ),
+    averageCasesArchivedPerYear: calculateAveragePerYear(
+      archivedMatters.map((matter) => matter.archivedAt ?? matter.createdAt)
+    ),
+    averageCaseLengthDays
+  };
 }
 
 export async function getDemoStatus(): Promise<AppStatus> {
