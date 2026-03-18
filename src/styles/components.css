@@ -137,7 +137,7 @@
   border: 0;
   border-radius: 12px;
   background: transparent;
-  color: rgba(245, 246, 248, 0.86);
+  color: #3d95ff;
   text-align: left;
   font-size: var(--font-size-15);
   font-weight: 500;
@@ -150,15 +150,15 @@
 }
 
 .sidebar-menu__item--primary {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: rgba(61, 149, 255, 0.12);
+  color: #3d95ff;
 }
 
 .sidebar-menu__icon {
   display: inline-flex;
   width: 1rem;
   height: 1rem;
-  color: #ffb020;
+  color: currentColor;
   flex-shrink: 0;
 }
 
