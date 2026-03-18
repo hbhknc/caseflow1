@@ -10,6 +10,8 @@ import {
   saveMatter,
   saveMatterNote
 } from "@/services/matters";
+import { getMatterStats } from "@/services/stats";
+import type { MatterStats } from "@/types/api";
 import { STAGES } from "@/utils/stages";
 import type {
   Matter,
@@ -25,17 +27,22 @@ type UseMattersBoardResult = {
   selectedMatter: Matter | null;
   selectedMatterNotes: MatterNote[];
   tasks: MatterTask[];
+  stats: MatterStats | null;
   searchTerm: string;
   isCreateMode: boolean;
   isTaskListOpen: boolean;
+  isStatsOpen: boolean;
   isLoading: boolean;
   error: string | null;
+  statsError: string | null;
   setSearchTerm: (value: string) => void;
   selectMatter: (matterId: string | null) => void;
   openCreateMatter: () => void;
   closeCreateMatter: () => void;
   openTaskList: () => Promise<void>;
   closeTaskList: () => void;
+  openStats: () => Promise<void>;
+  closeStats: () => void;
   createMatter: (input: MatterFormInput) => Promise<void>;
   updateMatter: (matterId: string, input: MatterFormInput) => Promise<void>;
   moveMatter: (matterId: string, stage: MatterStage) => Promise<void>;
@@ -49,11 +56,14 @@ export function useMattersBoard(): UseMattersBoardResult {
   const [selectedMatterId, setSelectedMatterId] = useState<string | null>(null);
   const [selectedMatterNotes, setSelectedMatterNotes] = useState<MatterNote[]>([]);
   const [tasks, setTasks] = useState<MatterTask[]>([]);
+  const [stats, setStats] = useState<MatterStats | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   useEffect(() => {
     void hydrateBoard();
@@ -140,6 +150,18 @@ export function useMattersBoard(): UseMattersBoardResult {
     }
   }
 
+  async function hydrateStats() {
+    try {
+      const items = await getMatterStats();
+      setStats(items);
+      setStatsError(null);
+    } catch (caughtError) {
+      setStatsError(
+        caughtError instanceof Error ? caughtError.message : "Unable to load stats."
+      );
+    }
+  }
+
   async function handleCreateMatter(input: MatterFormInput) {
     await createMatter(input);
     setIsCreateMode(false);
@@ -211,11 +233,14 @@ export function useMattersBoard(): UseMattersBoardResult {
     selectedMatter,
     selectedMatterNotes,
     tasks,
+    stats,
     searchTerm,
     isCreateMode,
     isTaskListOpen,
+    isStatsOpen,
     isLoading,
     error,
+    statsError,
     setSearchTerm,
     selectMatter: (matterId) => {
       setIsCreateMode(false);
@@ -232,6 +257,11 @@ export function useMattersBoard(): UseMattersBoardResult {
       setIsTaskListOpen(true);
     },
     closeTaskList: () => setIsTaskListOpen(false),
+    openStats: async () => {
+      await hydrateStats();
+      setIsStatsOpen(true);
+    },
+    closeStats: () => setIsStatsOpen(false),
     createMatter: handleCreateMatter,
     updateMatter: handleUpdateMatter,
     moveMatter: handleMoveMatter,

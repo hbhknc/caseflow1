@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { useAppChrome } from "@/app/AppChrome";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
 import { BoardColumn } from "@/features/board/components/BoardColumn";
 import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
+import { StatsModal } from "@/features/stats/components/StatsModal";
 import { TaskListModal } from "@/features/tasks/components/TaskListModal";
 import { useMattersBoard } from "@/hooks/useMattersBoard";
 import { STAGES } from "@/utils/stages";
@@ -32,6 +32,11 @@ export function BoardPage() {
     await board.openTaskList();
   }
 
+  async function handleOpenStats() {
+    captureFocusOrigin();
+    await board.openStats();
+  }
+
   function handleOpenCreateMatter() {
     captureFocusOrigin();
     board.openCreateMatter();
@@ -52,9 +57,9 @@ export function BoardPage() {
         <button type="button" className="button button--ghost" onClick={() => void handleOpenTaskList()}>
           <span>Tasks</span>
         </button>
-        <Link to="/stats" className="button button--ghost">
+        <button type="button" className="button button--ghost" onClick={() => void handleOpenStats()}>
           Stats
-        </Link>
+        </button>
         <button type="button" className="button" onClick={handleOpenCreateMatter}>
           <span className="button__icon" aria-hidden="true">
             <svg viewBox="0 0 18 18" fill="none">
@@ -182,6 +187,17 @@ export function BoardPage() {
           onOpenMatter={(matterId) => {
             board.closeTaskList();
             board.selectMatter(matterId);
+          }}
+        />
+      ) : null}
+
+      {board.isStatsOpen ? (
+        <StatsModal
+          stats={board.stats}
+          error={board.statsError}
+          onClose={() => {
+            board.closeStats();
+            restoreFocusOrigin();
           }}
         />
       ) : null}
