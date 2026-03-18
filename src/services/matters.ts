@@ -4,6 +4,7 @@ import {
   archiveDemoMatterRecord,
   createDemoMatterRecord,
   deleteDemoMatterRecord,
+  listDemoArchivedMatters,
   listDemoMatters,
   listDemoNotes,
   listDemoTasks,
@@ -23,6 +24,16 @@ export async function listMatters(): Promise<Matter[]> {
     "/matters",
     {},
     async () => ({ matters: await listDemoMatters() })
+  );
+
+  return response.matters;
+}
+
+export async function listArchivedMatters(): Promise<Matter[]> {
+  const response = await requestJsonWithFallback<{ matters: Matter[] }>(
+    "/matters?archived=1",
+    {},
+    async () => ({ matters: await listDemoArchivedMatters() })
   );
 
   return response.matters;

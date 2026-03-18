@@ -1,10 +1,14 @@
 import { badRequest, json, parseJson, serverError } from "../_lib/http";
-import { createMatter, listMatters } from "../_lib/matterRepository";
+import { createMatter, listArchivedMatters, listMatters } from "../_lib/matterRepository";
 import type { Env, MatterInput } from "../_lib/types";
 
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   try {
-    const matters = await listMatters(env.DB);
+    const url = new URL(request.url);
+    const matters =
+      url.searchParams.get("archived") === "1"
+        ? await listArchivedMatters(env.DB)
+        : await listMatters(env.DB);
     return json({ matters });
   } catch (error) {
     console.error(error);
@@ -25,4 +29,3 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return serverError("Unable to create matter.");
   }
 };
-

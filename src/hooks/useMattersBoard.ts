@@ -3,6 +3,7 @@ import {
   archiveMatter,
   createMatter,
   deleteMatter,
+  listArchivedMatters,
   listMatterNotes,
   listMatters,
   listTasks,
@@ -26,19 +27,24 @@ type UseMattersBoardResult = {
   filteredMatters: Matter[];
   selectedMatter: Matter | null;
   selectedMatterNotes: MatterNote[];
+  archivedMatters: Matter[];
   tasks: MatterTask[];
   stats: MatterStats | null;
   searchTerm: string;
   isCreateMode: boolean;
+  isArchiveOpen: boolean;
   isTaskListOpen: boolean;
   isStatsOpen: boolean;
   isLoading: boolean;
   error: string | null;
+  archiveError: string | null;
   statsError: string | null;
   setSearchTerm: (value: string) => void;
   selectMatter: (matterId: string | null) => void;
   openCreateMatter: () => void;
   closeCreateMatter: () => void;
+  openArchive: () => Promise<void>;
+  closeArchive: () => void;
   openTaskList: () => Promise<void>;
   closeTaskList: () => void;
   openStats: () => Promise<void>;
@@ -55,14 +61,17 @@ export function useMattersBoard(): UseMattersBoardResult {
   const [matters, setMatters] = useState<Matter[]>([]);
   const [selectedMatterId, setSelectedMatterId] = useState<string | null>(null);
   const [selectedMatterNotes, setSelectedMatterNotes] = useState<MatterNote[]>([]);
+  const [archivedMatters, setArchivedMatters] = useState<Matter[]>([]);
   const [tasks, setTasks] = useState<MatterTask[]>([]);
   const [stats, setStats] = useState<MatterStats | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateMode, setIsCreateMode] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isTaskListOpen, setIsTaskListOpen] = useState(false);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -150,6 +159,18 @@ export function useMattersBoard(): UseMattersBoardResult {
     }
   }
 
+  async function hydrateArchive() {
+    try {
+      const items = await listArchivedMatters();
+      setArchivedMatters(items);
+      setArchiveError(null);
+    } catch (caughtError) {
+      setArchiveError(
+        caughtError instanceof Error ? caughtError.message : "Unable to load archive."
+      );
+    }
+  }
+
   async function hydrateStats() {
     try {
       const items = await getMatterStats();
@@ -232,14 +253,17 @@ export function useMattersBoard(): UseMattersBoardResult {
     filteredMatters,
     selectedMatter,
     selectedMatterNotes,
+    archivedMatters,
     tasks,
     stats,
     searchTerm,
     isCreateMode,
+    isArchiveOpen,
     isTaskListOpen,
     isStatsOpen,
     isLoading,
     error,
+    archiveError,
     statsError,
     setSearchTerm,
     selectMatter: (matterId) => {
@@ -252,6 +276,11 @@ export function useMattersBoard(): UseMattersBoardResult {
       setSelectedMatterNotes([]);
     },
     closeCreateMatter: () => setIsCreateMode(false),
+    openArchive: async () => {
+      await hydrateArchive();
+      setIsArchiveOpen(true);
+    },
+    closeArchive: () => setIsArchiveOpen(false),
     openTaskList: async () => {
       await hydrateTasks();
       setIsTaskListOpen(true);

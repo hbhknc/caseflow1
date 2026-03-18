@@ -116,6 +116,19 @@ export async function listMatters(db: D1Database) {
   return results.map(mapMatter);
 }
 
+export async function listArchivedMatters(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT *
+       FROM matters
+       WHERE archived = 1
+       ORDER BY archived_at DESC, last_activity_at DESC`
+    )
+    .all<MatterRecord>();
+
+  return results.map(mapMatter);
+}
+
 export async function getMatterStats(db: D1Database) {
   const { results } = await db
     .prepare(

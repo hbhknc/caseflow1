@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAppChrome } from "@/app/AppChrome";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
+import { ArchiveModal } from "@/features/archive/components/ArchiveModal";
 import { BoardColumn } from "@/features/board/components/BoardColumn";
 import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
 import { StatsModal } from "@/features/stats/components/StatsModal";
@@ -32,6 +33,11 @@ export function BoardPage() {
     await board.openTaskList();
   }
 
+  async function handleOpenArchive() {
+    captureFocusOrigin();
+    await board.openArchive();
+  }
+
   async function handleOpenStats() {
     captureFocusOrigin();
     await board.openStats();
@@ -56,6 +62,9 @@ export function BoardPage() {
         <SearchField value={board.searchTerm} onChange={board.setSearchTerm} />
         <button type="button" className="button button--ghost" onClick={() => void handleOpenTaskList()}>
           <span>Tasks</span>
+        </button>
+        <button type="button" className="button button--ghost" onClick={() => void handleOpenArchive()}>
+          Archive
         </button>
         <button type="button" className="button button--ghost" onClick={() => void handleOpenStats()}>
           Stats
@@ -187,6 +196,17 @@ export function BoardPage() {
           onOpenMatter={(matterId) => {
             board.closeTaskList();
             board.selectMatter(matterId);
+          }}
+        />
+      ) : null}
+
+      {board.isArchiveOpen ? (
+        <ArchiveModal
+          matters={board.archivedMatters}
+          error={board.archiveError}
+          onClose={() => {
+            board.closeArchive();
+            restoreFocusOrigin();
           }}
         />
       ) : null}

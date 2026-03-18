@@ -22,6 +22,12 @@ export async function listDemoMatters(): Promise<Matter[]> {
   );
 }
 
+export async function listDemoArchivedMatters(): Promise<Matter[]> {
+  return [...matterStore]
+    .filter((matter) => matter.archived)
+    .sort((left, right) => (right.archivedAt ?? "").localeCompare(left.archivedAt ?? ""));
+}
+
 export async function createDemoMatterRecord(input: MatterFormInput): Promise<Matter> {
   const matter = createDemoMatter(input);
   matterStore.unshift(matter);

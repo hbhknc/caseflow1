@@ -434,6 +434,12 @@
   line-height: 1.5;
 }
 
+.task-card__badge {
+  color: var(--ink-600);
+  font-size: var(--font-size-12);
+  font-weight: 600;
+}
+
 .stats-panel {
   display: grid;
   gap: var(--space-16);
