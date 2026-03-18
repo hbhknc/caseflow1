@@ -135,6 +135,11 @@ function normalizeImportTimestamp(value: string | undefined, label: string) {
   return new Date(parsed).toISOString();
 }
 
+function createImportedFileNumber(rowNumber: number) {
+  const compactDate = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  return `IMPORT-${compactDate}-${rowNumber}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
 async function insertMatterRecord(
   db: D1Database,
   input: {
@@ -954,15 +959,6 @@ export async function importMatters(
   }
 
   for (const row of normalizedRows) {
-    if (!row.decedentName || !row.clientName || !row.fileNumber || !row.stage) {
-      invalidRows.push({
-        rowNumber: row.rowNumber,
-        fileNumber: row.fileNumber,
-        message: "Missing one or more required fields."
-      });
-      continue;
-    }
-
     if (!isMatterStage(row.stage)) {
       invalidRows.push({
         rowNumber: row.rowNumber,
@@ -972,7 +968,7 @@ export async function importMatters(
       continue;
     }
 
-    if (seenFileNumbers.has(row.fileNumber.toLowerCase())) {
+    if (row.fileNumber && seenFileNumbers.has(row.fileNumber.toLowerCase())) {
       invalidRows.push({
         rowNumber: row.rowNumber,
         fileNumber: row.fileNumber,
@@ -981,7 +977,7 @@ export async function importMatters(
       continue;
     }
 
-    if (existingLookup.has(row.fileNumber.toLowerCase())) {
+    if (row.fileNumber && existingLookup.has(row.fileNumber.toLowerCase())) {
       skippedRows.push({
         rowNumber: row.rowNumber,
         fileNumber: row.fileNumber,
@@ -990,15 +986,20 @@ export async function importMatters(
       continue;
     }
 
-    seenFileNumbers.add(row.fileNumber.toLowerCase());
+    if (row.fileNumber) {
+      seenFileNumbers.add(row.fileNumber.toLowerCase());
+    }
     const createdAt = row.createdAt ?? nowIso();
     const lastActivityAt = row.lastActivityAt ?? createdAt;
+    const fileNumber = row.fileNumber || createImportedFileNumber(row.rowNumber);
+    const decedentName = row.decedentName || `Imported Matter ${row.rowNumber}`;
+    const clientName = row.clientName || "Imported Client";
 
     await insertMatterRecord(db, {
       boardId,
-      decedentName: row.decedentName,
-      clientName: row.clientName,
-      fileNumber: row.fileNumber,
+      decedentName,
+      clientName,
+      fileNumber,
       stage: row.stage,
       createdAt,
       lastActivityAt,
@@ -1009,7 +1010,7 @@ export async function importMatters(
         boardId
       }
     });
-    importedFileNumbers.push(row.fileNumber);
+    importedFileNumbers.push(fileNumber);
   }
 
   return {

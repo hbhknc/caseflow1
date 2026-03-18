@@ -38,7 +38,13 @@ function toParsedRow(
 }
 
 function mapStage(rawStage: string, stageAliases: StageAliasMap) {
-  return stageAliases[rawStage.trim().toLowerCase()] ?? null;
+  const normalized = rawStage.trim().toLowerCase();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return stageAliases[normalized] ?? null;
 }
 
 export function parseMatterImportCsv(
@@ -74,16 +80,7 @@ export function parseMatterImportCsv(
           const row = toParsedRow(index + 2, record);
           const normalizedStage = mapStage(row.stage, stageAliases);
 
-          if (!row.decedentName || !row.clientName || !row.fileNumber || !row.stage) {
-            errors.push({
-              rowNumber: row.rowNumber,
-              fileNumber: row.fileNumber,
-              message: "Missing one or more required fields."
-            });
-            return;
-          }
-
-          if (!normalizedStage) {
+          if (row.stage && !normalizedStage) {
             errors.push({
               rowNumber: row.rowNumber,
               fileNumber: row.fileNumber,
@@ -101,7 +98,7 @@ export function parseMatterImportCsv(
             return;
           }
 
-          if (fileNumbers.has(row.fileNumber.toLowerCase())) {
+          if (row.fileNumber && fileNumbers.has(row.fileNumber.toLowerCase())) {
             errors.push({
               rowNumber: row.rowNumber,
               fileNumber: row.fileNumber,
@@ -110,13 +107,15 @@ export function parseMatterImportCsv(
             return;
           }
 
-          fileNumbers.add(row.fileNumber.toLowerCase());
+          if (row.fileNumber) {
+            fileNumbers.add(row.fileNumber.toLowerCase());
+          }
           rows.push({
             rowNumber: row.rowNumber,
             decedentName: row.decedentName,
             clientName: row.clientName,
             fileNumber: row.fileNumber,
-            stage: normalizedStage,
+            stage: normalizedStage ?? stageAliases.intake,
             createdAt: row.createdAt || undefined,
             lastActivityAt: row.lastActivityAt || undefined
           });

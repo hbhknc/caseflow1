@@ -159,7 +159,8 @@ export function ImportModal({
                   Download sample CSV
                 </a>
                 <span className="field-hint">
-                  Use stage labels such as {stageLabels.intake} or {stageLabels.qualified_opened}.
+                  Blank stage values default to {stageLabels.intake}. Blank names and file numbers
+                  are filled automatically during import.
                 </span>
               </div>
             </div>
