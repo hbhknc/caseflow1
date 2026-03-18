@@ -41,6 +41,16 @@
   backdrop-filter: none;
 }
 
+.drawer {
+  background: #262a30;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  backdrop-filter: none;
+  color: #f5f6f8;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -364,6 +374,14 @@
     background var(--transition-fast);
 }
 
+.drawer .field input,
+.drawer .field select,
+.drawer .field textarea {
+  background: #1d2025;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f5f6f8;
+}
+
 .search-field input {
   padding-left: 2.5rem;
   min-height: 36px;
@@ -415,6 +433,76 @@
 .callout p,
 .board-column__header p {
   color: var(--ink-500);
+}
+
+.drawer__header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.drawer__title-block h2,
+.drawer .section-heading h3,
+.drawer .section-heading h2,
+.drawer .task-card__header h3,
+.drawer .note-card__author,
+.drawer .stats-row dd {
+  color: #f5f6f8;
+}
+
+.drawer .field span,
+.drawer .checkbox-field,
+.drawer .checkbox-field__copy small,
+.drawer .field-hint,
+.drawer .task-card__header p,
+.drawer .task-card__meta,
+.drawer .task-card__badge,
+.drawer .note-card__meta,
+.drawer .stats-row dt,
+.drawer .stats-empty,
+.drawer .empty-state p,
+.drawer .section-heading p {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.drawer .checkbox-field__copy strong,
+.drawer .task-card__body,
+.drawer .note-card p {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.drawer .button--ghost,
+.drawer .button--secondary,
+.drawer .button--danger {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f5f6f8;
+  box-shadow: none;
+}
+
+.drawer .button--danger {
+  color: #ff8f8f;
+}
+
+.drawer .empty-state,
+.drawer .task-card,
+.drawer .note-card,
+.drawer .drawer-meta-item,
+.drawer .info-grid div,
+.drawer .legend-item {
+  background: #1d2025;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.drawer .stats-row {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.drawer .stats-row:first-child {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.drawer .drawer-section {
+  border-top-color: rgba(255, 255, 255, 0.08);
 }
 
 .status-pill {
