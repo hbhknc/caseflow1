@@ -90,6 +90,8 @@ export function BoardPage() {
         <button
           type="button"
           className="sidebar-menu__item sidebar-menu__item--primary"
+          aria-label="New Case"
+          title="New Case"
           onClick={handleOpenCreateMatter}
         >
           <span className="sidebar-menu__icon" aria-hidden="true">
@@ -107,6 +109,8 @@ export function BoardPage() {
         <button
           type="button"
           className="sidebar-menu__item"
+          aria-label="Tasks"
+          title="Tasks"
           onClick={() => void handleOpenTaskList()}
         >
           <span className="sidebar-menu__icon" aria-hidden="true">
@@ -124,6 +128,8 @@ export function BoardPage() {
         <button
           type="button"
           className="sidebar-menu__item"
+          aria-label="Archive"
+          title="Archive"
           onClick={() => void handleOpenArchive()}
         >
           <span className="sidebar-menu__icon" aria-hidden="true">
@@ -142,6 +148,8 @@ export function BoardPage() {
         <button
           type="button"
           className="sidebar-menu__item"
+          aria-label="Stats"
+          title="Stats"
           onClick={() => void handleOpenStats()}
         >
           <span className="sidebar-menu__icon" aria-hidden="true">

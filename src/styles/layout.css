@@ -1,6 +1,10 @@
 .app-shell {
   display: grid;
   grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "header header"
+    "sidebar main";
   min-height: 100vh;
   background: #1b1b1d;
   border-radius: 18px;
@@ -8,7 +12,12 @@
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.3);
 }
 
+.app-shell--sidebar-collapsed {
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+
 .app-sidebar {
+  grid-area: sidebar;
   background: #232326;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   padding: var(--space-20) var(--space-12);
@@ -20,16 +29,8 @@
   gap: var(--space-12);
 }
 
-.app-workspace {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  min-width: 0;
-  background:
-    linear-gradient(180deg, rgba(34, 35, 38, 0.98), rgba(25, 26, 29, 0.98) 68px),
-    linear-gradient(180deg, #1b1b1d, #1b1b1d);
-}
-
 .app-header {
+  grid-area: header;
   padding: 0.85rem 1.1rem;
   background: #2e2e32;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -40,6 +41,12 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-16);
+}
+
+.app-header__lead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
 }
 
 .app-header__actions {
@@ -93,7 +100,10 @@
 }
 
 .app-main {
+  grid-area: main;
   padding: var(--space-18);
+  min-width: 0;
+  background: #1b1b1d;
 }
 
 .panel,
@@ -548,7 +558,15 @@
 
   .app-shell {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "sidebar"
+      "main";
     border-radius: 0;
+  }
+
+  .app-shell--sidebar-collapsed {
+    grid-template-columns: 1fr;
   }
 
   .app-header__body,

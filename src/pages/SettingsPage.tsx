@@ -17,7 +17,7 @@ export function SettingsPage() {
     setHeaderToolbar(null);
     setSidebarContent(
       <nav className="sidebar-menu" aria-label="Settings actions">
-        <Link to="/" className="sidebar-menu__item">
+        <Link to="/" className="sidebar-menu__item" aria-label="Back to Board" title="Back to Board">
           <span className="sidebar-menu__icon" aria-hidden="true">
             <svg viewBox="0 0 18 18" fill="none">
               <path
