@@ -91,22 +91,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.1rem;
-  height: 2.1rem;
+  width: 2rem;
+  height: 2rem;
   padding: 0;
-  border: 1px solid rgba(56, 208, 120, 0.75);
-  border-radius: 7px;
+  border: 0;
+  border-radius: 10px;
   background: transparent;
-  color: #38d078;
+  color: rgba(245, 246, 248, 0.86);
 }
 
 .sidebar-toggle:hover {
-  background: rgba(56, 208, 120, 0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .sidebar-toggle__panel {
-  width: 1rem;
-  height: 0.9rem;
+  width: 0.95rem;
+  height: 0.8rem;
   display: grid;
   grid-template-columns: 3px 1fr;
   gap: 0.25rem;
@@ -114,12 +114,12 @@
 
 .sidebar-toggle__rail,
 .sidebar-toggle__body {
-  border-radius: 2px;
+  border-radius: 1px;
   background: currentColor;
 }
 
 .sidebar-toggle__body {
-  opacity: 0.92;
+  opacity: 0.88;
 }
 
 .sidebar-menu {

@@ -31,7 +31,7 @@
 
 .app-header {
   grid-area: header;
-  padding: 0.85rem 1.1rem;
+  padding: 0.5rem 1rem;
   background: #2e2e32;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -67,7 +67,7 @@
   align-items: baseline;
   gap: 0;
   color: #f5f6f8;
-  font-size: clamp(1.4rem, 1.7vw, 1.7rem);
+  font-size: clamp(1.05rem, 1.275vw, 1.275rem);
   line-height: 1.05;
   letter-spacing: -0.035em;
 }
@@ -79,7 +79,7 @@
 .app-header__version {
   margin-left: 0.45rem;
   color: rgba(255, 255, 255, 0.58);
-  font-size: var(--font-size-13);
+  font-size: var(--font-size-12);
   font-weight: 500;
   letter-spacing: 0;
 }
