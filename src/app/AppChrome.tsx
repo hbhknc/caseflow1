@@ -4,6 +4,8 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 type AppChromeContextValue = {
   headerToolbar: ReactNode;
   setHeaderToolbar: Dispatch<SetStateAction<ReactNode>>;
+  sidebarContent: ReactNode;
+  setSidebarContent: Dispatch<SetStateAction<ReactNode>>;
 };
 
 export const AppChromeContext = createContext<AppChromeContextValue | null>(null);

@@ -13,7 +13,7 @@ import type { Matter, MatterStage } from "@/types/matter";
 
 export function BoardPage() {
   const board = useMattersBoard();
-  const { setHeaderToolbar } = useAppChrome();
+  const { setHeaderToolbar, setSidebarContent } = useAppChrome();
   const [draggingMatterId, setDraggingMatterId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<MatterStage | null>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
@@ -78,23 +78,21 @@ export function BoardPage() {
 
   useEffect(() => {
     setHeaderToolbar(
-      <>
-        <SearchField
-          value={board.searchTerm}
-          onChange={board.setSearchTerm}
-          results={searchResults}
-        />
-        <button type="button" className="button button--ghost" onClick={() => void handleOpenTaskList()}>
-          <span>Tasks</span>
-        </button>
-        <button type="button" className="button button--ghost" onClick={() => void handleOpenArchive()}>
-          Archive
-        </button>
-        <button type="button" className="button button--ghost" onClick={() => void handleOpenStats()}>
-          Stats
-        </button>
-        <button type="button" className="button" onClick={handleOpenCreateMatter}>
-          <span className="button__icon" aria-hidden="true">
+      <SearchField
+        value={board.searchTerm}
+        onChange={board.setSearchTerm}
+        results={searchResults}
+      />
+    );
+
+    setSidebarContent(
+      <nav className="sidebar-menu" aria-label="Board actions">
+        <button
+          type="button"
+          className="sidebar-menu__item sidebar-menu__item--primary"
+          onClick={handleOpenCreateMatter}
+        >
+          <span className="sidebar-menu__icon" aria-hidden="true">
             <svg viewBox="0 0 18 18" fill="none">
               <path
                 d="M9 3.5v11M3.5 9h11"
@@ -106,11 +104,66 @@ export function BoardPage() {
           </span>
           <span>New Case</span>
         </button>
-      </>
+        <button
+          type="button"
+          className="sidebar-menu__item"
+          onClick={() => void handleOpenTaskList()}
+        >
+          <span className="sidebar-menu__icon" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none">
+              <path
+                d="M5 4.5h8M5 9h8M5 13.5h8M3.5 4.5h.01M3.5 9h.01M3.5 13.5h.01"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          <span>Tasks</span>
+        </button>
+        <button
+          type="button"
+          className="sidebar-menu__item"
+          onClick={() => void handleOpenArchive()}
+        >
+          <span className="sidebar-menu__icon" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none">
+              <path
+                d="M4.5 5.5h9v8h-9zM3.5 5.5h11M6.5 3.5h5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span>Archive</span>
+        </button>
+        <button
+          type="button"
+          className="sidebar-menu__item"
+          onClick={() => void handleOpenStats()}
+        >
+          <span className="sidebar-menu__icon" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none">
+              <path
+                d="M4 13.5V9.5M9 13.5V5M14 13.5V7.5"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          <span>Stats</span>
+        </button>
+      </nav>
     );
 
-    return () => setHeaderToolbar(null);
-  }, [board.searchTerm, board.setSearchTerm, searchResults, setHeaderToolbar]);
+    return () => {
+      setHeaderToolbar(null);
+      setSidebarContent(null);
+    };
+  }, [board.searchTerm, board.setSearchTerm, searchResults, setHeaderToolbar, setSidebarContent]);
 
   return (
     <div className="board-page">

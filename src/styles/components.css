@@ -87,6 +87,51 @@
   flex-wrap: wrap;
 }
 
+.sidebar-menu {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sidebar-menu__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  min-height: 42px;
+  padding: 0.7rem 0.8rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(245, 246, 248, 0.86);
+  text-align: left;
+  font-size: var(--font-size-15);
+  font-weight: 500;
+}
+
+.sidebar-menu__item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+  transform: none;
+}
+
+.sidebar-menu__item--primary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.sidebar-menu__icon {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  color: #ffb020;
+  flex-shrink: 0;
+}
+
+.sidebar-menu__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
 .search-field,
 .field {
   display: grid;
@@ -135,7 +180,7 @@
 
 .search-field {
   position: relative;
-  min-width: 18rem;
+  min-width: 22rem;
 }
 
 .search-dropdown {
@@ -146,8 +191,8 @@
   z-index: 30;
   border-radius: var(--radius-16);
   border: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 14px 32px rgba(18, 19, 24, 0.12);
+  background: rgba(39, 40, 44, 0.98);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
   overflow: hidden;
 }
 
@@ -176,11 +221,11 @@
 }
 
 .search-result:hover {
-  background: rgba(33, 108, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .search-result--archived {
-  background: rgba(243, 244, 247, 0.6);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .search-result__body {
@@ -190,14 +235,14 @@
 }
 
 .search-result__body strong {
-  color: var(--ink-900);
+  color: #f5f6f8;
   font-size: var(--font-size-13);
 }
 
 .search-result__body span,
 .search-result__meta,
 .search-empty {
-  color: var(--ink-500);
+  color: rgba(255, 255, 255, 0.62);
   font-size: var(--font-size-12);
 }
 
@@ -215,7 +260,7 @@
   left: 0.9rem;
   width: 0.95rem;
   height: 0.95rem;
-  color: var(--ink-400);
+  color: rgba(255, 255, 255, 0.46);
   transform: translateY(-50%);
   pointer-events: none;
 }
@@ -247,7 +292,9 @@
   padding-left: 2.5rem;
   min-height: 36px;
   font-size: var(--font-size-14);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f5f6f8;
 }
 
 .field textarea {
@@ -258,7 +305,7 @@
 .search-field input::placeholder,
 .field input::placeholder,
 .field textarea::placeholder {
-  color: var(--ink-400);
+  color: rgba(255, 255, 255, 0.44);
 }
 
 .search-field input:focus,

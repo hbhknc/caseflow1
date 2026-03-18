@@ -1,17 +1,38 @@
 .app-shell {
-  max-width: 1720px;
-  margin: 0 auto;
-  padding: var(--space-18);
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #1b1b1d;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.3);
+}
+
+.app-sidebar {
+  background: #232326;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding: var(--space-20) var(--space-12);
+}
+
+.app-sidebar__content {
+  display: grid;
+  align-content: start;
+  gap: var(--space-12);
+}
+
+.app-workspace {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  background:
+    linear-gradient(180deg, rgba(34, 35, 38, 0.98), rgba(25, 26, 29, 0.98) 68px),
+    linear-gradient(180deg, #1b1b1d, #1b1b1d);
 }
 
 .app-header {
-  padding: var(--space-14) var(--space-16);
-  margin-bottom: var(--space-14);
-  background: rgba(255, 255, 255, 0.66);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-20);
-  box-shadow: var(--shadow-window);
-  backdrop-filter: blur(18px);
+  padding: 0.85rem 1.1rem;
+  background: #2e2e32;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .app-header__body {
@@ -35,9 +56,25 @@
 }
 
 .app-header h1 {
-  font-size: clamp(1.45rem, 1.8vw, 1.8rem);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  color: #f5f6f8;
+  font-size: clamp(1.4rem, 1.7vw, 1.7rem);
   line-height: 1.05;
   letter-spacing: -0.035em;
+}
+
+.app-header__flow {
+  color: #3d95ff;
+}
+
+.app-header__version {
+  margin-left: 0.45rem;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: var(--font-size-13);
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .header-toolbar {
@@ -45,6 +82,7 @@
   align-items: center;
   gap: var(--space-10);
   flex-wrap: wrap;
+  justify-content: end;
 }
 
 .app-main,
@@ -52,6 +90,10 @@
 .board-page {
   display: grid;
   gap: var(--space-14);
+}
+
+.app-main {
+  padding: var(--space-18);
 }
 
 .panel,
@@ -505,12 +547,18 @@
   }
 
   .app-shell {
-    padding: var(--space-16);
+    grid-template-columns: 1fr;
+    border-radius: 0;
   }
 
   .app-header__body,
   .app-header__actions {
     display: grid;
+  }
+
+  .app-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .legend-grid,
