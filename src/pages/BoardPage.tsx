@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppChrome } from "@/app/AppChrome";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
@@ -14,15 +14,44 @@ export function BoardPage() {
   const { setHeaderToolbar } = useAppChrome();
   const [draggingMatterId, setDraggingMatterId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<MatterStage | null>(null);
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  function captureFocusOrigin() {
+    const activeElement = document.activeElement;
+    lastFocusedElementRef.current =
+      activeElement instanceof HTMLElement ? activeElement : null;
+  }
+
+  function restoreFocusOrigin() {
+    lastFocusedElementRef.current?.focus();
+  }
+
+  async function handleOpenTaskList() {
+    captureFocusOrigin();
+    await board.openTaskList();
+  }
+
+  function handleOpenCreateMatter() {
+    captureFocusOrigin();
+    board.openCreateMatter();
+  }
+
+  function handleSelectMatter(matterId: string | null) {
+    if (matterId) {
+      captureFocusOrigin();
+    }
+
+    board.selectMatter(matterId);
+  }
 
   useEffect(() => {
     setHeaderToolbar(
       <>
         <SearchField value={board.searchTerm} onChange={board.setSearchTerm} />
-        <button type="button" className="button button--ghost" onClick={() => void board.openTaskList()}>
+        <button type="button" className="button button--ghost" onClick={() => void handleOpenTaskList()}>
           <span>Tasks</span>
         </button>
-        <button type="button" className="button" onClick={board.openCreateMatter}>
+        <button type="button" className="button" onClick={handleOpenCreateMatter}>
           <span className="button__icon" aria-hidden="true">
             <svg viewBox="0 0 18 18" fill="none">
               <path
@@ -47,7 +76,7 @@ export function BoardPage() {
         {board.isLoading ? (
           <EmptyState
             title="Loading matters"
-            message="Pulling the latest probate board from the service layer."
+            message="Loading the current probate board."
           />
         ) : (
           <div className="board-grid">
@@ -59,7 +88,7 @@ export function BoardPage() {
                 selectedMatterId={board.selectedMatter?.id ?? null}
                 draggingMatterId={draggingMatterId}
                 isDragTarget={dragOverStage === stage}
-                onSelectMatter={board.selectMatter}
+                onSelectMatter={handleSelectMatter}
                 onDragStart={(event, matter) => {
                   event.dataTransfer.effectAllowed = "move";
                   event.dataTransfer.setData("text/plain", matter.id);
@@ -126,10 +155,10 @@ export function BoardPage() {
           matter={board.selectedMatter}
           notes={board.selectedMatterNotes}
           isCreateMode={board.isCreateMode}
-          onCloseCreateMode={board.closeCreateMatter}
           onClose={() => {
             board.closeCreateMatter();
-            board.selectMatter(null);
+            handleSelectMatter(null);
+            restoreFocusOrigin();
           }}
           onCreateMatter={board.createMatter}
           onUpdateMatter={board.updateMatter}
@@ -140,7 +169,17 @@ export function BoardPage() {
       )}
 
       {board.isTaskListOpen ? (
-        <TaskListModal tasks={board.tasks} onClose={board.closeTaskList} />
+        <TaskListModal
+          tasks={board.tasks}
+          onClose={() => {
+            board.closeTaskList();
+            restoreFocusOrigin();
+          }}
+          onOpenMatter={(matterId) => {
+            board.closeTaskList();
+            board.selectMatter(matterId);
+          }}
+        />
       ) : null}
     </div>
   );

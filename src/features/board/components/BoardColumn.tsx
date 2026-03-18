@@ -52,7 +52,6 @@ export function BoardColumn({
       <header className="board-column__header">
         <div className="board-column__title-group">
           <h3>{formatStageLabel(stage)}</h3>
-          <p>Probate stage</p>
         </div>
         <span className="board-column__count">{matters.length}</span>
       </header>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Drawer } from "@/components/Drawer";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusPill } from "@/components/StatusPill";
@@ -11,7 +11,6 @@ type MatterDrawerProps = {
   matter: Matter | null;
   notes: MatterNote[];
   isCreateMode: boolean;
-  onCloseCreateMode: () => void;
   onClose: () => void;
   onCreateMatter: (input: MatterFormInput) => Promise<void>;
   onUpdateMatter: (matterId: string, input: MatterFormInput) => Promise<void>;
@@ -42,7 +41,6 @@ export function MatterDrawer({
   matter,
   notes,
   isCreateMode,
-  onCloseCreateMode,
   onClose,
   onCreateMatter,
   onUpdateMatter,
@@ -53,12 +51,29 @@ export function MatterDrawer({
   const [draft, setDraft] = useState<MatterFormInput>(buildInitialState(matter));
   const [noteBody, setNoteBody] = useState("");
   const [addNoteToTaskList, setAddNoteToTaskList] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     setDraft(buildInitialState(matter));
     setNoteBody("");
     setAddNoteToTaskList(false);
   }, [matter, isCreateMode]);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, [matter, isCreateMode]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const panelTitle = useMemo(() => {
     if (isCreateMode) {
@@ -70,11 +85,11 @@ export function MatterDrawer({
 
   const panelSubtitle = useMemo(() => {
     if (isCreateMode) {
-      return "Create a new probate matter and place it on the board.";
+      return "Create a new matter and place it on the board.";
     }
 
     if (!matter) {
-      return "Select a case card to review and update matter details.";
+      return "Review matter details, update its stage, and capture follow-up activity.";
     }
 
     return `${matter.clientName} | ${matter.fileNumber}`;
@@ -146,88 +161,117 @@ export function MatterDrawer({
 
   return (
     <div className="drawer-overlay" role="presentation" onClick={onClose}>
-      <div className="drawer-modal" role="presentation" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="drawer-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={panelTitle}
+        onClick={(event) => event.stopPropagation()}
+      >
         <Drawer
           title={panelTitle}
           subtitle={panelSubtitle}
           actions={
             <div className="button-row">
-              {isCreateMode ? (
-                <button type="button" className="button button--ghost" onClick={onCloseCreateMode}>
-                  Cancel
-                </button>
-              ) : matter ? (
-                <>
-                  {matter.stage === ARCHIVE_READY_STAGE && !matter.archived ? (
-                    <button type="button" className="button button--secondary" onClick={handleArchive}>
-                      Archive
-                    </button>
-                  ) : null}
-                  <button type="button" className="button button--danger" onClick={handleDelete}>
-                    Delete
-                  </button>
-                </>
-              ) : null}
-              <button type="button" className="button button--ghost" onClick={onClose}>
-                Close
+              <button
+                ref={closeButtonRef}
+                type="button"
+                className="button button--ghost"
+                onClick={onClose}
+              >
+                {isCreateMode ? "Cancel" : "Close"}
               </button>
             </div>
           }
         >
+          {!isCreateMode && matter ? (
+            <section className="drawer-meta-list" aria-label="Matter summary">
+              <div className="drawer-meta-item">
+                <span>Created</span>
+                <strong>{formatDateTime(matter.createdAt)}</strong>
+              </div>
+              <div className="drawer-meta-item">
+                <span>Last activity</span>
+                <strong>{formatDateTime(matter.lastActivityAt)}</strong>
+              </div>
+              <div className="drawer-meta-item">
+                <span>Status</span>
+                <strong>{matter.archived ? "Archived" : "Active"}</strong>
+              </div>
+            </section>
+          ) : null}
+
           <form className="stack" onSubmit={handleSubmit}>
-            <label className="field">
-              <span>Decedent name</span>
-              <input
-                required
-                value={draft.decedentName}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, decedentName: event.target.value }))
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Client name</span>
-              <input
-                required
-                value={draft.clientName}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, clientName: event.target.value }))
-                }
-              />
-            </label>
-            <label className="field">
-              <span>File number</span>
-              <input
-                required
-                value={draft.fileNumber}
-                onChange={(event) =>
-                  setDraft((current) => ({ ...current, fileNumber: event.target.value }))
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Stage</span>
-              <select
-                value={draft.stage}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    stage: event.target.value as MatterStage
-                  }))
-                }
-              >
-                {STAGES.map((stage) => (
-                  <option key={stage} value={stage}>
-                    {formatStageLabel(stage)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="drawer-form-grid">
+              <label className="field">
+                <span>Decedent name</span>
+                <input
+                  required
+                  value={draft.decedentName}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, decedentName: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>Client name</span>
+                <input
+                  required
+                  value={draft.clientName}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, clientName: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>File number</span>
+                <input
+                  required
+                  value={draft.fileNumber}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, fileNumber: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>Stage</span>
+                <select
+                  value={draft.stage}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      stage: event.target.value as MatterStage
+                    }))
+                  }
+                >
+                  {STAGES.map((stage) => (
+                    <option key={stage} value={stage}>
+                      {formatStageLabel(stage)}
+                    </option>
+                  ))}
+                </select>
+                {!isCreateMode ? (
+                  <small className="field-hint">
+                    Use this field to move the matter without dragging it on the board.
+                  </small>
+                ) : null}
+              </label>
+            </div>
 
             <div className="button-row">
               <button type="submit" className="button">
                 {submitLabel}
               </button>
+              {!isCreateMode && matter?.stage === ARCHIVE_READY_STAGE && !matter.archived ? (
+                <button type="button" className="button button--secondary" onClick={handleArchive}>
+                  Archive
+                </button>
+              ) : null}
+              {!isCreateMode && matter ? (
+                <button type="button" className="button button--danger" onClick={handleDelete}>
+                  Delete
+                </button>
+              ) : null}
               {!isCreateMode && matter?.archived ? (
                 <StatusPill tone="warn">Archived on {formatDateTime(matter.archivedAt)}</StatusPill>
               ) : null}
@@ -235,58 +279,42 @@ export function MatterDrawer({
           </form>
 
           {!isCreateMode && matter ? (
-            <>
-              <section className="info-grid info-grid--inspector">
+            <section className="drawer-section stack">
+              <div className="section-heading section-heading--split">
                 <div>
-                  <span>Created</span>
-                  <strong>{formatDateTime(matter.createdAt)}</strong>
+                  <h3>Activity</h3>
+                  <p>Each note is timestamped and stays with the matter history.</p>
                 </div>
-                <div>
-                  <span>Last activity</span>
-                  <strong>{formatDateTime(matter.lastActivityAt)}</strong>
-                </div>
-                <div>
-                  <span>Stage</span>
-                  <strong>{formatStageLabel(matter.stage)}</strong>
-                </div>
-                <div>
-                  <span>Status</span>
-                  <strong>{matter.archived ? "Archived" : "Active"}</strong>
-                </div>
-              </section>
+                <button type="submit" form="note-form" className="button button--secondary">
+                  Add Note
+                </button>
+              </div>
 
-              <section className="drawer-section stack">
-                <div className="section-heading section-heading--split">
-                  <div>
-                    <h3>Activity Log</h3>
-                    <p>Notes are stored as separate, timestamped entries.</p>
-                  </div>
-                  <button type="submit" form="note-form" className="button button--secondary">
-                    Add Note
-                  </button>
-                </div>
-                <form id="note-form" className="stack note-composer" onSubmit={handleAddNote}>
-                  <label className="field">
-                    <span>New activity</span>
-                <textarea
-                  rows={4}
-                  placeholder="Enter a case activity note..."
-                  value={noteBody}
-                  onChange={(event) => setNoteBody(event.target.value)}
-                />
-              </label>
-              <label className="checkbox-field">
-                <input
-                  type="checkbox"
-                  checked={addNoteToTaskList}
-                  onChange={(event) => setAddNoteToTaskList(event.target.checked)}
-                />
-                <span>Add this note to the task list</span>
-              </label>
-            </form>
-            <NotesTimeline notes={notes} />
-          </section>
-            </>
+              <form id="note-form" className="stack note-composer" onSubmit={handleAddNote}>
+                <label className="field">
+                  <span>New activity note</span>
+                  <textarea
+                    rows={4}
+                    placeholder="Enter a case activity note..."
+                    value={noteBody}
+                    onChange={(event) => setNoteBody(event.target.value)}
+                  />
+                </label>
+                <label className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={addNoteToTaskList}
+                    onChange={(event) => setAddNoteToTaskList(event.target.checked)}
+                  />
+                  <span className="checkbox-field__copy">
+                    <strong>Also create a task from this note</strong>
+                    <small>The note stays in the activity log and also appears in Tasks.</small>
+                  </span>
+                </label>
+              </form>
+
+              <NotesTimeline notes={notes} />
+            </section>
           ) : null}
         </Drawer>
       </div>
