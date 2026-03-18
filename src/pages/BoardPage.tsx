@@ -1,16 +1,16 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { useAppChrome } from "@/app/AppChrome";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
 import { ArchiveModal } from "@/features/archive/components/ArchiveModal";
 import { BoardColumn } from "@/features/board/components/BoardColumn";
 import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
+import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { StatsModal } from "@/features/stats/components/StatsModal";
 import { TaskListModal } from "@/features/tasks/components/TaskListModal";
 import { useMattersBoard } from "@/hooks/useMattersBoard";
-import { getBoardSettings } from "@/services/settings";
+import { getBoardSettings, saveBoardSettings } from "@/services/settings";
 import type { BoardSettings } from "@/types/api";
 import type { Matter, MatterStage } from "@/types/matter";
 import { DEFAULT_STAGE_LABELS, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
@@ -26,6 +26,7 @@ export function BoardPage() {
   const [draggingMatterId, setDraggingMatterId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<MatterStage | null>(null);
   const [boardSettings, setBoardSettings] = useState<BoardSettings>(DEFAULT_BOARD_SETTINGS);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   const stageLabels = createStageLabelMap(boardSettings.stageLabels);
 
@@ -52,6 +53,11 @@ export function BoardPage() {
   async function handleOpenStats() {
     captureFocusOrigin();
     await board.openStats();
+  }
+
+  function handleOpenSettings() {
+    captureFocusOrigin();
+    setIsSettingsOpen(true);
   }
 
   function handleOpenCreateMatter() {
@@ -180,11 +186,12 @@ export function BoardPage() {
           </span>
           <span>Stats</span>
         </button>
-        <Link
-          to="/settings"
+        <button
+          type="button"
           className="sidebar-menu__item"
           aria-label="Settings"
           title="Settings"
+          onClick={handleOpenSettings}
         >
           <span className="sidebar-menu__icon" aria-hidden="true">
             <svg viewBox="0 0 18 18" fill="none">
@@ -201,7 +208,7 @@ export function BoardPage() {
             </svg>
           </span>
           <span>Settings</span>
-        </Link>
+        </button>
       </nav>
     );
 
@@ -349,6 +356,20 @@ export function BoardPage() {
           error={board.statsError}
           onClose={() => {
             board.closeStats();
+            restoreFocusOrigin();
+          }}
+        />
+      ) : null}
+
+      {isSettingsOpen ? (
+        <SettingsModal
+          boardSettings={boardSettings}
+          onSave={async (nextSettings) => {
+            const saved = await saveBoardSettings(nextSettings);
+            setBoardSettings(saved);
+          }}
+          onClose={() => {
+            setIsSettingsOpen(false);
             restoreFocusOrigin();
           }}
         />
