@@ -7,6 +7,7 @@ export type MatterStage =
 
 export type Matter = {
   id: string;
+  boardId: string;
   decedentName: string;
   clientName: string;
   fileNumber: string;
@@ -37,8 +38,16 @@ export type MatterTask = {
 };
 
 export type MatterFormInput = {
+  boardId: string;
   decedentName: string;
   clientName: string;
   fileNumber: string;
   stage: MatterStage;
+};
+
+export type PracticeBoard = {
+  id: string;
+  name: string;
+  columnCount: number;
+  stageLabels: Record<MatterStage, string>;
 };

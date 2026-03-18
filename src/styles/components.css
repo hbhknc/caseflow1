@@ -492,6 +492,14 @@
   box-shadow: none;
 }
 
+.drawer .settings-panel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 0;
+}
+
 .drawer .stats-row {
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }

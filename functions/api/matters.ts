@@ -5,10 +5,15 @@ import type { Env, MatterInput } from "../_lib/types";
 export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   try {
     const url = new URL(request.url);
+    const boardId = url.searchParams.get("boardId");
+    if (!boardId) {
+      return badRequest("Board id is required.");
+    }
+
     const matters =
       url.searchParams.get("archived") === "1"
-        ? await listArchivedMatters(env.DB)
-        : await listMatters(env.DB);
+        ? await listArchivedMatters(env.DB, boardId)
+        : await listMatters(env.DB, boardId);
     return json({ matters });
   } catch (error) {
     console.error(error);

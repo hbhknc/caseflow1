@@ -7,7 +7,8 @@ import type {
   MatterNoteRecord,
   MatterRecord,
   MatterStage,
-  MatterTaskRecord
+  MatterTaskRecord,
+  PracticeBoard
 } from "./types";
 
 function nowIso() {
@@ -19,9 +20,30 @@ const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   stageLabels: { ...DEFAULT_STAGE_LABELS }
 };
 
+const DEFAULT_BOARDS: PracticeBoard[] = [
+  {
+    id: "probate",
+    name: "Probate",
+    columnCount: DEFAULT_BOARD_SETTINGS.columnCount,
+    stageLabels: { ...DEFAULT_BOARD_SETTINGS.stageLabels }
+  }
+];
+
+function buildDefaultBoards(settings: BoardSettings = DEFAULT_BOARD_SETTINGS): PracticeBoard[] {
+  return [
+    {
+      id: "probate",
+      name: "Probate",
+      columnCount: settings.columnCount,
+      stageLabels: { ...settings.stageLabels }
+    }
+  ];
+}
+
 function mapMatter(row: MatterRecord) {
   return {
     id: row.id,
+    boardId: row.board_id,
     decedentName: row.decedent_name,
     clientName: row.client_name,
     fileNumber: row.file_number,
@@ -44,6 +66,10 @@ function mapNote(row: MatterNoteRecord) {
 }
 
 function assertMatterInput(input: Partial<MatterInput>): MatterInput {
+  if (!input.boardId?.trim()) {
+    throw new Error("Board id is required.");
+  }
+
   if (!input.decedentName?.trim()) {
     throw new Error("Decedent name is required.");
   }
@@ -61,6 +87,7 @@ function assertMatterInput(input: Partial<MatterInput>): MatterInput {
   }
 
   return {
+    boardId: input.boardId.trim(),
     decedentName: input.decedentName.trim(),
     clientName: input.clientName.trim(),
     fileNumber: input.fileNumber.trim(),
@@ -127,6 +154,38 @@ function normalizeStageLabels(
   };
 }
 
+function normalizeBoard(input: {
+  id: string;
+  name: string;
+  columnCount?: number;
+  stageLabels?: Partial<Record<MatterStage, string>>;
+}): PracticeBoard {
+  return {
+    id: input.id,
+    name: input.name.trim(),
+    columnCount: clampColumnCount(input.columnCount),
+    stageLabels: normalizeStageLabels(input.stageLabels)
+  };
+}
+
+function buildBoardId(name: string, existingBoards: PracticeBoard[]) {
+  const baseId =
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "board";
+  let candidate = baseId;
+  let suffix = 2;
+
+  while (existingBoards.some((board) => board.id === candidate)) {
+    candidate = `${baseId}_${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
 async function upsertAppSetting(db: D1Database, key: string, value: string, updatedAt: string) {
   await db
     .prepare(
@@ -169,6 +228,105 @@ export async function getBoardSettings(db: D1Database): Promise<BoardSettings> {
   };
 }
 
+export async function listBoards(db: D1Database): Promise<PracticeBoard[]> {
+  const settings = await getAppSettingMap(db, ["boards.registry"]);
+  const registry = settings.get("boards.registry");
+
+  if (!registry) {
+    return buildDefaultBoards(await getBoardSettings(db));
+  }
+
+  try {
+    const parsed = JSON.parse(registry) as Array<Partial<PracticeBoard> & { id: string; name: string }>;
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return buildDefaultBoards(await getBoardSettings(db));
+    }
+
+    return parsed.map((board) => normalizeBoard(board));
+  } catch {
+    return buildDefaultBoards(await getBoardSettings(db));
+  }
+}
+
+async function saveBoards(db: D1Database, boards: PracticeBoard[]) {
+  await upsertAppSetting(db, "boards.registry", JSON.stringify(boards), nowIso());
+}
+
+export async function createBoard(db: D1Database, name: string): Promise<PracticeBoard> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("Board name is required.");
+  }
+
+  const boards = await listBoards(db);
+  const board = normalizeBoard({
+    id: buildBoardId(trimmed, boards),
+    name: trimmed,
+    columnCount: DEFAULT_BOARD_SETTINGS.columnCount,
+    stageLabels: DEFAULT_BOARD_SETTINGS.stageLabels
+  });
+
+  await saveBoards(db, [...boards, board]);
+  return board;
+}
+
+export async function updateBoard(
+  db: D1Database,
+  boardId: string,
+  input: {
+    name?: string;
+    columnCount?: number;
+    stageLabels?: Partial<Record<MatterStage, string>>;
+  }
+): Promise<PracticeBoard | null> {
+  const boards = await listBoards(db);
+  const existing = boards.find((board) => board.id === boardId);
+
+  if (!existing) {
+    return null;
+  }
+
+  const updated = normalizeBoard({
+    id: existing.id,
+    name: input.name?.trim() || existing.name,
+    columnCount: input.columnCount ?? existing.columnCount,
+    stageLabels: input.stageLabels ?? existing.stageLabels
+  });
+
+  await saveBoards(
+    db,
+    boards.map((board) => (board.id === boardId ? updated : board))
+  );
+
+  return updated;
+}
+
+export async function deleteBoard(db: D1Database, boardId: string): Promise<PracticeBoard[]> {
+  const boards = await listBoards(db);
+
+  if (boards.length === 1) {
+    throw new Error("At least one board is required.");
+  }
+
+  const board = boards.find((item) => item.id === boardId);
+  if (!board) {
+    throw new Error("Board not found.");
+  }
+
+  const matterCount = await db
+    .prepare("SELECT COUNT(*) AS count FROM matters WHERE board_id = ?1")
+    .bind(boardId)
+    .first<{ count: number | string }>();
+
+  if (Number(matterCount?.count ?? 0) > 0) {
+    throw new Error("Move or archive matters off this board before deleting it.");
+  }
+
+  const remainingBoards = boards.filter((item) => item.id !== boardId);
+  await saveBoards(db, remainingBoards);
+  return remainingBoards;
+}
+
 export async function updateBoardSettings(
   db: D1Database,
   input: {
@@ -201,12 +359,13 @@ export async function updateBoardSettings(
   return settings;
 }
 
-export async function listMatters(db: D1Database) {
+export async function listMatters(db: D1Database, boardId: string) {
   const { results } = await db
     .prepare(
       `SELECT *
        FROM matters
        WHERE archived = 0
+         AND board_id = ?1
        ORDER BY
          CASE stage
            WHEN 'intake' THEN 1
@@ -218,30 +377,35 @@ export async function listMatters(db: D1Database) {
          END,
          last_activity_at DESC`
     )
+    .bind(boardId)
     .all<MatterRecord>();
 
   return results.map(mapMatter);
 }
 
-export async function listArchivedMatters(db: D1Database) {
+export async function listArchivedMatters(db: D1Database, boardId: string) {
   const { results } = await db
     .prepare(
       `SELECT *
        FROM matters
        WHERE archived = 1
+         AND board_id = ?1
        ORDER BY archived_at DESC, last_activity_at DESC`
     )
+    .bind(boardId)
     .all<MatterRecord>();
 
   return results.map(mapMatter);
 }
 
-export async function getMatterStats(db: D1Database) {
+export async function getMatterStats(db: D1Database, boardId: string) {
   const { results } = await db
     .prepare(
       `SELECT id, created_at, archived, archived_at
-       FROM matters`
+       FROM matters
+       WHERE board_id = ?1`
     )
+    .bind(boardId)
     .all<Pick<MatterRecord, "id" | "created_at" | "archived" | "archived_at">>();
 
   const archivedMatters = results.filter(
@@ -280,11 +444,12 @@ export async function createMatter(db: D1Database, payload: Partial<MatterInput>
   await db
     .prepare(
       `INSERT INTO matters (
-        id, decedent_name, client_name, file_number, stage, created_at, updated_at, last_activity_at, archived, archived_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?6, 0, NULL)`
+        id, board_id, decedent_name, client_name, file_number, stage, created_at, updated_at, last_activity_at, archived, archived_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7, ?7, 0, NULL)`
     )
     .bind(
       matterId,
+      input.boardId,
       input.decedentName,
       input.clientName,
       input.fileNumber,
@@ -329,6 +494,7 @@ export async function updateMatter(
   }
 
   const input = assertMatterInput({
+    boardId: payload.boardId ?? existing.board_id,
     decedentName: payload.decedentName ?? existing.decedent_name,
     clientName: payload.clientName ?? existing.client_name,
     fileNumber: payload.fileNumber ?? existing.file_number,
@@ -344,8 +510,9 @@ export async function updateMatter(
            client_name = ?3,
            file_number = ?4,
            stage = ?5,
-           updated_at = ?6,
-           last_activity_at = CASE WHEN ?7 = 1 THEN ?6 ELSE last_activity_at END
+           board_id = ?6,
+           updated_at = ?7,
+           last_activity_at = CASE WHEN ?8 = 1 THEN ?7 ELSE last_activity_at END
        WHERE id = ?1`
     )
     .bind(
@@ -354,6 +521,7 @@ export async function updateMatter(
       input.clientName,
       input.fileNumber,
       input.stage,
+      input.boardId,
       timestamp,
       input.stage !== existing.stage ? 1 : 0
     )
@@ -505,7 +673,7 @@ export async function listNotes(db: D1Database, matterId: string) {
   return results.map(mapNote);
 }
 
-export async function listTasks(db: D1Database) {
+export async function listTasks(db: D1Database, boardId: string) {
   const { results } = await db
     .prepare(
       `SELECT
@@ -521,8 +689,10 @@ export async function listTasks(db: D1Database) {
        FROM task_items
        INNER JOIN matters ON matters.id = task_items.matter_id
        WHERE task_items.completed_at IS NULL
+         AND matters.board_id = ?1
        ORDER BY task_items.created_at DESC`
     )
+    .bind(boardId)
     .all<MatterTaskRecord>();
 
   return results.map((row) => ({

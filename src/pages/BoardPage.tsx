@@ -5,30 +5,42 @@ import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
 import { ArchiveModal } from "@/features/archive/components/ArchiveModal";
 import { BoardColumn } from "@/features/board/components/BoardColumn";
+import { BoardsModal } from "@/features/board/components/BoardsModal";
 import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { StatsModal } from "@/features/stats/components/StatsModal";
 import { TaskListModal } from "@/features/tasks/components/TaskListModal";
 import { useMattersBoard } from "@/hooks/useMattersBoard";
-import { getBoardSettings, saveBoardSettings } from "@/services/settings";
+import {
+  createBoard,
+  listBoards,
+  removeBoard,
+  saveBoard
+} from "@/services/boards";
 import type { BoardSettings } from "@/types/api";
-import type { Matter, MatterStage } from "@/types/matter";
+import type { Matter, MatterStage, PracticeBoard } from "@/types/matter";
 import { DEFAULT_STAGE_LABELS, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
 
-const DEFAULT_BOARD_SETTINGS: BoardSettings = {
+const DEFAULT_BOARD: PracticeBoard = {
+  id: "probate",
+  name: "Probate",
   columnCount: 5,
   stageLabels: { ...DEFAULT_STAGE_LABELS }
 };
 
 export function BoardPage() {
-  const board = useMattersBoard();
+  const [boards, setBoards] = useState<PracticeBoard[]>([DEFAULT_BOARD]);
+  const [currentBoardId, setCurrentBoardId] = useState(DEFAULT_BOARD.id);
+  const [isBoardsOpen, setIsBoardsOpen] = useState(false);
+  const [boardActionError, setBoardActionError] = useState<string | null>(null);
+  const currentBoard = boards.find((board) => board.id === currentBoardId) ?? DEFAULT_BOARD;
+  const board = useMattersBoard(currentBoard.id);
   const { setHeaderToolbar, setSidebarContent } = useAppChrome();
   const [draggingMatterId, setDraggingMatterId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<MatterStage | null>(null);
-  const [boardSettings, setBoardSettings] = useState<BoardSettings>(DEFAULT_BOARD_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
-  const stageLabels = createStageLabelMap(boardSettings.stageLabels);
+  const stageLabels = createStageLabelMap(currentBoard.stageLabels);
 
   function captureFocusOrigin() {
     const activeElement = document.activeElement;
@@ -55,6 +67,12 @@ export function BoardPage() {
     await board.openStats();
   }
 
+  function handleOpenBoards() {
+    captureFocusOrigin();
+    setBoardActionError(null);
+    setIsBoardsOpen(true);
+  }
+
   function handleOpenSettings() {
     captureFocusOrigin();
     setIsSettingsOpen(true);
@@ -74,7 +92,17 @@ export function BoardPage() {
   }
 
   useEffect(() => {
-    void getBoardSettings().then(setBoardSettings).catch(() => setBoardSettings(DEFAULT_BOARD_SETTINGS));
+    void listBoards()
+      .then((items) => {
+        setBoards(items);
+        setCurrentBoardId((current) =>
+          items.some((board) => board.id === current) ? current : (items[0]?.id ?? DEFAULT_BOARD.id)
+        );
+      })
+      .catch(() => {
+        setBoards([DEFAULT_BOARD]);
+        setCurrentBoardId(DEFAULT_BOARD.id);
+      });
   }, []);
 
   const searchResults = [
@@ -100,11 +128,16 @@ export function BoardPage() {
 
   useEffect(() => {
     setHeaderToolbar(
-      <SearchField
-        value={board.searchTerm}
-        onChange={board.setSearchTerm}
-        results={searchResults}
-      />
+      <>
+        <SearchField
+          value={board.searchTerm}
+          onChange={board.setSearchTerm}
+          results={searchResults}
+        />
+        <button type="button" className="button" onClick={handleOpenCreateMatter}>
+          New Case
+        </button>
+      </>
     );
 
     setSidebarContent(
@@ -112,21 +145,21 @@ export function BoardPage() {
         <button
           type="button"
           className="sidebar-menu__item sidebar-menu__item--primary"
-          aria-label="New Case"
-          title="New Case"
-          onClick={handleOpenCreateMatter}
+          aria-label="Boards"
+          title="Boards"
+          onClick={handleOpenBoards}
         >
           <span className="sidebar-menu__icon" aria-hidden="true">
             <svg viewBox="0 0 18 18" fill="none">
               <path
-                d="M9 3.5v11M3.5 9h11"
+                d="M3.5 4.5h4.5v4.5H3.5zm6 0h4.5v4.5H9.5zm-6 6h4.5v4.5H3.5zm6 0h4.5v4.5H9.5z"
                 stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
               />
             </svg>
           </span>
-          <span>New Case</span>
+          <span>Boards</span>
         </button>
         <button
           type="button"
@@ -216,7 +249,13 @@ export function BoardPage() {
       setHeaderToolbar(null);
       setSidebarContent(null);
     };
-  }, [board.searchTerm, board.setSearchTerm, searchResults, setHeaderToolbar, setSidebarContent]);
+  }, [
+    board.searchTerm,
+    board.setSearchTerm,
+    searchResults,
+    setHeaderToolbar,
+    setSidebarContent
+  ]);
 
   return (
     <div className="board-page">
@@ -229,7 +268,7 @@ export function BoardPage() {
         ) : (
           <div
             className="board-grid"
-            style={{ "--board-column-count": boardSettings.columnCount } as CSSProperties}
+            style={{ "--board-column-count": currentBoard.columnCount } as CSSProperties}
           >
             {STAGES.map((stage) => (
               <BoardColumn
@@ -307,6 +346,7 @@ export function BoardPage() {
           matter={board.selectedMatter}
           notes={board.selectedMatterNotes}
           isCreateMode={board.isCreateMode}
+          defaultBoardId={currentBoard.id}
           stageLabels={stageLabels}
           onClose={() => {
             board.closeCreateMatter();
@@ -361,12 +401,63 @@ export function BoardPage() {
         />
       ) : null}
 
+      {isBoardsOpen ? (
+        <BoardsModal
+          boards={boards}
+          currentBoardId={currentBoard.id}
+          error={boardActionError}
+          onSelectBoard={(boardId) => {
+            setCurrentBoardId(boardId);
+            setIsBoardsOpen(false);
+            restoreFocusOrigin();
+          }}
+          onCreateBoard={async (name) => {
+            try {
+              const created = await createBoard(name);
+              setBoards((current) => [...current, created]);
+              setCurrentBoardId(created.id);
+              setBoardActionError(null);
+            } catch (error) {
+              setBoardActionError(
+                error instanceof Error ? error.message : "Unable to create board."
+              );
+            }
+          }}
+          onDeleteBoard={async (boardId) => {
+            try {
+              const remainingBoards = await removeBoard(boardId);
+              setBoards(remainingBoards);
+              setCurrentBoardId((current) =>
+                current === boardId ? (remainingBoards[0]?.id ?? DEFAULT_BOARD.id) : current
+              );
+              setBoardActionError(null);
+            } catch (error) {
+              setBoardActionError(
+                error instanceof Error ? error.message : "Unable to delete board."
+              );
+            }
+          }}
+          onClose={() => {
+            setIsBoardsOpen(false);
+            restoreFocusOrigin();
+          }}
+        />
+      ) : null}
+
       {isSettingsOpen ? (
         <SettingsModal
-          boardSettings={boardSettings}
+          boardSettings={{
+            columnCount: currentBoard.columnCount,
+            stageLabels: currentBoard.stageLabels
+          }}
           onSave={async (nextSettings) => {
-            const saved = await saveBoardSettings(nextSettings);
-            setBoardSettings(saved);
+            const savedBoard = await saveBoard(currentBoard.id, {
+              columnCount: nextSettings.columnCount,
+              stageLabels: nextSettings.stageLabels
+            });
+            setBoards((current) =>
+              current.map((board) => (board.id === savedBoard.id ? savedBoard : board))
+            );
           }}
           onClose={() => {
             setIsSettingsOpen(false);

@@ -12,6 +12,7 @@ export type MatterStage =
 
 export type MatterRecord = {
   id: string;
+  board_id: string;
   decedent_name: string;
   client_name: string;
   file_number: string;
@@ -50,6 +51,7 @@ export type MatterTaskRecord = {
 };
 
 export type MatterInput = {
+  boardId: string;
   decedentName: string;
   clientName: string;
   fileNumber: string;
@@ -63,6 +65,13 @@ export type MatterNoteInput = {
 };
 
 export type BoardSettings = {
+  columnCount: number;
+  stageLabels: Record<MatterStage, string>;
+};
+
+export type PracticeBoard = {
+  id: string;
+  name: string;
   columnCount: number;
   stageLabels: Record<MatterStage, string>;
 };

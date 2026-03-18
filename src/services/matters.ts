@@ -20,21 +20,23 @@ import type {
   MatterTask
 } from "@/types/matter";
 
-export async function listMatters(): Promise<Matter[]> {
+export async function listMatters(boardId: string): Promise<Matter[]> {
+  const query = new URLSearchParams({ boardId });
   const response = await requestJsonWithFallback<{ matters: Matter[] }>(
-    "/matters",
+    `/matters?${query.toString()}`,
     {},
-    async () => ({ matters: await listDemoMatters() })
+    async () => ({ matters: await listDemoMatters(boardId) })
   );
 
   return response.matters;
 }
 
-export async function listArchivedMatters(): Promise<Matter[]> {
+export async function listArchivedMatters(boardId: string): Promise<Matter[]> {
+  const query = new URLSearchParams({ boardId, archived: "1" });
   const response = await requestJsonWithFallback<{ matters: Matter[] }>(
-    "/matters?archived=1",
+    `/matters?${query.toString()}`,
     {},
-    async () => ({ matters: await listDemoArchivedMatters() })
+    async () => ({ matters: await listDemoArchivedMatters(boardId) })
   );
 
   return response.matters;
@@ -151,11 +153,12 @@ export async function saveMatterNote(
   return response.note;
 }
 
-export async function listTasks(): Promise<MatterTask[]> {
+export async function listTasks(boardId: string): Promise<MatterTask[]> {
+  const query = new URLSearchParams({ boardId });
   const response = await requestJsonWithFallback<{ tasks: MatterTask[] }>(
-    "/tasks",
+    `/tasks?${query.toString()}`,
     {},
-    async () => ({ tasks: await listDemoTasks() })
+    async () => ({ tasks: await listDemoTasks(boardId) })
   );
 
   return response.tasks;

@@ -1,5 +1,5 @@
 import type { AppStatus, BoardSettings } from "@/types/api";
-import type { Matter, MatterNote, MatterStage, MatterTask } from "@/types/matter";
+import type { Matter, MatterNote, MatterStage, MatterTask, PracticeBoard } from "@/types/matter";
 import { DEFAULT_STAGE_LABELS } from "@/utils/stages";
 
 const now = "2026-03-17T09:00:00.000Z";
@@ -7,6 +7,7 @@ const now = "2026-03-17T09:00:00.000Z";
 export const demoMatters: Matter[] = [
   {
     id: "matter_seed_001",
+    boardId: "probate",
     decedentName: "Eleanor Whitfield",
     clientName: "Marcus Whitfield",
     fileNumber: "PR-2026-0014",
@@ -18,6 +19,7 @@ export const demoMatters: Matter[] = [
   },
   {
     id: "matter_seed_002",
+    boardId: "probate",
     decedentName: "Harold McIntyre",
     clientName: "Olivia McIntyre",
     fileNumber: "PR-2026-0018",
@@ -29,6 +31,7 @@ export const demoMatters: Matter[] = [
   },
   {
     id: "matter_seed_003",
+    boardId: "probate",
     decedentName: "Lucille Carver",
     clientName: "Daniel Carver",
     fileNumber: "PR-2026-0021",
@@ -40,6 +43,7 @@ export const demoMatters: Matter[] = [
   },
   {
     id: "matter_seed_004",
+    boardId: "probate",
     decedentName: "John Doe",
     clientName: "Jane Doe",
     fileNumber: "26 E 000321-950",
@@ -51,6 +55,7 @@ export const demoMatters: Matter[] = [
   },
   {
     id: "matter_seed_005",
+    boardId: "probate",
     decedentName: "Florence Avery",
     clientName: "Jon Avery",
     fileNumber: "PR-2025-0119",
@@ -62,6 +67,7 @@ export const demoMatters: Matter[] = [
   },
   {
     id: "matter_seed_006",
+    boardId: "probate",
     decedentName: "Margaret Sloan",
     clientName: "Thomas Sloan",
     fileNumber: "PR-2025-0084",
@@ -141,6 +147,15 @@ export const demoBoardSettings: BoardSettings = {
   stageLabels: { ...DEFAULT_STAGE_LABELS }
 };
 
+export const demoBoards: PracticeBoard[] = [
+  {
+    id: "probate",
+    name: "Probate",
+    columnCount: 5,
+    stageLabels: { ...DEFAULT_STAGE_LABELS }
+  }
+];
+
 export const demoTasks: MatterTask[] = [
   {
     id: "task_seed_001",
@@ -165,6 +180,7 @@ export const demoTasks: MatterTask[] = [
 ];
 
 export function createDemoMatter(input: {
+  boardId: string;
   decedentName: string;
   clientName: string;
   fileNumber: string;
@@ -172,6 +188,7 @@ export function createDemoMatter(input: {
 }): Matter {
   return {
     id: crypto.randomUUID(),
+    boardId: input.boardId,
     decedentName: input.decedentName,
     clientName: input.clientName,
     fileNumber: input.fileNumber,

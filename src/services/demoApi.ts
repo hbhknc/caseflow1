@@ -1,5 +1,6 @@
 import {
   createDemoMatter,
+  demoBoards,
   demoBoardSettings,
   demoMatters,
   demoNotes,
@@ -12,28 +13,122 @@ import type {
   MatterFormInput,
   MatterNote,
   MatterStage,
-  MatterTask
+  MatterTask,
+  PracticeBoard
 } from "@/types/matter";
 import { DEFAULT_STAGE_LABELS, STAGES } from "@/utils/stages";
 
 const matterStore = [...demoMatters];
 const noteStore = structuredClone(demoNotes);
 const taskStore = [...demoTasks];
-const boardSettingsStore: BoardSettings = structuredClone(demoBoardSettings);
+const boardStore: PracticeBoard[] = structuredClone(demoBoards);
 
 export function shouldUseDemoFallback() {
   return (import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? "true") === "true";
 }
 
-export async function listDemoMatters(): Promise<Matter[]> {
-  return [...matterStore].sort((left, right) =>
-    right.lastActivityAt.localeCompare(left.lastActivityAt)
-  );
+function getBoardById(boardId: string) {
+  return boardStore.find((board) => board.id === boardId);
 }
 
-export async function listDemoArchivedMatters(): Promise<Matter[]> {
+function buildBoardId(name: string) {
+  const baseId =
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "board";
+  let candidate = baseId;
+  let suffix = 2;
+
+  while (boardStore.some((board) => board.id === candidate)) {
+    candidate = `${baseId}_${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
+export async function listDemoBoards(): Promise<PracticeBoard[]> {
+  return structuredClone(boardStore);
+}
+
+export async function createDemoBoard(name: string): Promise<PracticeBoard> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("Board name is required.");
+  }
+
+  const board: PracticeBoard = {
+    id: buildBoardId(trimmed),
+    name: trimmed,
+    columnCount: demoBoardSettings.columnCount,
+    stageLabels: { ...demoBoardSettings.stageLabels }
+  };
+
+  boardStore.push(board);
+  return structuredClone(board);
+}
+
+export async function updateDemoBoard(
+  boardId: string,
+  input: Partial<PracticeBoard>
+): Promise<PracticeBoard> {
+  const board = getBoardById(boardId);
+
+  if (!board) {
+    throw new Error("Board not found.");
+  }
+
+  board.name = input.name?.trim() || board.name;
+  board.columnCount = Math.min(
+    STAGES.length,
+    Math.max(1, Math.round(Number(input.columnCount ?? board.columnCount)))
+  );
+  board.stageLabels = {
+    intake: input.stageLabels?.intake?.trim() || board.stageLabels.intake,
+    qualified_opened:
+      input.stageLabels?.qualified_opened?.trim() || board.stageLabels.qualified_opened,
+    notice_admin: input.stageLabels?.notice_admin?.trim() || board.stageLabels.notice_admin,
+    inventory_collection:
+      input.stageLabels?.inventory_collection?.trim() ||
+      board.stageLabels.inventory_collection,
+    accounting_closing:
+      input.stageLabels?.accounting_closing?.trim() || board.stageLabels.accounting_closing
+  };
+
+  return structuredClone(board);
+}
+
+export async function deleteDemoBoard(boardId: string): Promise<PracticeBoard[]> {
+  if (boardStore.length === 1) {
+    throw new Error("At least one board is required.");
+  }
+
+  if (matterStore.some((matter) => matter.boardId === boardId)) {
+    throw new Error("Move or archive matters off this board before deleting it.");
+  }
+
+  const index = boardStore.findIndex((board) => board.id === boardId);
+  if (index < 0) {
+    throw new Error("Board not found.");
+  }
+
+  boardStore.splice(index, 1);
+  return structuredClone(boardStore);
+}
+
+export async function listDemoMatters(boardId: string): Promise<Matter[]> {
   return [...matterStore]
-    .filter((matter) => matter.archived)
+    .filter((matter) => matter.boardId === boardId && !matter.archived)
+    .sort((left, right) =>
+    right.lastActivityAt.localeCompare(left.lastActivityAt)
+    );
+}
+
+export async function listDemoArchivedMatters(boardId: string): Promise<Matter[]> {
+  return [...matterStore]
+    .filter((matter) => matter.boardId === boardId && matter.archived)
     .sort((left, right) => (right.archivedAt ?? "").localeCompare(left.archivedAt ?? ""));
 }
 
@@ -57,6 +152,7 @@ export async function updateDemoMatterRecord(
   matter.decedentName = input.decedentName;
   matter.clientName = input.clientName;
   matter.fileNumber = input.fileNumber;
+  matter.boardId = input.boardId;
   matter.stage = input.stage;
   matter.lastActivityAt = new Date().toISOString();
 
@@ -158,9 +254,10 @@ export async function addDemoNote(
   return note;
 }
 
-export async function listDemoTasks(): Promise<MatterTask[]> {
+export async function listDemoTasks(boardId: string): Promise<MatterTask[]> {
   return [...taskStore]
     .filter((task) => !task.completedAt)
+    .filter((task) => matterStore.find((matter) => matter.id === task.matterId)?.boardId === boardId)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
@@ -174,8 +271,9 @@ function calculateAveragePerYear(timestamps: string[]) {
   return Number((timestamps.length / span).toFixed(1));
 }
 
-export async function getDemoMatterStats(): Promise<MatterStats> {
-  const archivedMatters = matterStore.filter(
+export async function getDemoMatterStats(boardId: string): Promise<MatterStats> {
+  const boardMatters = matterStore.filter((matter) => matter.boardId === boardId);
+  const archivedMatters = boardMatters.filter(
     (matter) => matter.archived && matter.archivedAt
   );
 
@@ -191,10 +289,10 @@ export async function getDemoMatterStats(): Promise<MatterStats> {
         );
 
   return {
-    totalCasesOpened: matterStore.length,
+    totalCasesOpened: boardMatters.length,
     totalCasesArchived: archivedMatters.length,
     averageCasesOpenedPerYear: calculateAveragePerYear(
-      matterStore.map((matter) => matter.createdAt)
+      boardMatters.map((matter) => matter.createdAt)
     ),
     averageCasesArchivedPerYear: calculateAveragePerYear(
       archivedMatters.map((matter) => matter.archivedAt ?? matter.createdAt)
@@ -211,22 +309,13 @@ export async function getDemoStatus(): Promise<AppStatus> {
 }
 
 export async function getDemoBoardSettings(): Promise<BoardSettings> {
-  return structuredClone(boardSettingsStore);
+  return structuredClone(demoBoardSettings);
 }
 
 export async function updateDemoBoardSettings(
   input: Partial<BoardSettings>
 ): Promise<BoardSettings> {
-  const columnCount = Math.min(
-    STAGES.length,
-    Math.max(1, Math.round(Number(input.columnCount ?? boardSettingsStore.columnCount)))
-  );
-
-  boardSettingsStore.columnCount = Number.isFinite(columnCount)
-    ? columnCount
-    : boardSettingsStore.columnCount;
-
-  boardSettingsStore.stageLabels = {
+  const stageLabels = {
     intake: input.stageLabels?.intake?.trim() || DEFAULT_STAGE_LABELS.intake,
     qualified_opened:
       input.stageLabels?.qualified_opened?.trim() || DEFAULT_STAGE_LABELS.qualified_opened,
@@ -239,5 +328,11 @@ export async function updateDemoBoardSettings(
       DEFAULT_STAGE_LABELS.accounting_closing
   };
 
-  return structuredClone(boardSettingsStore);
+  return {
+    columnCount: Math.min(
+      STAGES.length,
+      Math.max(1, Math.round(Number(input.columnCount ?? demoBoardSettings.columnCount)))
+    ),
+    stageLabels
+  };
 }

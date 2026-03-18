@@ -11,6 +11,7 @@ type MatterDrawerProps = {
   matter: Matter | null;
   notes: MatterNote[];
   isCreateMode: boolean;
+  defaultBoardId?: string;
   stageLabels?: Partial<Record<MatterStage, string>>;
   onClose: () => void;
   onCreateMatter: (input: MatterFormInput) => Promise<void>;
@@ -20,9 +21,10 @@ type MatterDrawerProps = {
   onAddNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
 };
 
-function buildInitialState(matter: Matter | null): MatterFormInput {
+function buildInitialState(matter: Matter | null, defaultBoardId: string): MatterFormInput {
   if (!matter) {
     return {
+      boardId: defaultBoardId,
       decedentName: "",
       clientName: "",
       fileNumber: "",
@@ -31,6 +33,7 @@ function buildInitialState(matter: Matter | null): MatterFormInput {
   }
 
   return {
+    boardId: matter.boardId,
     decedentName: matter.decedentName,
     clientName: matter.clientName,
     fileNumber: matter.fileNumber,
@@ -42,6 +45,7 @@ export function MatterDrawer({
   matter,
   notes,
   isCreateMode,
+  defaultBoardId = "probate",
   stageLabels,
   onClose,
   onCreateMatter,
@@ -50,17 +54,19 @@ export function MatterDrawer({
   onArchiveMatter,
   onAddNote
 }: MatterDrawerProps) {
-  const [draft, setDraft] = useState<MatterFormInput>(buildInitialState(matter));
+  const [draft, setDraft] = useState<MatterFormInput>(
+    buildInitialState(matter, defaultBoardId)
+  );
   const [noteBody, setNoteBody] = useState("");
   const [addNoteToTaskList, setAddNoteToTaskList] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const resolvedStageLabels = createStageLabelMap(stageLabels);
 
   useEffect(() => {
-    setDraft(buildInitialState(matter));
+    setDraft(buildInitialState(matter, defaultBoardId));
     setNoteBody("");
     setAddNoteToTaskList(false);
-  }, [matter, isCreateMode]);
+  }, [matter, isCreateMode, defaultBoardId]);
 
   useEffect(() => {
     closeButtonRef.current?.focus();

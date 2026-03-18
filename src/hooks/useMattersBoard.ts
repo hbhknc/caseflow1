@@ -60,7 +60,7 @@ type UseMattersBoardResult = {
   unarchiveMatter: (matterId: string) => Promise<void>;
 };
 
-export function useMattersBoard(): UseMattersBoardResult {
+export function useMattersBoard(boardId: string): UseMattersBoardResult {
   const [matters, setMatters] = useState<Matter[]>([]);
   const [selectedMatterId, setSelectedMatterId] = useState<string | null>(null);
   const [selectedMatterNotes, setSelectedMatterNotes] = useState<MatterNote[]>([]);
@@ -79,7 +79,7 @@ export function useMattersBoard(): UseMattersBoardResult {
 
   useEffect(() => {
     void hydrateBoard();
-  }, []);
+  }, [boardId]);
 
   useEffect(() => {
     if (!selectedMatterId) {
@@ -138,7 +138,10 @@ export function useMattersBoard(): UseMattersBoardResult {
   async function hydrateBoard() {
     try {
       setIsLoading(true);
-      const [items, archivedItems] = await Promise.all([listMatters(), listArchivedMatters()]);
+      const [items, archivedItems] = await Promise.all([
+        listMatters(boardId),
+        listArchivedMatters(boardId)
+      ]);
       const activeMatters = items.filter((matter) => !matter.archived);
       setMatters(activeMatters);
       setArchivedMatters(archivedItems);
@@ -168,7 +171,7 @@ export function useMattersBoard(): UseMattersBoardResult {
 
   async function hydrateTasks() {
     try {
-      const items = await listTasks();
+      const items = await listTasks(boardId);
       setTasks(items);
     } catch (caughtError) {
       setError(
@@ -179,7 +182,7 @@ export function useMattersBoard(): UseMattersBoardResult {
 
   async function hydrateArchive() {
     try {
-      const items = await listArchivedMatters();
+      const items = await listArchivedMatters(boardId);
       setArchivedMatters(items);
       setArchiveError(null);
     } catch (caughtError) {
@@ -191,7 +194,7 @@ export function useMattersBoard(): UseMattersBoardResult {
 
   async function hydrateStats() {
     try {
-      const items = await getMatterStats();
+      const items = await getMatterStats(boardId);
       setStats(items);
       setStatsError(null);
     } catch (caughtError) {

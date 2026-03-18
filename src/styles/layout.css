@@ -475,6 +475,11 @@
   border: 1px solid var(--border-subtle);
 }
 
+.task-card--active {
+  border-color: rgba(61, 149, 255, 0.22);
+  box-shadow: 0 0 0 1px rgba(61, 149, 255, 0.08);
+}
+
 .task-card__header {
   display: flex;
   align-items: start;
@@ -571,6 +576,15 @@
 
 .settings-stage-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.boards-modal__create-row {
+  align-items: end;
+}
+
+.boards-modal__input {
+  min-width: 0;
+  flex: 1 1 16rem;
 }
 
 @media (max-width: 1400px) {
