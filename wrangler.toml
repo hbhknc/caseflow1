@@ -12,6 +12,5 @@ SESSION_SECRET = "whoelectedyouleaderofthisoutfit"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "caseflow"
-database_id = "replace-with-production-d1-database-id"
-preview_database_id = "replace-with-preview-d1-database-id"
+database_name = "caseflow-prod"
+database_id = "259331b8-6e54-4cb5-af0b-e62d1eefb72d"
