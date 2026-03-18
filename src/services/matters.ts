@@ -165,6 +165,19 @@ export async function listTasks(boardId: string): Promise<MatterTask[]> {
   return response.tasks;
 }
 
+export async function completeTask(taskId: string): Promise<void> {
+  await requestJsonWithFallback<{ success: boolean }>(
+    "/tasks",
+    {
+      method: "POST",
+      body: { taskId }
+    },
+    async () => {
+      throw new Error("Task completion requires the authenticated API.");
+    }
+  );
+}
+
 export async function importMatters(
   boardId: string,
   rows: MatterImportRowInput[]

@@ -1263,6 +1263,50 @@ export async function listTasks(db: D1Database, accountId: string, boardId: stri
   }));
 }
 
+export async function completeTask(
+  db: D1Database,
+  accountId: string,
+  taskId: string
+) {
+  const task = await db
+    .prepare(
+      `SELECT task_items.id, task_items.matter_id
+       FROM task_items
+       INNER JOIN matters ON matters.id = task_items.matter_id
+       INNER JOIN practice_boards ON practice_boards.id = matters.board_id
+       WHERE task_items.id = ?1
+         AND task_items.completed_at IS NULL
+         AND practice_boards.account_id = ?2`
+    )
+    .bind(taskId, accountId)
+    .first<{ id: string; matter_id: string }>();
+
+  if (!task) {
+    return false;
+  }
+
+  const completedAt = nowIso();
+
+  await db
+    .prepare(
+      `UPDATE task_items
+       SET completed_at = ?2
+       WHERE id = ?1`
+    )
+    .bind(taskId, completedAt)
+    .run();
+
+  await insertAuditEvent(
+    db,
+    "task.completed",
+    "task_item",
+    taskId,
+    JSON.stringify({ matterId: task.matter_id, completedAt })
+  );
+
+  return true;
+}
+
 export async function createNote(
   db: D1Database,
   accountId: string,

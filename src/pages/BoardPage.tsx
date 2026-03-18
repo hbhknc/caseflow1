@@ -395,6 +395,7 @@ export function BoardPage() {
             board.closeTaskList();
             restoreFocusOrigin();
           }}
+          onCompleteTask={board.completeTask}
           onOpenMatter={(matterId) => {
             board.closeTaskList();
             board.selectMatter(matterId);

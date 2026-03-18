@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   archiveMatter,
+  completeTask as completeTaskApi,
   createMatter,
   deleteMatter,
   importMatters as importMattersApi,
@@ -60,6 +61,7 @@ type UseMattersBoardResult = {
   archiveMatter: (matterId: string) => Promise<void>;
   unarchiveMatter: (matterId: string) => Promise<void>;
   importMatters: (rows: MatterImportRowInput[]) => Promise<MatterImportSummary>;
+  completeTask: (taskId: string) => Promise<void>;
 };
 
 export function useMattersBoard(boardId: string): UseMattersBoardResult {
@@ -284,6 +286,11 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     return summary;
   }
 
+  async function handleCompleteTask(taskId: string) {
+    await completeTaskApi(taskId);
+    await hydrateTasks();
+  }
+
   return {
     matters,
     filteredMatters,
@@ -335,6 +342,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     deleteMatter: handleDeleteMatter,
     archiveMatter: handleArchiveMatter,
     unarchiveMatter: handleUnarchiveMatter,
-    importMatters: handleImportMatters
+    importMatters: handleImportMatters,
+    completeTask: handleCompleteTask
   };
 }

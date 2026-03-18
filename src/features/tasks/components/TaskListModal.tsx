@@ -8,9 +8,15 @@ type TaskListModalProps = {
   tasks: MatterTask[];
   onClose: () => void;
   onOpenMatter: (matterId: string) => void;
+  onCompleteTask: (taskId: string) => Promise<void>;
 };
 
-export function TaskListModal({ tasks, onClose, onOpenMatter }: TaskListModalProps) {
+export function TaskListModal({
+  tasks,
+  onClose,
+  onOpenMatter,
+  onCompleteTask
+}: TaskListModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -77,7 +83,16 @@ export function TaskListModal({ tasks, onClose, onOpenMatter }: TaskListModalPro
                     </button>
                   </div>
                   <p className="task-card__body">{task.body}</p>
-                  <p className="task-card__meta">Added {formatDateTime(task.createdAt)}</p>
+                  <div className="task-card__actions task-card__actions--inline">
+                    <p className="task-card__meta">Added {formatDateTime(task.createdAt)}</p>
+                    <button
+                      type="button"
+                      className="button button--ghost button--small"
+                      onClick={() => void onCompleteTask(task.id)}
+                    >
+                      Complete Task
+                    </button>
+                  </div>
                 </li>
               ))}
             </ol>
