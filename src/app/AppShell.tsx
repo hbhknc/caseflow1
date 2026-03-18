@@ -1,12 +1,23 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
+import { useAuth } from "@/app/AuthContext";
 import { AppChromeContext } from "@/app/AppChrome";
+import { LoginScreen } from "@/features/auth/components/LoginScreen";
 
 export function AppShell() {
+  const auth = useAuth();
   const [headerToolbar, setHeaderToolbar] = useState<ReactNode>(null);
   const [sidebarContent, setSidebarContent] = useState<ReactNode>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  if (auth.isLoading) {
+    return <div className="login-shell login-shell--loading">Loading session...</div>;
+  }
+
+  if (!auth.isAuthenticated) {
+    return <LoginScreen />;
+  }
 
   return (
     <AppChromeContext.Provider
@@ -48,6 +59,23 @@ export function AppShell() {
               </span>
             </button>
             {sidebarContent}
+          </div>
+          <div className="app-sidebar__footer">
+            <div className="app-sidebar__user">{auth.currentUser?.username}</div>
+            <button type="button" className="sidebar-menu__item" onClick={() => void auth.logout()}>
+              <span className="sidebar-menu__icon" aria-hidden="true">
+                <svg viewBox="0 0 18 18" fill="none">
+                  <path
+                    d="M7 4h-2.5A1.5 1.5 0 0 0 3 5.5v7A1.5 1.5 0 0 0 4.5 14H7M10 12.5 13.5 9 10 5.5M13.5 9H6.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <span>Logout</span>
+            </button>
           </div>
         </aside>
         <main className="app-main">

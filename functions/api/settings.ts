@@ -1,9 +1,15 @@
+import { requireAuth } from "../_lib/auth";
 import { badRequest, json, parseJson, serverError } from "../_lib/http";
 import { getAppStatus, getBoardSettings, updateBoardSettings } from "../_lib/matterRepository";
 import type { Env, MatterStage } from "../_lib/types";
 
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   try {
+    const auth = await requireAuth(request, env);
+    if ("response" in auth) {
+      return auth.response;
+    }
+
     const [status, boardSettings] = await Promise.all([
       getAppStatus(env),
       getBoardSettings(env.DB)
@@ -17,6 +23,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
 export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
   try {
+    const auth = await requireAuth(request, env);
+    if ("response" in auth) {
+      return auth.response;
+    }
+
     const payload = await parseJson<{
       boardSettings?: {
         columnCount?: number;

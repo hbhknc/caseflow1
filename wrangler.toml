@@ -6,10 +6,12 @@ pages_build_output_dir = "./dist"
 
 [vars]
 APP_NAME = "CaseFlow"
+AUTH_USERNAME = "hbhklaw"
+AUTH_PASSWORD = "barnes"
+SESSION_SECRET = "replace-with-a-long-random-secret"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "caseflow"
 database_id = "replace-with-production-d1-database-id"
 preview_database_id = "replace-with-preview-d1-database-id"
-

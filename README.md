@@ -124,15 +124,18 @@ This is the fastest way to start working on the UI:
 npm run dev
 ```
 
-The Vite dev server runs at `http://127.0.0.1:5173`. In development, the app can fall back to bundled sample data if the `/api` routes are not active yet. That keeps the starter immediately usable while still keeping the real architecture server-backed for deployment.
+The Vite dev server runs at `http://127.0.0.1:5173`.
+
+This repository now expects the Pages Functions API to handle authentication and data access. The frontend no longer falls back to bundled matter data for protected routes.
 
 ### Local Pages Functions + D1 workflow
 
 1. Create a local or remote D1 database named `caseflow`.
 2. Update the placeholder `database_id` values in `wrangler.toml`.
-3. Apply the schema migration.
-4. Seed the starter data.
-5. Build the frontend and run Pages locally.
+3. Set `AUTH_USERNAME`, `AUTH_PASSWORD`, and a strong `SESSION_SECRET` in `wrangler.toml` or local secrets.
+4. Apply the schema migrations.
+5. Seed the starter data.
+6. Build the frontend and run Pages locally.
 
 ```bash
 npm run db:migrate:local
@@ -147,6 +150,9 @@ Note: this repository does not pin `wrangler` inside `package.json` because curr
 
 ## API Endpoints
 
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/session`
 - `GET /api/matters`
 - `POST /api/matters`
 - `PUT /api/matters/:id`
@@ -161,8 +167,10 @@ Note: this repository does not pin `wrangler` inside `package.json` because curr
 
 - `migrations/0001_init.sql` creates the initial schema.
 - `migrations/0002_seed.sql` adds a realistic starter dataset.
+- `migrations/0006_add_accounts_and_practice_boards.sql` provisions the seeded account and owned boards.
 - Archived matters are excluded from the main board by default.
 - Stage history and audit events are captured now so later workflow reporting has a clean foundation.
+- Boards, matters, notes, tasks, archive data, and stats are now scoped to the authenticated account.
 
 ## Cloudflare Pages Deployment
 
@@ -177,16 +185,26 @@ Also configure:
 - Functions directory: `functions`
 - D1 binding name: `DB`
 - Environment variable: `APP_NAME=CaseFlow`
+- Environment variable: `AUTH_USERNAME=hbhklaw`
+- Environment variable: `AUTH_PASSWORD=barnes`
+- Environment variable: `SESSION_SECRET=<strong random secret>`
 
 For production and preview environments, bind the correct D1 database IDs in Cloudflare and keep `wrangler.toml` aligned with the project.
 
 ## Private Access Roadmap
 
-This repository intentionally does not implement authentication inside the app yet. The intended direction is:
+This repository now includes a temporary app-level login gate for internal use, but the intended long-term direction is still:
 
 - Cloudflare Access in front of the app
 - Microsoft Entra as the identity provider
 - App-level role handling added later only if business rules require it
+
+The current temporary login defaults to:
+
+- Username: `hbhklaw`
+- Password: `barnes`
+
+For deployment, move those values into environment configuration and replace the session secret with a strong unique value.
 
 That keeps the first release focused on workflow while leaving a clean path for firm-only access controls.
 

@@ -381,6 +381,12 @@
   color: #f5f6f8;
 }
 
+.login-card .field input {
+  background: #1d2025;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f5f6f8;
+}
+
 .search-field input {
   padding-left: 2.5rem;
   min-height: 36px;
@@ -448,6 +454,7 @@
 }
 
 .drawer .field span,
+.login-card .field span,
 .drawer .checkbox-field,
 .drawer .checkbox-field__copy small,
 .drawer .field-hint,

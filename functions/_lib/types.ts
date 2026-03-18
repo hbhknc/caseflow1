@@ -1,6 +1,22 @@
 export type Env = {
   DB: D1Database;
   APP_NAME?: string;
+  AUTH_USERNAME?: string;
+  AUTH_PASSWORD?: string;
+  SESSION_SECRET?: string;
+};
+
+export type AuthSession = {
+  accountId: string;
+  username: string;
+  expiresAt: number;
+};
+
+export type AccountRecord = {
+  id: string;
+  username: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type MatterStage =
@@ -35,6 +51,16 @@ export type MatterNoteRecord = {
 export type AppSettingRecord = {
   key: string;
   value: string;
+  updated_at: string;
+};
+
+export type PracticeBoardRecord = {
+  id: string;
+  account_id: string;
+  name: string;
+  column_count: number;
+  stage_labels_json: string;
+  created_at: string;
   updated_at: string;
 };
 

@@ -7,6 +7,15 @@ export type AppStatus = {
   authMode: string;
 };
 
+export type AuthUser = {
+  username: string;
+};
+
+export type AuthSession = {
+  authenticated: boolean;
+  user: AuthUser | null;
+};
+
 export type BoardSettings = {
   columnCount: number;
   stageLabels: Record<MatterStage, string>;

@@ -6,6 +6,7 @@ type RequestOptions = {
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+const PROTECTED_PREFIXES = ["/boards", "/matters", "/notes", "/tasks", "/stats", "/settings"];
 
 export class ApiError extends Error {
   status: number;
@@ -22,6 +23,7 @@ export async function requestJson<T>(
 ): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: options.method ?? "GET",
+    credentials: "include",
     headers: {
       "Content-Type": "application/json"
     },
@@ -30,6 +32,9 @@ export async function requestJson<T>(
 
   if (!response.ok) {
     const message = await response.text();
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("caseflow:unauthorized"));
+    }
     throw new ApiError(message || "Request failed.", response.status);
   }
 
@@ -41,6 +46,10 @@ export async function requestJsonWithFallback<T>(
   options: RequestOptions,
   fallback: () => Promise<T>
 ): Promise<T> {
+  if (PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+    return requestJson<T>(path, options);
+  }
+
   try {
     return await requestJson<T>(path, options);
   } catch (error) {
@@ -51,4 +60,3 @@ export async function requestJsonWithFallback<T>(
     return fallback();
   }
 }
-
