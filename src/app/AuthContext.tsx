@@ -55,8 +55,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setCurrentUser(session.user);
       return Boolean(session.authenticated);
     } catch (caughtError) {
-      if (caughtError instanceof ApiError && caughtError.status === 401) {
-        setError("Invalid username or password.");
+      if (caughtError instanceof ApiError) {
+        setError(
+          caughtError.status === 401
+            ? "Invalid username or password."
+            : caughtError.message || "Unable to sign in right now."
+        );
       } else {
         setError("Unable to sign in right now.");
       }

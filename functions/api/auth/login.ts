@@ -5,6 +5,10 @@ import type { Env } from "../../_lib/types";
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
+    if (!env.DB) {
+      return serverError("Database binding is not configured.");
+    }
+
     const payload = (await request.json()) as { username?: string; password?: string };
     const username = payload.username?.trim() ?? "";
     const password = payload.password ?? "";
@@ -43,6 +47,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     );
   } catch (error) {
     console.error(error);
-    return serverError("Unable to log in.");
+    return serverError(
+      error instanceof Error ? error.message || "Unable to log in." : "Unable to log in."
+    );
   }
 };

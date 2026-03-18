@@ -247,7 +247,178 @@ async function upsertAppSetting(db: D1Database, key: string, value: string, upda
     .run();
 }
 
+async function tableHasColumn(db: D1Database, tableName: string, columnName: string) {
+  const { results } = await db
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all<{ name: string }>();
+
+  return results.some((column) => column.name === columnName);
+}
+
+async function ensureBaseSchema(db: D1Database) {
+  await db.prepare("PRAGMA foreign_keys = ON").run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS matters (
+        id TEXT PRIMARY KEY,
+        board_id TEXT NOT NULL DEFAULT 'probate',
+        decedent_name TEXT NOT NULL,
+        client_name TEXT NOT NULL,
+        file_number TEXT NOT NULL UNIQUE,
+        stage TEXT NOT NULL CHECK (
+          stage IN (
+            'intake',
+            'qualified_opened',
+            'notice_admin',
+            'inventory_collection',
+            'accounting_closing'
+          )
+        ),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_activity_at TEXT NOT NULL,
+        archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1)),
+        archived_at TEXT
+      )`
+    )
+    .run();
+
+  if (!(await tableHasColumn(db, "matters", "board_id"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matters
+         ADD COLUMN board_id TEXT NOT NULL DEFAULT 'probate'`
+      )
+      .run();
+  }
+
+  await db
+    .prepare(
+      `UPDATE matters
+       SET board_id = 'probate'
+       WHERE board_id IS NULL OR board_id = ''`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS matter_notes (
+        id TEXT PRIMARY KEY,
+        matter_id TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        created_by TEXT,
+        FOREIGN KEY (matter_id) REFERENCES matters(id) ON DELETE CASCADE
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS task_items (
+        id TEXT PRIMARY KEY,
+        matter_id TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        completed_at TEXT,
+        source_note_id TEXT,
+        FOREIGN KEY (matter_id) REFERENCES matters(id) ON DELETE CASCADE,
+        FOREIGN KEY (source_note_id) REFERENCES matter_notes(id) ON DELETE SET NULL
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS matter_stage_history (
+        id TEXT PRIMARY KEY,
+        matter_id TEXT NOT NULL,
+        from_stage TEXT,
+        to_stage TEXT NOT NULL,
+        changed_at TEXT NOT NULL,
+        changed_by TEXT,
+        FOREIGN KEY (matter_id) REFERENCES matters(id) ON DELETE CASCADE
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS audit_events (
+        id TEXT PRIMARY KEY,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        details_json TEXT,
+        created_at TEXT NOT NULL
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_matters_stage_archived
+       ON matters(stage, archived, last_activity_at DESC)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_matters_last_activity
+       ON matters(last_activity_at DESC)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_matters_board_stage_archived
+       ON matters(board_id, stage, archived, last_activity_at DESC)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_matter_notes_matter_created
+       ON matter_notes(matter_id, created_at DESC)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_task_items_created
+       ON task_items(created_at DESC, completed_at)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_matter_stage_history_matter_changed
+       ON matter_stage_history(matter_id, changed_at DESC)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_audit_events_entity
+       ON audit_events(entity_type, entity_id, created_at DESC)`
+    )
+    .run();
+}
+
 async function ensureAccountScopeSchema(db: D1Database) {
+  await ensureBaseSchema(db);
+
   await db
     .prepare(
       `CREATE TABLE IF NOT EXISTS accounts (
@@ -334,6 +505,7 @@ async function ensureDefaultAccountData(db: D1Database) {
 }
 
 export async function getBoardSettings(db: D1Database): Promise<BoardSettings> {
+  await ensureBaseSchema(db);
   const stageKeys = STAGES.map((stage) => `board.stage_label.${stage}`);
   const settings = await getAppSettingMap(db, ["board.column_count", ...stageKeys]);
   const stageLabels = normalizeStageLabels({

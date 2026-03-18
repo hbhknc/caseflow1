@@ -17,6 +17,21 @@ export class ApiError extends Error {
   }
 }
 
+async function readErrorMessage(response: Response) {
+  const text = await response.text();
+
+  if (!text) {
+    return "Request failed.";
+  }
+
+  try {
+    const parsed = JSON.parse(text) as { error?: string; message?: string };
+    return parsed.error || parsed.message || text;
+  } catch {
+    return text;
+  }
+}
+
 export async function requestJson<T>(
   path: string,
   options: RequestOptions = {}
@@ -31,7 +46,7 @@ export async function requestJson<T>(
   });
 
   if (!response.ok) {
-    const message = await response.text();
+    const message = await readErrorMessage(response);
     if (response.status === 401 && typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("caseflow:unauthorized"));
     }
