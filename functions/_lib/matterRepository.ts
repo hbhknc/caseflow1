@@ -247,6 +247,48 @@ async function upsertAppSetting(db: D1Database, key: string, value: string, upda
     .run();
 }
 
+async function ensureAccountScopeSchema(db: D1Database) {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS accounts (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS practice_boards (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        column_count INTEGER NOT NULL,
+        stage_labels_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_accounts_username
+       ON accounts(username)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_practice_boards_account_name
+       ON practice_boards(account_id, name)`
+    )
+    .run();
+}
+
 async function getAppSettingMap(db: D1Database, keys: string[]) {
   const placeholders = keys.map((_, index) => `?${index + 1}`).join(", ");
   const { results } = await db
@@ -259,6 +301,36 @@ async function getAppSettingMap(db: D1Database, keys: string[]) {
     .all<AppSettingRecord>();
 
   return new Map(results.map((row) => [row.key, row.value]));
+}
+
+async function ensureDefaultAccountData(db: D1Database) {
+  await ensureAccountScopeSchema(db);
+
+  const timestamp = nowIso();
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO accounts (id, username, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?3)`
+    )
+    .bind("account_hbhklaw", "hbhklaw", timestamp)
+    .run();
+
+  const defaultBoardSettings = await getBoardSettings(db);
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO practice_boards (
+        id, account_id, name, column_count, stage_labels_json, created_at, updated_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)`
+    )
+    .bind(
+      "probate",
+      "account_hbhklaw",
+      "Probate",
+      defaultBoardSettings.columnCount,
+      JSON.stringify(defaultBoardSettings.stageLabels),
+      timestamp
+    )
+    .run();
 }
 
 export async function getBoardSettings(db: D1Database): Promise<BoardSettings> {
@@ -279,6 +351,7 @@ export async function getBoardSettings(db: D1Database): Promise<BoardSettings> {
 }
 
 export async function getAccountByUsername(db: D1Database, username: string) {
+  await ensureDefaultAccountData(db);
   return await db
     .prepare(
       `SELECT id, username, created_at, updated_at
@@ -290,6 +363,7 @@ export async function getAccountByUsername(db: D1Database, username: string) {
 }
 
 export async function listBoards(db: D1Database, accountId: string): Promise<PracticeBoard[]> {
+  await ensureDefaultAccountData(db);
   const { results } = await db
     .prepare(
       `SELECT *
@@ -308,6 +382,7 @@ export async function createBoard(
   accountId: string,
   name: string
 ): Promise<PracticeBoard> {
+  await ensureDefaultAccountData(db);
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error("Board name is required.");
@@ -351,6 +426,7 @@ export async function updateBoard(
     stageLabels?: Partial<Record<MatterStage, string>>;
   }
 ): Promise<PracticeBoard | null> {
+  await ensureDefaultAccountData(db);
   const existing = await getPracticeBoardRecord(db, boardId, accountId);
 
   if (!existing) {

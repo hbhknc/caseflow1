@@ -4,6 +4,17 @@ import type { AuthSession, Env } from "./types";
 const SESSION_COOKIE_NAME = "caseflow_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const encoder = new TextEncoder();
+const DEFAULT_AUTH_USERNAME = "hbhklaw";
+const DEFAULT_AUTH_PASSWORD = "barnes";
+const DEFAULT_SESSION_SECRET = "caseflow-temporary-session-secret-change-me";
+
+function getAuthConfig(env: Env) {
+  return {
+    username: env.AUTH_USERNAME || DEFAULT_AUTH_USERNAME,
+    password: env.AUTH_PASSWORD || DEFAULT_AUTH_PASSWORD,
+    sessionSecret: env.SESSION_SECRET || DEFAULT_SESSION_SECRET
+  };
+}
 
 function toBase64Url(input: ArrayBuffer | string) {
   const bytes =
@@ -69,19 +80,13 @@ function getCookieAttributes(request: Request) {
     .join("; ");
 }
 
-function ensureAuthEnv(env: Env) {
-  if (!env.AUTH_USERNAME || !env.AUTH_PASSWORD || !env.SESSION_SECRET) {
-    throw new Error("Auth environment variables are not configured.");
-  }
-}
-
 export async function verifyCredentials(
   env: Env,
   username: string,
   password: string
 ) {
-  ensureAuthEnv(env);
-  return username === env.AUTH_USERNAME && password === env.AUTH_PASSWORD;
+  const config = getAuthConfig(env);
+  return username === config.username && password === config.password;
 }
 
 export async function createSessionCookie(
@@ -89,7 +94,7 @@ export async function createSessionCookie(
   env: Env,
   session: Pick<AuthSession, "accountId" | "username">
 ) {
-  ensureAuthEnv(env);
+  const config = getAuthConfig(env);
   const payload = {
     accountId: session.accountId,
     username: session.username,
@@ -97,7 +102,7 @@ export async function createSessionCookie(
   };
   const payloadString = JSON.stringify(payload);
   const encodedPayload = toBase64Url(payloadString);
-  const signature = await signValue(encodedPayload, env.SESSION_SECRET as string);
+  const signature = await signValue(encodedPayload, config.sessionSecret);
 
   return `${SESSION_COOKIE_NAME}=${encodedPayload}.${signature}; Max-Age=${SESSION_MAX_AGE_SECONDS}; ${getCookieAttributes(
     request
@@ -112,7 +117,7 @@ export async function getSessionFromRequest(
   request: Request,
   env: Env
 ): Promise<AuthSession | null> {
-  ensureAuthEnv(env);
+  const config = getAuthConfig(env);
   const cookies = parseCookies(request.headers.get("Cookie"));
   const cookieValue = cookies.get(SESSION_COOKIE_NAME);
 
@@ -125,7 +130,7 @@ export async function getSessionFromRequest(
     return null;
   }
 
-  const expectedSignature = await signValue(encodedPayload, env.SESSION_SECRET as string);
+  const expectedSignature = await signValue(encodedPayload, config.sessionSecret);
   if (signature !== expectedSignature) {
     return null;
   }
