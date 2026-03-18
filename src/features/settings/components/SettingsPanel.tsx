@@ -1,22 +1,121 @@
+import { useEffect, useState } from "react";
 import { StatusPill } from "@/components/StatusPill";
-import type { AppStatus } from "@/types/api";
+import type { AppStatus, BoardSettings } from "@/types/api";
+import type { MatterStage } from "@/types/matter";
+import { STAGES, getStageLabel } from "@/utils/stages";
 
 type SettingsPanelProps = {
   status: AppStatus | null;
+  boardSettings: BoardSettings | null;
+  isSaving: boolean;
+  saveMessage: string | null;
+  onSave: (settings: BoardSettings) => Promise<void>;
 };
 
-export function SettingsPanel({ status }: SettingsPanelProps) {
+export function SettingsPanel({
+  status,
+  boardSettings,
+  isSaving,
+  saveMessage,
+  onSave
+}: SettingsPanelProps) {
+  const [draft, setDraft] = useState<BoardSettings | null>(boardSettings);
+
+  useEffect(() => {
+    setDraft(boardSettings);
+  }, [boardSettings]);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!draft) {
+      return;
+    }
+
+    await onSave(draft);
+  }
+
+  function handleLabelChange(stage: MatterStage, value: string) {
+    setDraft((current) =>
+      current
+        ? {
+            ...current,
+            stageLabels: {
+              ...current.stageLabels,
+              [stage]: value
+            }
+          }
+        : current
+    );
+  }
+
   return (
     <section className="settings-panel">
+      <form className="stack" onSubmit={handleSubmit}>
+        <div className="section-heading">
+          <h2>Board Settings</h2>
+          <p>Adjust the board layout and rename the visible stage columns.</p>
+        </div>
+
+        <div className="settings-section">
+          <div className="settings-form-grid">
+            <label className="field">
+              <span>Columns per row</span>
+              <select
+                value={draft?.columnCount ?? 5}
+                onChange={(event) =>
+                  setDraft((current) =>
+                    current
+                      ? {
+                          ...current,
+                          columnCount: Number(event.target.value)
+                        }
+                      : current
+                  )
+                }
+              >
+                {[1, 2, 3, 4, 5].map((count) => (
+                  <option key={count} value={count}>
+                    {count} {count === 1 ? "column" : "columns"}
+                  </option>
+                ))}
+              </select>
+              <small className="field-hint">
+                Controls how many stage columns appear in each board row.
+              </small>
+            </label>
+          </div>
+
+          <div className="settings-stage-grid">
+            {STAGES.map((stage) => (
+              <label key={stage} className="field">
+                <span>{getStageLabel(stage)}</span>
+                <input
+                  value={draft?.stageLabels[stage] ?? ""}
+                  onChange={(event) => handleLabelChange(stage, event.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="button-row">
+          <button type="submit" className="button" disabled={!draft || isSaving}>
+            {isSaving ? "Saving..." : "Save Settings"}
+          </button>
+          {saveMessage ? <StatusPill tone="success">{saveMessage}</StatusPill> : null}
+        </div>
+      </form>
+
       <div className="section-heading">
         <h2>Environment</h2>
-        <p>Starter operational notes for the internal deployment footprint.</p>
+        <p>Operational notes for the current deployment footprint.</p>
       </div>
 
       <div className="info-grid">
         <div>
           <span>Application</span>
-          <strong>{status?.appName ?? "CaseFlow"}</strong>
+          <strong>{status?.appName ?? "CaseFlow v1.0"}</strong>
         </div>
         <div>
           <span>API mode</span>
@@ -30,14 +129,6 @@ export function SettingsPanel({ status }: SettingsPanelProps) {
           <span>Primary data store</span>
           <strong>D1</strong>
         </div>
-      </div>
-
-      <div className="callout">
-        <StatusPill tone="success">Starter repository ready for private firm use</StatusPill>
-        <p>
-          This page is intentionally light for v1. It gives the next developer a safe place
-          to add app settings, Access claims mapping, or administrative controls later.
-        </p>
       </div>
     </section>
   );

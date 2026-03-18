@@ -1,5 +1,6 @@
-import type { AppStatus } from "@/types/api";
+import type { AppStatus, BoardSettings } from "@/types/api";
 import type { Matter, MatterNote, MatterStage, MatterTask } from "@/types/matter";
+import { DEFAULT_STAGE_LABELS } from "@/utils/stages";
 
 const now = "2026-03-17T09:00:00.000Z";
 
@@ -129,10 +130,15 @@ export const demoNotes: Record<string, MatterNote[]> = {
 };
 
 export const demoStatus: AppStatus = {
-  appName: "CaseFlow",
+  appName: "CaseFlow v1.0",
   runtime: "Demo fallback",
   timestamp: now,
   authMode: "Not configured"
+};
+
+export const demoBoardSettings: BoardSettings = {
+  columnCount: 5,
+  stageLabels: { ...DEFAULT_STAGE_LABELS }
 };
 
 export const demoTasks: MatterTask[] = [

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAppChrome } from "@/app/AppChrome";
@@ -9,15 +10,24 @@ import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
 import { StatsModal } from "@/features/stats/components/StatsModal";
 import { TaskListModal } from "@/features/tasks/components/TaskListModal";
 import { useMattersBoard } from "@/hooks/useMattersBoard";
-import { STAGES } from "@/utils/stages";
+import { getBoardSettings } from "@/services/settings";
+import type { BoardSettings } from "@/types/api";
 import type { Matter, MatterStage } from "@/types/matter";
+import { DEFAULT_STAGE_LABELS, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
+
+const DEFAULT_BOARD_SETTINGS: BoardSettings = {
+  columnCount: 5,
+  stageLabels: { ...DEFAULT_STAGE_LABELS }
+};
 
 export function BoardPage() {
   const board = useMattersBoard();
   const { setHeaderToolbar, setSidebarContent } = useAppChrome();
   const [draggingMatterId, setDraggingMatterId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<MatterStage | null>(null);
+  const [boardSettings, setBoardSettings] = useState<BoardSettings>(DEFAULT_BOARD_SETTINGS);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
+  const stageLabels = createStageLabelMap(boardSettings.stageLabels);
 
   function captureFocusOrigin() {
     const activeElement = document.activeElement;
@@ -56,6 +66,11 @@ export function BoardPage() {
 
     board.selectMatter(matterId);
   }
+
+  useEffect(() => {
+    void getBoardSettings().then(setBoardSettings).catch(() => setBoardSettings(DEFAULT_BOARD_SETTINGS));
+  }, []);
+
   const searchResults = [
     ...board.filteredMatters.slice(0, 6).map((matter) => ({
       id: matter.id,
@@ -205,11 +220,15 @@ export function BoardPage() {
             message="Loading the current probate board."
           />
         ) : (
-          <div className="board-grid">
+          <div
+            className="board-grid"
+            style={{ "--board-column-count": boardSettings.columnCount } as CSSProperties}
+          >
             {STAGES.map((stage) => (
               <BoardColumn
                 key={stage}
                 stage={stage}
+                title={getStageLabel(stage, stageLabels)}
                 matters={board.matters.filter((matter) => matter.stage === stage)}
                 selectedMatterId={board.selectedMatter?.id ?? null}
                 draggingMatterId={draggingMatterId}
@@ -281,6 +300,7 @@ export function BoardPage() {
           matter={board.selectedMatter}
           notes={board.selectedMatterNotes}
           isCreateMode={board.isCreateMode}
+          stageLabels={stageLabels}
           onClose={() => {
             board.closeCreateMatter();
             handleSelectMatter(null);

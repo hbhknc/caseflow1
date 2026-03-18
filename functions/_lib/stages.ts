@@ -1,11 +1,19 @@
 import type { MatterStage } from "./types";
 
+export const DEFAULT_STAGE_LABELS: Record<MatterStage, string> = {
+  intake: "Intake",
+  qualified_opened: "Qualified / Opened",
+  notice_admin: "Notice / Admin",
+  inventory_collection: "Inventory / Collection",
+  accounting_closing: "Accounting / Closing"
+};
+
 export const STAGE_DEFINITIONS: Array<{ id: MatterStage; label: string }> = [
-  { id: "intake", label: "Intake" },
-  { id: "qualified_opened", label: "Qualified / Opened" },
-  { id: "notice_admin", label: "Notice / Admin" },
-  { id: "inventory_collection", label: "Inventory / Collection" },
-  { id: "accounting_closing", label: "Accounting / Closing" }
+  { id: "intake", label: DEFAULT_STAGE_LABELS.intake },
+  { id: "qualified_opened", label: DEFAULT_STAGE_LABELS.qualified_opened },
+  { id: "notice_admin", label: DEFAULT_STAGE_LABELS.notice_admin },
+  { id: "inventory_collection", label: DEFAULT_STAGE_LABELS.inventory_collection },
+  { id: "accounting_closing", label: DEFAULT_STAGE_LABELS.accounting_closing }
 ];
 
 export const STAGES: MatterStage[] = STAGE_DEFINITIONS.map((stage) => stage.id);

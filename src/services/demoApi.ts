@@ -1,5 +1,12 @@
-import { createDemoMatter, demoMatters, demoNotes, demoStatus, demoTasks } from "@/lib/demoData";
-import type { AppStatus, MatterStats } from "@/types/api";
+import {
+  createDemoMatter,
+  demoBoardSettings,
+  demoMatters,
+  demoNotes,
+  demoStatus,
+  demoTasks
+} from "@/lib/demoData";
+import type { AppStatus, BoardSettings, MatterStats } from "@/types/api";
 import type {
   Matter,
   MatterFormInput,
@@ -7,10 +14,12 @@ import type {
   MatterStage,
   MatterTask
 } from "@/types/matter";
+import { DEFAULT_STAGE_LABELS, STAGES } from "@/utils/stages";
 
 const matterStore = [...demoMatters];
 const noteStore = structuredClone(demoNotes);
 const taskStore = [...demoTasks];
+const boardSettingsStore: BoardSettings = structuredClone(demoBoardSettings);
 
 export function shouldUseDemoFallback() {
   return (import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? "true") === "true";
@@ -199,4 +208,36 @@ export async function getDemoStatus(): Promise<AppStatus> {
     ...demoStatus,
     timestamp: new Date().toISOString()
   };
+}
+
+export async function getDemoBoardSettings(): Promise<BoardSettings> {
+  return structuredClone(boardSettingsStore);
+}
+
+export async function updateDemoBoardSettings(
+  input: Partial<BoardSettings>
+): Promise<BoardSettings> {
+  const columnCount = Math.min(
+    STAGES.length,
+    Math.max(1, Math.round(Number(input.columnCount ?? boardSettingsStore.columnCount)))
+  );
+
+  boardSettingsStore.columnCount = Number.isFinite(columnCount)
+    ? columnCount
+    : boardSettingsStore.columnCount;
+
+  boardSettingsStore.stageLabels = {
+    intake: input.stageLabels?.intake?.trim() || DEFAULT_STAGE_LABELS.intake,
+    qualified_opened:
+      input.stageLabels?.qualified_opened?.trim() || DEFAULT_STAGE_LABELS.qualified_opened,
+    notice_admin: input.stageLabels?.notice_admin?.trim() || DEFAULT_STAGE_LABELS.notice_admin,
+    inventory_collection:
+      input.stageLabels?.inventory_collection?.trim() ||
+      DEFAULT_STAGE_LABELS.inventory_collection,
+    accounting_closing:
+      input.stageLabels?.accounting_closing?.trim() ||
+      DEFAULT_STAGE_LABELS.accounting_closing
+  };
+
+  return structuredClone(boardSettingsStore);
 }

@@ -4,13 +4,14 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatusPill } from "@/components/StatusPill";
 import { NotesTimeline } from "@/features/notes/components/NotesTimeline";
 import { formatDateTime } from "@/lib/dates";
-import { ARCHIVE_READY_STAGE, STAGES, formatStageLabel } from "@/utils/stages";
+import { ARCHIVE_READY_STAGE, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
 import type { Matter, MatterFormInput, MatterNote, MatterStage } from "@/types/matter";
 
 type MatterDrawerProps = {
   matter: Matter | null;
   notes: MatterNote[];
   isCreateMode: boolean;
+  stageLabels?: Partial<Record<MatterStage, string>>;
   onClose: () => void;
   onCreateMatter: (input: MatterFormInput) => Promise<void>;
   onUpdateMatter: (matterId: string, input: MatterFormInput) => Promise<void>;
@@ -41,6 +42,7 @@ export function MatterDrawer({
   matter,
   notes,
   isCreateMode,
+  stageLabels,
   onClose,
   onCreateMatter,
   onUpdateMatter,
@@ -52,6 +54,7 @@ export function MatterDrawer({
   const [noteBody, setNoteBody] = useState("");
   const [addNoteToTaskList, setAddNoteToTaskList] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const resolvedStageLabels = createStageLabelMap(stageLabels);
 
   useEffect(() => {
     setDraft(buildInitialState(matter));
@@ -246,7 +249,7 @@ export function MatterDrawer({
                 >
                   {STAGES.map((stage) => (
                     <option key={stage} value={stage}>
-                      {formatStageLabel(stage)}
+                      {getStageLabel(stage, resolvedStageLabels)}
                     </option>
                   ))}
                 </select>

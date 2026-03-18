@@ -1,10 +1,10 @@
 import type { DragEvent } from "react";
 import { MatterCard } from "@/features/board/components/MatterCard";
-import { formatStageLabel } from "@/utils/stages";
 import type { Matter, MatterStage } from "@/types/matter";
 
 type BoardColumnProps = {
   stage: MatterStage;
+  title: string;
   matters: Matter[];
   selectedMatterId: string | null;
   draggingMatterId: string | null;
@@ -19,6 +19,7 @@ type BoardColumnProps = {
 
 export function BoardColumn({
   stage,
+  title,
   matters,
   selectedMatterId,
   draggingMatterId,
@@ -51,7 +52,7 @@ export function BoardColumn({
     >
       <header className="board-column__header">
         <div className="board-column__title-group">
-          <h3>{formatStageLabel(stage)}</h3>
+          <h3>{title}</h3>
         </div>
         <span className="board-column__count">{matters.length}</span>
       </header>

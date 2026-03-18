@@ -31,6 +31,12 @@ export type MatterNoteRecord = {
   created_by: string | null;
 };
 
+export type AppSettingRecord = {
+  key: string;
+  value: string;
+  updated_at: string;
+};
+
 export type MatterTaskRecord = {
   id: string;
   matter_id: string;
@@ -54,4 +60,9 @@ export type MatterNoteInput = {
   matterId: string;
   body: string;
   addToTaskList?: boolean;
+};
+
+export type BoardSettings = {
+  columnCount: number;
+  stageLabels: Record<MatterStage, string>;
 };

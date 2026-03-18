@@ -1,5 +1,7 @@
-import { ARCHIVE_READY_STAGE, isMatterStage } from "./stages";
+import { ARCHIVE_READY_STAGE, DEFAULT_STAGE_LABELS, STAGES, isMatterStage } from "./stages";
 import type {
+  AppSettingRecord,
+  BoardSettings,
   MatterInput,
   MatterNoteInput,
   MatterNoteRecord,
@@ -11,6 +13,11 @@ import type {
 function nowIso() {
   return new Date().toISOString();
 }
+
+const DEFAULT_BOARD_SETTINGS: BoardSettings = {
+  columnCount: 5,
+  stageLabels: { ...DEFAULT_STAGE_LABELS }
+};
 
 function mapMatter(row: MatterRecord) {
   return {
@@ -92,6 +99,106 @@ function calculateAveragePerYear(timestamps: string[]) {
   const years = timestamps.map((timestamp) => new Date(timestamp).getUTCFullYear());
   const span = Math.max(...years) - Math.min(...years) + 1;
   return Number((timestamps.length / span).toFixed(1));
+}
+
+function clampColumnCount(value: unknown) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_BOARD_SETTINGS.columnCount;
+  }
+
+  return Math.min(STAGES.length, Math.max(1, Math.round(parsed)));
+}
+
+function normalizeStageLabels(
+  stageLabels: Partial<Record<MatterStage, string>> | undefined
+): Record<MatterStage, string> {
+  return {
+    intake: stageLabels?.intake?.trim() || DEFAULT_STAGE_LABELS.intake,
+    qualified_opened:
+      stageLabels?.qualified_opened?.trim() || DEFAULT_STAGE_LABELS.qualified_opened,
+    notice_admin: stageLabels?.notice_admin?.trim() || DEFAULT_STAGE_LABELS.notice_admin,
+    inventory_collection:
+      stageLabels?.inventory_collection?.trim() ||
+      DEFAULT_STAGE_LABELS.inventory_collection,
+    accounting_closing:
+      stageLabels?.accounting_closing?.trim() || DEFAULT_STAGE_LABELS.accounting_closing
+  };
+}
+
+async function upsertAppSetting(db: D1Database, key: string, value: string, updatedAt: string) {
+  await db
+    .prepare(
+      `INSERT INTO app_settings (key, value, updated_at)
+       VALUES (?1, ?2, ?3)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+    )
+    .bind(key, value, updatedAt)
+    .run();
+}
+
+async function getAppSettingMap(db: D1Database, keys: string[]) {
+  const placeholders = keys.map((_, index) => `?${index + 1}`).join(", ");
+  const { results } = await db
+    .prepare(
+      `SELECT key, value, updated_at
+       FROM app_settings
+       WHERE key IN (${placeholders})`
+    )
+    .bind(...keys)
+    .all<AppSettingRecord>();
+
+  return new Map(results.map((row) => [row.key, row.value]));
+}
+
+export async function getBoardSettings(db: D1Database): Promise<BoardSettings> {
+  const stageKeys = STAGES.map((stage) => `board.stage_label.${stage}`);
+  const settings = await getAppSettingMap(db, ["board.column_count", ...stageKeys]);
+  const stageLabels = normalizeStageLabels({
+    intake: settings.get("board.stage_label.intake"),
+    qualified_opened: settings.get("board.stage_label.qualified_opened"),
+    notice_admin: settings.get("board.stage_label.notice_admin"),
+    inventory_collection: settings.get("board.stage_label.inventory_collection"),
+    accounting_closing: settings.get("board.stage_label.accounting_closing")
+  });
+
+  return {
+    columnCount: clampColumnCount(settings.get("board.column_count")),
+    stageLabels
+  };
+}
+
+export async function updateBoardSettings(
+  db: D1Database,
+  input: {
+    columnCount?: number;
+    stageLabels?: Partial<Record<MatterStage, string>>;
+  }
+): Promise<BoardSettings> {
+  const settings: BoardSettings = {
+    columnCount: clampColumnCount(input.columnCount),
+    stageLabels: normalizeStageLabels(input.stageLabels)
+  };
+  const timestamp = nowIso();
+
+  await upsertAppSetting(
+    db,
+    "board.column_count",
+    String(settings.columnCount),
+    timestamp
+  );
+
+  for (const stage of STAGES) {
+    await upsertAppSetting(
+      db,
+      `board.stage_label.${stage}`,
+      settings.stageLabels[stage],
+      timestamp
+    );
+  }
+
+  return settings;
 }
 
 export async function listMatters(db: D1Database) {
@@ -498,7 +605,7 @@ export async function createNote(db: D1Database, payload: Partial<MatterNoteInpu
 
 export async function getAppStatus(env: { APP_NAME?: string }) {
   return {
-    appName: env.APP_NAME ?? "CaseFlow",
+    appName: env.APP_NAME ?? "CaseFlow v1.0",
     runtime: "Cloudflare Pages Functions",
     timestamp: nowIso(),
     authMode: "Cloudflare Access planned"

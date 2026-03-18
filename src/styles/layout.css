@@ -128,7 +128,7 @@
 
 .board-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--board-column-count, 5), minmax(0, 1fr));
   gap: var(--space-14);
   overflow: visible;
   padding-bottom: var(--space-4);
@@ -557,6 +557,22 @@
   gap: var(--space-16);
 }
 
+.settings-section,
+.settings-stage-grid {
+  display: grid;
+  gap: var(--space-14);
+}
+
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 280px);
+  gap: var(--space-12);
+}
+
+.settings-stage-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 @media (max-width: 1400px) {
   .app-header__body {
     align-items: start;
@@ -593,7 +609,9 @@
   .legend-grid,
   .info-grid,
   .drawer-form-grid,
-  .drawer-meta-list {
+  .drawer-meta-list,
+  .settings-stage-grid,
+  .settings-form-grid {
     grid-template-columns: 1fr;
   }
 
