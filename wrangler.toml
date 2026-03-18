@@ -8,7 +8,7 @@ pages_build_output_dir = "./dist"
 APP_NAME = "CaseFlow"
 AUTH_USERNAME = "hbhklaw"
 AUTH_PASSWORD = "barnes"
-SESSION_SECRET = "replace-with-a-long-random-secret"
+SESSION_SECRET = "whoelectedyouleaderofthisoutfit"
 
 [[d1_databases]]
 binding = "DB"
