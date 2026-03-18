@@ -7,6 +7,7 @@ import type { Matter } from "@/types/matter";
 type ArchiveModalProps = {
   matters: Matter[];
   error: string | null;
+  onUnarchive: (matterId: string) => Promise<void>;
   onClose: () => void;
 };
 
@@ -23,7 +24,7 @@ function formatCaseLength(createdAt: string, archivedAt: string | null) {
   return `${days} days`;
 }
 
-export function ArchiveModal({ matters, error, onClose }: ArchiveModalProps) {
+export function ArchiveModal({ matters, error, onUnarchive, onClose }: ArchiveModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -83,7 +84,16 @@ export function ArchiveModal({ matters, error, onClose }: ArchiveModalProps) {
                         {matter.clientName} | {matter.fileNumber}
                       </p>
                     </div>
-                    <span className="task-card__badge">Archived {formatDate(matter.archivedAt)}</span>
+                    <div className="task-card__actions">
+                      <span className="task-card__badge">Archived {formatDate(matter.archivedAt)}</span>
+                      <button
+                        type="button"
+                        className="button button--ghost button--small"
+                        onClick={() => void onUnarchive(matter.id)}
+                      >
+                        Unarchive
+                      </button>
+                    </div>
                   </div>
                   <p className="task-card__meta">
                     Opened {formatDate(matter.createdAt)} | Case length{" "}

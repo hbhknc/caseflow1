@@ -351,6 +351,39 @@ export async function archiveMatter(db: D1Database, matterId: string) {
   return archived ? mapMatter(archived) : null;
 }
 
+export async function unarchiveMatter(db: D1Database, matterId: string) {
+  const existing = await getMatterRecord(db, matterId);
+
+  if (!existing) {
+    return null;
+  }
+
+  const timestamp = nowIso();
+
+  await db
+    .prepare(
+      `UPDATE matters
+       SET archived = 0,
+           archived_at = NULL,
+           updated_at = ?2,
+           last_activity_at = ?2
+       WHERE id = ?1`
+    )
+    .bind(matterId, timestamp)
+    .run();
+
+  await insertAuditEvent(
+    db,
+    "matter.unarchived",
+    "matter",
+    matterId,
+    JSON.stringify({ unarchivedAt: timestamp })
+  );
+
+  const matter = await getMatterRecord(db, matterId);
+  return matter ? mapMatter(matter) : null;
+}
+
 export async function listNotes(db: D1Database, matterId: string) {
   const { results } = await db
     .prepare(

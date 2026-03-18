@@ -418,6 +418,12 @@
   gap: var(--space-12);
 }
 
+.task-card__actions {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-8);
+}
+
 .task-card__header h3 {
   font-size: var(--font-size-15);
   letter-spacing: -0.02em;

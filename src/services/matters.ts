@@ -9,6 +9,7 @@ import {
   listDemoNotes,
   listDemoTasks,
   moveDemoMatterRecord,
+  unarchiveDemoMatterRecord,
   updateDemoMatterRecord
 } from "@/services/demoApi";
 import type {
@@ -103,6 +104,19 @@ export async function archiveMatter(matterId: string): Promise<Matter> {
       body: { matterId }
     },
     async () => ({ matter: await archiveDemoMatterRecord(matterId) })
+  );
+
+  return response.matter;
+}
+
+export async function unarchiveMatter(matterId: string): Promise<Matter> {
+  const response = await requestJsonWithFallback<{ matter: Matter }>(
+    "/matters/unarchive",
+    {
+      method: "POST",
+      body: { matterId }
+    },
+    async () => ({ matter: await unarchiveDemoMatterRecord(matterId) })
   );
 
   return response.matter;

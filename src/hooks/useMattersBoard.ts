@@ -9,7 +9,8 @@ import {
   listTasks,
   moveMatterStage,
   saveMatter,
-  saveMatterNote
+  saveMatterNote,
+  unarchiveMatter
 } from "@/services/matters";
 import { getMatterStats } from "@/services/stats";
 import type { MatterStats } from "@/types/api";
@@ -55,6 +56,7 @@ type UseMattersBoardResult = {
   addNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
   deleteMatter: (matterId: string) => Promise<void>;
   archiveMatter: (matterId: string) => Promise<void>;
+  unarchiveMatter: (matterId: string) => Promise<void>;
 };
 
 export function useMattersBoard(): UseMattersBoardResult {
@@ -248,6 +250,11 @@ export function useMattersBoard(): UseMattersBoardResult {
     await hydrateBoard();
   }
 
+  async function handleUnarchiveMatter(matterId: string) {
+    await unarchiveMatter(matterId);
+    await Promise.all([hydrateBoard(), hydrateArchive(), hydrateStats()]);
+  }
+
   return {
     matters,
     filteredMatters,
@@ -296,6 +303,7 @@ export function useMattersBoard(): UseMattersBoardResult {
     moveMatter: handleMoveMatter,
     addNote: handleAddNote,
     deleteMatter: handleDeleteMatter,
-    archiveMatter: handleArchiveMatter
+    archiveMatter: handleArchiveMatter,
+    unarchiveMatter: handleUnarchiveMatter
   };
 }

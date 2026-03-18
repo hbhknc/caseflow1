@@ -204,6 +204,7 @@ export function BoardPage() {
         <ArchiveModal
           matters={board.archivedMatters}
           error={board.archiveError}
+          onUnarchive={board.unarchiveMatter}
           onClose={() => {
             board.closeArchive();
             restoreFocusOrigin();

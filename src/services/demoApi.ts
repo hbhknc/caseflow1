@@ -92,6 +92,19 @@ export async function archiveDemoMatterRecord(matterId: string): Promise<Matter>
   return matter;
 }
 
+export async function unarchiveDemoMatterRecord(matterId: string): Promise<Matter> {
+  const matter = matterStore.find((item) => item.id === matterId);
+
+  if (!matter) {
+    throw new Error("Matter not found.");
+  }
+
+  matter.archived = false;
+  matter.archivedAt = null;
+  matter.lastActivityAt = new Date().toISOString();
+  return matter;
+}
+
 export async function listDemoNotes(matterId: string): Promise<MatterNote[]> {
   return [...(noteStore[matterId] ?? [])].sort((left, right) =>
     right.createdAt.localeCompare(left.createdAt)
