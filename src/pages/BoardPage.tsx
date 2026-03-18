@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAppChrome } from "@/app/AppChrome";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
@@ -164,6 +165,28 @@ export function BoardPage() {
           </span>
           <span>Stats</span>
         </button>
+        <Link
+          to="/settings"
+          className="sidebar-menu__item"
+          aria-label="Settings"
+          title="Settings"
+        >
+          <span className="sidebar-menu__icon" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none">
+              <path
+                d="M9 4.25a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Zm0 7.1a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8ZM4.25 9a.9.9 0 1 0 1.8 0 .9.9 0 0 0-1.8 0Zm7.7 0a.9.9 0 1 0 1.8 0 .9.9 0 0 0-1.8 0Z"
+                fill="currentColor"
+              />
+              <path
+                d="M9 2.75v1.2M9 14.05v1.2M2.75 9h1.2M14.05 9h1.2M4.58 4.58l.85.85M12.57 12.57l.85.85M4.58 13.42l.85-.85M12.57 5.43l.85-.85"
+                stroke="currentColor"
+                strokeWidth="1.25"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          <span>Settings</span>
+        </Link>
       </nav>
     );
 
