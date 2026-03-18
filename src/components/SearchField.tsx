@@ -1,9 +1,21 @@
+type SearchFieldResult = {
+  id: string;
+  title: string;
+  subtitle: string;
+  meta: string;
+  tone?: "archived";
+  onSelect: () => void;
+};
+
 type SearchFieldProps = {
   value: string;
   onChange: (value: string) => void;
+  results: SearchFieldResult[];
 };
 
-export function SearchField({ value, onChange }: SearchFieldProps) {
+export function SearchField({ value, onChange, results }: SearchFieldProps) {
+  const isOpen = value.trim().length > 0;
+
   return (
     <label className="search-field">
       <span className="sr-only">Search matters</span>
@@ -31,6 +43,35 @@ export function SearchField({ value, onChange }: SearchFieldProps) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
+      {isOpen ? (
+        <div className="search-dropdown" role="listbox" aria-label="Matching matters">
+          {results.length > 0 ? (
+            <ul className="search-results">
+              {results.map((result) => (
+                <li key={result.id}>
+                  <button
+                    type="button"
+                    className={
+                      result.tone === "archived"
+                        ? "search-result search-result--archived"
+                        : "search-result"
+                    }
+                    onClick={result.onSelect}
+                  >
+                    <span className="search-result__body">
+                      <strong>{result.title}</strong>
+                      <span>{result.subtitle}</span>
+                    </span>
+                    <span className="search-result__meta">{result.meta}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="search-empty">No matching matters.</div>
+          )}
+        </div>
+      ) : null}
     </label>
   );
 }

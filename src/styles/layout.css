@@ -144,12 +144,6 @@
   font-size: var(--font-size-12);
 }
 
-.board-search-hint {
-  padding: 0 var(--space-4);
-  color: var(--ink-500);
-  font-size: var(--font-size-12);
-}
-
 .matter-card {
   border-radius: var(--radius-18);
   overflow: visible;

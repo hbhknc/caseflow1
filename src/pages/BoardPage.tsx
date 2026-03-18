@@ -55,18 +55,40 @@ export function BoardPage() {
 
     board.selectMatter(matterId);
   }
-
-  const archivedMatches = board.searchTerm.trim() ? board.filteredArchivedMatters.length : 0;
+  const searchResults = [
+    ...board.filteredMatters.slice(0, 6).map((matter) => ({
+      id: matter.id,
+      title: matter.decedentName,
+      subtitle: `${matter.clientName} | ${matter.fileNumber}`,
+      meta: "Active matter",
+      onSelect: () => {
+        handleSelectMatter(matter.id);
+        board.setSearchTerm("");
+      }
+    })),
+    ...board.filteredArchivedMatters.slice(0, 4).map((matter) => ({
+      id: matter.id,
+      title: matter.decedentName,
+      subtitle: `${matter.clientName} | ${matter.fileNumber}`,
+      meta: "Archived matter",
+      tone: "archived" as const,
+      onSelect: () => void handleOpenArchive()
+    }))
+  ];
 
   useEffect(() => {
     setHeaderToolbar(
       <>
-        <SearchField value={board.searchTerm} onChange={board.setSearchTerm} />
+        <SearchField
+          value={board.searchTerm}
+          onChange={board.setSearchTerm}
+          results={searchResults}
+        />
         <button type="button" className="button button--ghost" onClick={() => void handleOpenTaskList()}>
           <span>Tasks</span>
         </button>
         <button type="button" className="button button--ghost" onClick={() => void handleOpenArchive()}>
-          Archive{archivedMatches > 0 ? ` (${archivedMatches})` : ""}
+          Archive
         </button>
         <button type="button" className="button button--ghost" onClick={() => void handleOpenStats()}>
           Stats
@@ -88,7 +110,7 @@ export function BoardPage() {
     );
 
     return () => setHeaderToolbar(null);
-  }, [archivedMatches, board.searchTerm, board.setSearchTerm, setHeaderToolbar]);
+  }, [board.searchTerm, board.setSearchTerm, searchResults, setHeaderToolbar]);
 
   return (
     <div className="board-page">
@@ -104,7 +126,7 @@ export function BoardPage() {
               <BoardColumn
                 key={stage}
                 stage={stage}
-                matters={board.filteredMatters.filter((matter) => matter.stage === stage)}
+                matters={board.matters.filter((matter) => matter.stage === stage)}
                 selectedMatterId={board.selectedMatter?.id ?? null}
                 draggingMatterId={draggingMatterId}
                 isDragTarget={dragOverStage === stage}
@@ -163,14 +185,9 @@ export function BoardPage() {
             ))}
           </div>
         )}
-        {!board.isLoading && board.filteredMatters.length === 0 ? (
+        {!board.isLoading && board.matters.length === 0 ? (
           <div className="board-empty-inline">
-            No active matters matched the current search. Try a different decedent, client, or file number.
-          </div>
-        ) : null}
-        {archivedMatches > 0 ? (
-          <div className="board-search-hint">
-            {archivedMatches} archived {archivedMatches === 1 ? "matter matches" : "matters match"} this search. Open Archive to review.
+            No active matters are currently on the board.
           </div>
         ) : null}
       </section>
@@ -209,7 +226,9 @@ export function BoardPage() {
 
       {board.isArchiveOpen ? (
         <ArchiveModal
-          matters={board.filteredArchivedMatters}
+          matters={
+            board.searchTerm.trim() ? board.filteredArchivedMatters : board.archivedMatters
+          }
           error={board.archiveError}
           searchTerm={board.searchTerm}
           onUnarchive={board.unarchiveMatter}
