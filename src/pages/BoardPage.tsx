@@ -56,6 +56,8 @@ export function BoardPage() {
     board.selectMatter(matterId);
   }
 
+  const archivedMatches = board.searchTerm.trim() ? board.filteredArchivedMatters.length : 0;
+
   useEffect(() => {
     setHeaderToolbar(
       <>
@@ -64,7 +66,7 @@ export function BoardPage() {
           <span>Tasks</span>
         </button>
         <button type="button" className="button button--ghost" onClick={() => void handleOpenArchive()}>
-          Archive
+          Archive{archivedMatches > 0 ? ` (${archivedMatches})` : ""}
         </button>
         <button type="button" className="button button--ghost" onClick={() => void handleOpenStats()}>
           Stats
@@ -86,7 +88,7 @@ export function BoardPage() {
     );
 
     return () => setHeaderToolbar(null);
-  }, [board.searchTerm, board.setSearchTerm, setHeaderToolbar]);
+  }, [archivedMatches, board.searchTerm, board.setSearchTerm, setHeaderToolbar]);
 
   return (
     <div className="board-page">
@@ -166,6 +168,11 @@ export function BoardPage() {
             No active matters matched the current search. Try a different decedent, client, or file number.
           </div>
         ) : null}
+        {archivedMatches > 0 ? (
+          <div className="board-search-hint">
+            {archivedMatches} archived {archivedMatches === 1 ? "matter matches" : "matters match"} this search. Open Archive to review.
+          </div>
+        ) : null}
       </section>
 
       {(board.isCreateMode || board.selectedMatter) && (
@@ -202,8 +209,9 @@ export function BoardPage() {
 
       {board.isArchiveOpen ? (
         <ArchiveModal
-          matters={board.archivedMatters}
+          matters={board.filteredArchivedMatters}
           error={board.archiveError}
+          searchTerm={board.searchTerm}
           onUnarchive={board.unarchiveMatter}
           onClose={() => {
             board.closeArchive();

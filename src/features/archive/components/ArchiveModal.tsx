@@ -7,6 +7,7 @@ import type { Matter } from "@/types/matter";
 type ArchiveModalProps = {
   matters: Matter[];
   error: string | null;
+  searchTerm: string;
   onUnarchive: (matterId: string) => Promise<void>;
   onClose: () => void;
 };
@@ -24,7 +25,13 @@ function formatCaseLength(createdAt: string, archivedAt: string | null) {
   return `${days} days`;
 }
 
-export function ArchiveModal({ matters, error, onUnarchive, onClose }: ArchiveModalProps) {
+export function ArchiveModal({
+  matters,
+  error,
+  searchTerm,
+  onUnarchive,
+  onClose
+}: ArchiveModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -70,8 +77,12 @@ export function ArchiveModal({ matters, error, onUnarchive, onClose }: ArchiveMo
 
           {!error && matters.length === 0 ? (
             <EmptyState
-              title="No archived matters"
-              message="Archived matters will appear here after they are closed out from Accounting / Closing."
+              title={searchTerm.trim() ? "No archived matches" : "No archived matters"}
+              message={
+                searchTerm.trim()
+                  ? "No archived matters matched the current search."
+                  : "Archived matters will appear here after they are closed out from Accounting / Closing."
+              }
             />
           ) : (
             <ol className="task-list">

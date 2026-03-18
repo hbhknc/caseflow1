@@ -29,6 +29,7 @@ type UseMattersBoardResult = {
   selectedMatter: Matter | null;
   selectedMatterNotes: MatterNote[];
   archivedMatters: Matter[];
+  filteredArchivedMatters: Matter[];
   tasks: MatterTask[];
   stats: MatterStats | null;
   searchTerm: string;
@@ -103,6 +104,20 @@ export function useMattersBoard(): UseMattersBoardResult {
     );
   }, [matters, searchTerm]);
 
+  const filteredArchivedMatters = useMemo(() => {
+    const needle = searchTerm.trim().toLowerCase();
+
+    if (!needle) {
+      return archivedMatters;
+    }
+
+    return archivedMatters.filter((matter) =>
+      [matter.decedentName, matter.clientName, matter.fileNumber].some((value) =>
+        value.toLowerCase().includes(needle)
+      )
+    );
+  }, [archivedMatters, searchTerm]);
+
   const selectedMatter = useMemo(
     () => matters.find((matter) => matter.id === selectedMatterId) ?? null,
     [matters, selectedMatterId]
@@ -123,9 +138,10 @@ export function useMattersBoard(): UseMattersBoardResult {
   async function hydrateBoard() {
     try {
       setIsLoading(true);
-      const items = await listMatters();
+      const [items, archivedItems] = await Promise.all([listMatters(), listArchivedMatters()]);
       const activeMatters = items.filter((matter) => !matter.archived);
       setMatters(activeMatters);
+      setArchivedMatters(archivedItems);
       setSelectedMatterId((current) =>
         current && activeMatters.some((matter) => matter.id === current) ? current : null
       );
@@ -247,12 +263,14 @@ export function useMattersBoard(): UseMattersBoardResult {
     await archiveMatter(matterId);
     setSelectedMatterId(null);
     setSelectedMatterNotes([]);
-    await hydrateBoard();
+    await Promise.all([hydrateBoard(), hydrateStats()]);
   }
 
   async function handleUnarchiveMatter(matterId: string) {
-    await unarchiveMatter(matterId);
-    await Promise.all([hydrateBoard(), hydrateArchive(), hydrateStats()]);
+    const updatedMatter = await unarchiveMatter(matterId);
+    setArchivedMatters((current) => current.filter((matter) => matter.id !== matterId));
+    setMatters((current) => sortMatters([...current, updatedMatter]));
+    await hydrateStats();
   }
 
   return {
@@ -261,6 +279,7 @@ export function useMattersBoard(): UseMattersBoardResult {
     selectedMatter,
     selectedMatterNotes,
     archivedMatters,
+    filteredArchivedMatters,
     tasks,
     stats,
     searchTerm,
