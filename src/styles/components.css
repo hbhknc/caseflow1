@@ -32,12 +32,11 @@
 }
 
 .matter-card {
-  background:
-    linear-gradient(180deg, rgba(248, 249, 251, 0.98), rgba(240, 242, 245, 0.98));
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: #1d2025;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    0 8px 18px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
   backdrop-filter: none;
 }
 
