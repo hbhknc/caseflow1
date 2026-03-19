@@ -310,7 +310,7 @@
 
 .matter-card__button {
   width: 100%;
-  padding: 0.8rem 0.85rem 0.45rem;
+  padding: 0.8rem 0.85rem 0.35rem;
   background: transparent;
   border: 0;
   text-align: left;
@@ -330,11 +330,6 @@
   letter-spacing: -0.02em;
 }
 
-.matter-card__client {
-  color: var(--card-muted);
-  font-size: var(--font-size-13);
-}
-
 .matter-card__file-number {
   color: var(--card-strong);
   font-weight: 500;
@@ -342,7 +337,6 @@
 }
 
 .matter-card__activity-line {
-  margin-top: var(--space-4);
   color: var(--card-meta);
   font-size: var(--font-size-12);
   font-style: italic;
@@ -350,7 +344,9 @@
 
 .matter-card__footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-10);
   padding: 0 0.65rem 0.65rem;
 }
 

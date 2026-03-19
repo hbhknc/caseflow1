@@ -37,13 +37,12 @@ export function MatterCard({
       <button type="button" className="matter-card__button" onClick={onSelect}>
         <div className="matter-card__stack">
           <h4>{matter.decedentName}</h4>
-          <p className="matter-card__client">{matter.clientName}</p>
-          <p className="matter-card__activity-line">
-            Last activity {formatDate(matter.lastActivityAt)}
-          </p>
         </div>
       </button>
       <div className="matter-card__footer">
+        <p className="matter-card__activity-line">
+          Last activity {formatDate(matter.lastActivityAt)}
+        </p>
         <button
           type="button"
           className="matter-card__note-button"
