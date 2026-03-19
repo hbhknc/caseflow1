@@ -68,12 +68,12 @@
   --column-target-bg: #30343b;
   --column-target-border: rgba(61, 149, 255, 0.22);
   --column-count-bg: rgba(255, 255, 255, 0.08);
-  --card-bg: #1d2025;
-  --card-border: rgba(255, 255, 255, 0.08);
+  --card-bg: #232832;
+  --card-border: rgba(255, 255, 255, 0.14);
   --card-ink: #f5f6f8;
   --card-strong: rgba(255, 255, 255, 0.84);
   --card-muted: rgba(255, 255, 255, 0.66);
-  --card-meta: rgba(255, 255, 255, 0.58);
+  --card-meta: rgba(255, 255, 255, 0.66);
   --drawer-bg: #262a30;
   --drawer-border: rgba(255, 255, 255, 0.08);
   --drawer-surface: #1d2025;

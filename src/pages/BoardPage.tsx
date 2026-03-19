@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppChrome } from "@/app/AppChrome";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
@@ -141,26 +141,29 @@ export function BoardPage() {
       });
   }, []);
 
-  const searchResults = [
-    ...board.filteredMatters.slice(0, 6).map((matter) => ({
-      id: matter.id,
-      title: matter.decedentName,
-      subtitle: `${matter.clientName} | ${matter.fileNumber}`,
-      meta: "Active matter",
-      onSelect: () => {
-        handleSelectMatter(matter.id);
-        board.setSearchTerm("");
-      }
-    })),
-    ...board.filteredArchivedMatters.slice(0, 4).map((matter) => ({
-      id: matter.id,
-      title: matter.decedentName,
-      subtitle: `${matter.clientName} | ${matter.fileNumber}`,
-      meta: "Archived matter",
-      tone: "archived" as const,
-      onSelect: () => void handleOpenArchive()
-    }))
-  ];
+  const searchResults = useMemo(
+    () => [
+      ...board.filteredMatters.slice(0, 6).map((matter) => ({
+        id: matter.id,
+        title: matter.decedentName,
+        subtitle: `${matter.clientName} | ${matter.fileNumber}`,
+        meta: "Active matter",
+        onSelect: () => {
+          handleSelectMatter(matter.id);
+          board.setSearchTerm("");
+        }
+      })),
+      ...board.filteredArchivedMatters.slice(0, 4).map((matter) => ({
+        id: matter.id,
+        title: matter.decedentName,
+        subtitle: `${matter.clientName} | ${matter.fileNumber}`,
+        meta: "Archived matter",
+        tone: "archived" as const,
+        onSelect: () => void handleOpenArchive()
+      }))
+    ],
+    [board.filteredArchivedMatters, board.filteredMatters, board.setSearchTerm]
+  );
 
   useEffect(() => {
     setHeaderToolbar(
@@ -304,6 +307,8 @@ export function BoardPage() {
             title="Loading matters"
             message="Loading the current probate board."
           />
+        ) : board.error ? (
+          <EmptyState title="Unable to load matters" message={board.error} />
         ) : (
           <div
             className="board-grid"
@@ -395,7 +400,7 @@ export function BoardPage() {
             ))}
           </div>
         )}
-        {!board.isLoading && board.matters.length === 0 ? (
+        {!board.isLoading && !board.error && board.matters.length === 0 ? (
           <div className="board-empty-inline">
             No active matters are currently on the board.
           </div>

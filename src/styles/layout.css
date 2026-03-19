@@ -261,10 +261,13 @@
   display: grid;
   align-content: start;
   gap: var(--space-10);
+  min-height: 0;
 }
 
 .board-column__card-slot {
   position: relative;
+  display: block;
+  min-width: 0;
 }
 
 .board-column__card-slot--drop-before::before,
@@ -296,25 +299,30 @@
 }
 
 .matter-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 5.5rem;
   background: var(--card-bg);
   border-radius: var(--radius-18);
   overflow: visible;
   cursor: grab;
   border: 1px solid var(--card-border);
   box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.28),
+    0 10px 22px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
   transition:
     transform var(--transition-base),
     box-shadow var(--transition-base),
     border-color var(--transition-base),
     background var(--transition-base);
+  isolation: isolate;
 }
 
 .matter-card:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.34),
+    0 14px 28px rgba(0, 0, 0, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
@@ -335,7 +343,8 @@
 
 .matter-card__button {
   width: 100%;
-  padding: 0.8rem 0.85rem 0.35rem;
+  min-width: 0;
+  padding: 0.9rem 0.9rem 0.35rem;
   background: transparent;
   border: 0;
   text-align: left;
@@ -353,6 +362,7 @@
   font-size: var(--font-size-15);
   line-height: 1.3;
   letter-spacing: -0.02em;
+  word-break: break-word;
 }
 
 .matter-card__file-number {
@@ -372,7 +382,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-10);
-  padding: 0 0.65rem 0.65rem;
+  padding: 0 0.75rem 0.75rem;
 }
 
 .matter-card__note-button {

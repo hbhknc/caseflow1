@@ -215,7 +215,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
         listArchivedMatters(boardId)
       ]);
       const activeMatters = items.filter((matter) => !matter.archived);
-      setMatters(activeMatters);
+      setMatters(sortMatters(activeMatters));
       setArchivedMatters(archivedItems);
       setSelectedMatterId((current) =>
         current && activeMatters.some((matter) => matter.id === current) ? current : null
