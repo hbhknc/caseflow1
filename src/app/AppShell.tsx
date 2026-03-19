@@ -42,7 +42,46 @@ export function AppShell() {
               </div>
             </div>
             <div className="app-header__actions">
-              {headerToolbar ? <div className="header-toolbar">{headerToolbar}</div> : null}
+              <div className="header-toolbar">
+                {headerToolbar}
+                <button
+                  type="button"
+                  className="button button--ghost button--icon"
+                  aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                  title={theme === "dark" ? "Light mode" : "Dark mode"}
+                  onClick={toggleTheme}
+                >
+                  <span className="sidebar-menu__icon" aria-hidden="true">
+                    {theme === "dark" ? (
+                      <svg viewBox="0 0 18 18" fill="none">
+                        <path
+                          d="M9 3.25v1.5M9 13.25v1.5M4.76 4.76l1.06 1.06M12.18 12.18l1.06 1.06M3.25 9h1.5M13.25 9h1.5M4.76 13.24l1.06-1.06M12.18 5.82l1.06-1.06M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 18 18" fill="none">
+                        <path
+                          d="M13.75 10.27A5 5 0 1 1 7.73 4.25a4 4 0 0 0 6.02 6.02Z"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  onClick={() => void auth.logout()}
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </header>
@@ -64,45 +103,6 @@ export function AppShell() {
           </div>
           <div className="app-sidebar__footer">
             <div className="app-sidebar__user">{auth.currentUser?.username}</div>
-            <button type="button" className="sidebar-menu__item" onClick={toggleTheme}>
-              <span className="sidebar-menu__icon" aria-hidden="true">
-                {theme === "dark" ? (
-                  <svg viewBox="0 0 18 18" fill="none">
-                    <path
-                      d="M9 3.25v1.5M9 13.25v1.5M4.76 4.76l1.06 1.06M12.18 12.18l1.06 1.06M3.25 9h1.5M13.25 9h1.5M4.76 13.24l1.06-1.06M12.18 5.82l1.06-1.06M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
-                      stroke="currentColor"
-                      strokeWidth="1.4"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 18 18" fill="none">
-                    <path
-                      d="M13.75 10.27A5 5 0 1 1 7.73 4.25a4 4 0 0 0 6.02 6.02Z"
-                      stroke="currentColor"
-                      strokeWidth="1.4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </span>
-              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-            </button>
-            <button type="button" className="sidebar-menu__item" onClick={() => void auth.logout()}>
-              <span className="sidebar-menu__icon" aria-hidden="true">
-                <svg viewBox="0 0 18 18" fill="none">
-                  <path
-                    d="M7 4h-2.5A1.5 1.5 0 0 0 3 5.5v7A1.5 1.5 0 0 0 4.5 14H7M10 12.5 13.5 9 10 5.5M13.5 9H6.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <span>Logout</span>
-            </button>
           </div>
         </aside>
         <main className="app-main">

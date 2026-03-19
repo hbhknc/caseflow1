@@ -13,7 +13,7 @@
 }
 
 .app-shell--sidebar-collapsed {
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 88px minmax(0, 1fr);
 }
 
 .app-sidebar {
@@ -43,6 +43,14 @@
   font-size: var(--font-size-12);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.app-shell--sidebar-collapsed .app-sidebar__footer {
+  justify-items: center;
+}
+
+.app-shell--sidebar-collapsed .app-sidebar__user {
+  display: none;
 }
 
 .app-header {

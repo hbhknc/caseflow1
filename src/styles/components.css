@@ -118,6 +118,14 @@
   font-size: var(--font-size-12);
 }
 
+.button--icon {
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  height: 34px;
+  padding: 0;
+}
+
 .button-row {
   display: flex;
   align-items: center;
