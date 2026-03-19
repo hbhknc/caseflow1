@@ -2,7 +2,7 @@ import type { PropsWithChildren, ReactNode } from "react";
 
 type DrawerProps = PropsWithChildren<{
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   actions?: ReactNode;
 }>;
 

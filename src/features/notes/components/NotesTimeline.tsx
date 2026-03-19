@@ -11,7 +11,7 @@ export function NotesTimeline({ notes }: NotesTimelineProps) {
     return (
       <EmptyState
         title="No activity yet"
-        message="Add the first note to begin the matter activity log."
+        message="Add a note to start the matter history."
       />
     );
   }

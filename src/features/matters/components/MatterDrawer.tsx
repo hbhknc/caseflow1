@@ -100,7 +100,15 @@ export function MatterDrawer({
       return "Review matter details, update its stage, and capture follow-up activity.";
     }
 
-    return `${matter.clientName} | ${matter.fileNumber}`;
+    return (
+      <div className="matter-drawer__header-meta">
+        <span>{matter.clientName}</span>
+        <span className="matter-drawer__header-separator" aria-hidden="true">
+          •
+        </span>
+        <span className="matter-drawer__header-file">{matter.fileNumber}</span>
+      </div>
+    );
   }, [isCreateMode, matter]);
 
   if (!matter && !isCreateMode) {
@@ -184,7 +192,7 @@ export function MatterDrawer({
               <button
                 ref={closeButtonRef}
                 type="button"
-                className="button button--ghost"
+                className="button button--ghost button--small"
                 onClick={onClose}
               >
                 {isCreateMode ? "Cancel" : "Close"}
@@ -203,9 +211,11 @@ export function MatterDrawer({
                   <span>Last activity</span>
                   <strong>{formatDateTime(matter.lastActivityAt)}</strong>
                 </div>
-                <div className="matter-drawer__summary-item">
+                <div className="matter-drawer__summary-item matter-drawer__summary-item--status">
                   <span>Status</span>
-                  <strong>{matter.archived ? "Archived" : "Active"}</strong>
+                  <strong className="matter-drawer__summary-status">
+                    {matter.archived ? "Archived" : "Active"}
+                  </strong>
                   {matter.archivedAt ? (
                     <small>{formatDateTime(matter.archivedAt)}</small>
                   ) : null}
@@ -263,7 +273,7 @@ export function MatterDrawer({
                     ))}
                   </select>
                   {!isCreateMode ? (
-                    <small className="field-hint">Move this matter without dragging on the board.</small>
+                    <small className="field-hint">Use this field to move the matter.</small>
                   ) : null}
                 </label>
               </div>
@@ -271,12 +281,20 @@ export function MatterDrawer({
               <div className="matter-drawer__action-bar">
                 <div className="button-row matter-drawer__action-group">
                   {!isCreateMode && matter?.stage === ARCHIVE_READY_STAGE && !matter.archived ? (
-                    <button type="button" className="button button--secondary" onClick={handleArchive}>
+                    <button
+                      type="button"
+                      className="button button--secondary button--small"
+                      onClick={handleArchive}
+                    >
                       Archive
                     </button>
                   ) : null}
                   {!isCreateMode && matter ? (
-                    <button type="button" className="button button--danger" onClick={handleDelete}>
+                    <button
+                      type="button"
+                      className="button button--danger button--small"
+                      onClick={handleDelete}
+                    >
                       Delete
                     </button>
                   ) : null}
@@ -291,8 +309,11 @@ export function MatterDrawer({
 
             {!isCreateMode && matter ? (
               <section className="drawer-section matter-drawer__activity">
-                <div className="section-heading">
+                <div className="section-heading section-heading--split matter-drawer__activity-header">
                   <h3>Activity</h3>
+                  <span className="matter-drawer__activity-count">
+                    {notes.length} {notes.length === 1 ? "note" : "notes"}
+                  </span>
                 </div>
 
                 <form className="note-composer matter-drawer__note-composer" onSubmit={handleAddNote}>
@@ -314,11 +335,10 @@ export function MatterDrawer({
                       />
                       <span className="checkbox-field__copy">
                         <strong>Also add to Tasks</strong>
-                        <small>Keeps the note here and adds it to the task list.</small>
                       </span>
                     </label>
-                    <button type="submit" className="button button--secondary">
-                      Add Note
+                    <button type="submit" className="button button--secondary button--small">
+                      Save note
                     </button>
                   </div>
                 </form>
