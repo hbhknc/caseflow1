@@ -37,6 +37,8 @@ export type MatterRecord = {
   created_at: string;
   updated_at: string;
   last_activity_at: string;
+  stage_entered_at?: string | null;
+  interaction_count?: number | null;
   archived: number;
   archived_at: string | null;
 };

@@ -192,6 +192,13 @@
   gap: var(--space-16);
 }
 
+.board-surface__actions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: var(--space-12);
+}
+
 .board-surface__heading {
   display: grid;
   gap: var(--space-4);
@@ -1016,6 +1023,7 @@
   }
 
   .board-surface__header,
+  .board-surface__actions,
   .board-surface__meta {
     display: grid;
     justify-content: start;

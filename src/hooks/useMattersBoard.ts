@@ -341,10 +341,8 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
   }
 
   async function handleUnarchiveMatter(matterId: string) {
-    const updatedMatter = await unarchiveMatter(matterId);
-    setArchivedMatters((current) => current.filter((matter) => matter.id !== matterId));
-    setMatters((current) => sortMatters([...current, updatedMatter]));
-    await hydrateStats();
+    await unarchiveMatter(matterId);
+    await Promise.all([hydrateBoard(), hydrateArchive(), hydrateStats()]);
   }
 
   async function handleImportMatters(rows: MatterImportRowInput[]) {

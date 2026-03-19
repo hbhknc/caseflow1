@@ -193,11 +193,15 @@ export async function updateDemoMatterRecord(
   matter.fileNumber = input.fileNumber;
   const previousBoardId = matter.boardId;
   const previousStage = matter.stage;
+  const stageChanged = previousStage !== input.stage;
   matter.boardId = input.boardId;
   matter.stage = input.stage;
   matter.lastActivityAt = new Date().toISOString();
+  if (stageChanged) {
+    matter.stageEnteredAt = matter.lastActivityAt;
+  }
 
-  if (previousBoardId !== input.boardId || previousStage !== input.stage) {
+  if (previousBoardId !== input.boardId || stageChanged) {
     matter.sortOrder = getNextDemoStageSortOrder(input.boardId, input.stage, "start");
     renumberDemoStage(previousBoardId, previousStage);
     renumberDemoStage(input.boardId, input.stage);
@@ -235,6 +239,7 @@ export async function moveDemoMatterRecord(
   matter.stage = stage;
   if (previousStage !== stage) {
     matter.lastActivityAt = new Date().toISOString();
+    matter.stageEnteredAt = matter.lastActivityAt;
   }
   if (beforeMatterId) {
     const beforeIndex = destinationMatters.findIndex((item) => item.id === beforeMatterId);
@@ -317,6 +322,7 @@ export async function addDemoNote(
 
   noteStore[matterId] = [note, ...(noteStore[matterId] ?? [])];
   matter.lastActivityAt = note.createdAt;
+  matter.interactionCount += 1;
 
   if (addToTaskList) {
     taskStore.unshift({

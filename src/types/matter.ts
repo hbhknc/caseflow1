@@ -15,9 +15,20 @@ export type Matter = {
   sortOrder: number;
   createdAt: string;
   lastActivityAt: string;
+  stageEnteredAt: string;
+  interactionCount: number;
   archived: boolean;
   archivedAt: string | null;
 };
+
+export type BoardSortField =
+  | "manual"
+  | "name"
+  | "days_in_stage"
+  | "inactive_days"
+  | "interactions";
+
+export type BoardSortDirection = "asc" | "desc";
 
 export type MatterNote = {
   id: string;

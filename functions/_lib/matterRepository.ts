@@ -56,6 +56,8 @@ function mapMatter(row: MatterRecord) {
     sortOrder: Number(row.sort_order ?? 0),
     createdAt: row.created_at,
     lastActivityAt: row.last_activity_at,
+    stageEnteredAt: row.stage_entered_at ?? row.created_at,
+    interactionCount: Number(row.interaction_count ?? 0),
     archived: Boolean(row.archived),
     archivedAt: row.archived_at
   };
@@ -908,7 +910,24 @@ export async function listMatters(db: D1Database, accountId: string, boardId: st
 
   const { results } = await db
     .prepare(
-      `SELECT matters.*
+      `SELECT
+         matters.*,
+         COALESCE(
+           (
+             SELECT matter_stage_history.changed_at
+             FROM matter_stage_history
+             WHERE matter_stage_history.matter_id = matters.id
+               AND matter_stage_history.to_stage = matters.stage
+             ORDER BY matter_stage_history.changed_at DESC
+             LIMIT 1
+           ),
+           matters.created_at
+         ) AS stage_entered_at,
+         (
+           SELECT COUNT(*)
+           FROM matter_notes
+           WHERE matter_notes.matter_id = matters.id
+         ) AS interaction_count
        FROM matters
        INNER JOIN practice_boards ON practice_boards.id = matters.board_id
        WHERE matters.archived = 0
@@ -941,7 +960,24 @@ export async function listArchivedMatters(
 
   const { results } = await db
     .prepare(
-      `SELECT matters.*
+      `SELECT
+         matters.*,
+         COALESCE(
+           (
+             SELECT matter_stage_history.changed_at
+             FROM matter_stage_history
+             WHERE matter_stage_history.matter_id = matters.id
+               AND matter_stage_history.to_stage = matters.stage
+             ORDER BY matter_stage_history.changed_at DESC
+             LIMIT 1
+           ),
+           matters.created_at
+         ) AS stage_entered_at,
+         (
+           SELECT COUNT(*)
+           FROM matter_notes
+           WHERE matter_notes.matter_id = matters.id
+         ) AS interaction_count
        FROM matters
        INNER JOIN practice_boards ON practice_boards.id = matters.board_id
        WHERE matters.archived = 1

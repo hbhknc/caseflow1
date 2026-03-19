@@ -15,6 +15,8 @@ export const demoMatters: Matter[] = [
     sortOrder: 1,
     createdAt: "2026-02-03T14:20:00.000Z",
     lastActivityAt: "2026-03-12T16:45:00.000Z",
+    stageEnteredAt: "2026-03-01T09:00:00.000Z",
+    interactionCount: 2,
     archived: false,
     archivedAt: null
   },
@@ -28,6 +30,8 @@ export const demoMatters: Matter[] = [
     sortOrder: 1,
     createdAt: "2026-02-10T10:05:00.000Z",
     lastActivityAt: "2026-03-14T11:10:00.000Z",
+    stageEnteredAt: "2026-03-08T09:00:00.000Z",
+    interactionCount: 1,
     archived: false,
     archivedAt: null
   },
@@ -41,6 +45,8 @@ export const demoMatters: Matter[] = [
     sortOrder: 1,
     createdAt: "2026-02-18T08:30:00.000Z",
     lastActivityAt: "2026-03-15T15:00:00.000Z",
+    stageEnteredAt: "2026-03-11T09:00:00.000Z",
+    interactionCount: 1,
     archived: false,
     archivedAt: null
   },
@@ -54,6 +60,8 @@ export const demoMatters: Matter[] = [
     sortOrder: 1,
     createdAt: "2026-03-01T13:40:00.000Z",
     lastActivityAt: "2026-03-16T09:20:00.000Z",
+    stageEnteredAt: "2026-03-01T13:40:00.000Z",
+    interactionCount: 0,
     archived: false,
     archivedAt: null
   },
@@ -67,6 +75,8 @@ export const demoMatters: Matter[] = [
     sortOrder: 2,
     createdAt: "2025-11-12T11:00:00.000Z",
     lastActivityAt: "2026-03-10T12:30:00.000Z",
+    stageEnteredAt: "2026-02-20T10:00:00.000Z",
+    interactionCount: 1,
     archived: false,
     archivedAt: null
   },
@@ -80,6 +90,8 @@ export const demoMatters: Matter[] = [
     sortOrder: 3,
     createdAt: "2025-07-08T09:15:00.000Z",
     lastActivityAt: "2026-01-18T14:30:00.000Z",
+    stageEnteredAt: "2025-12-15T09:00:00.000Z",
+    interactionCount: 1,
     archived: true,
     archivedAt: "2026-01-18T14:30:00.000Z"
   }
@@ -202,6 +214,8 @@ export function createDemoMatter(input: {
     sortOrder: 0,
     createdAt: new Date().toISOString(),
     lastActivityAt: new Date().toISOString(),
+    stageEnteredAt: new Date().toISOString(),
+    interactionCount: 0,
     archived: false,
     archivedAt: null
   };

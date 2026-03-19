@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
 import { ArchiveModal } from "@/features/archive/components/ArchiveModal";
 import { BoardColumn } from "@/features/board/components/BoardColumn";
+import { BoardSortMenu } from "@/features/board/components/BoardSortMenu";
 import { BoardSwitcher } from "@/features/board/components/BoardSwitcher";
 import { BoardsModal } from "@/features/board/components/BoardsModal";
 import { ImportModal } from "@/features/import/components/ImportModal";
@@ -14,13 +15,20 @@ import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { StatsModal } from "@/features/stats/components/StatsModal";
 import { TaskListModal } from "@/features/tasks/components/TaskListModal";
 import { useMattersBoard } from "@/hooks/useMattersBoard";
+import { countDaysSince } from "@/lib/dates";
 import {
   createBoard,
   listBoards,
   removeBoard,
   saveBoard
 } from "@/services/boards";
-import type { Matter, MatterStage, PracticeBoard } from "@/types/matter";
+import type {
+  BoardSortDirection,
+  BoardSortField,
+  Matter,
+  MatterStage,
+  PracticeBoard
+} from "@/types/matter";
 import { DEFAULT_STAGE_LABELS, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
 
 const DEFAULT_BOARD: PracticeBoard = {
@@ -29,6 +37,67 @@ const DEFAULT_BOARD: PracticeBoard = {
   columnCount: 5,
   stageLabels: { ...DEFAULT_STAGE_LABELS }
 };
+
+function getSortLabel(field: BoardSortField) {
+  switch (field) {
+    case "name":
+      return "name";
+    case "days_in_stage":
+      return "days in stage";
+    case "inactive_days":
+      return "inactive days";
+    case "interactions":
+      return "interactions";
+    default:
+      return "manual order";
+  }
+}
+
+function sortStageMatters(
+  matters: Matter[],
+  field: BoardSortField,
+  direction: BoardSortDirection
+) {
+  if (field === "manual") {
+    return [...matters].sort((left, right) => left.sortOrder - right.sortOrder);
+  }
+
+  const referenceTime = Date.now();
+
+  return [...matters].sort((left, right) => {
+    let result = 0;
+
+    switch (field) {
+      case "name":
+        result = left.decedentName.localeCompare(right.decedentName, undefined, {
+          sensitivity: "base"
+        });
+        break;
+      case "days_in_stage":
+        result =
+          countDaysSince(left.stageEnteredAt, referenceTime) -
+          countDaysSince(right.stageEnteredAt, referenceTime);
+        break;
+      case "inactive_days":
+        result =
+          countDaysSince(left.lastActivityAt, referenceTime) -
+          countDaysSince(right.lastActivityAt, referenceTime);
+        break;
+      case "interactions":
+        result = left.interactionCount - right.interactionCount;
+        break;
+      default:
+        result = 0;
+        break;
+    }
+
+    if (result !== 0) {
+      return direction === "asc" ? result : -result;
+    }
+
+    return left.sortOrder - right.sortOrder;
+  });
+}
 
 export function BoardPage() {
   const [boards, setBoards] = useState<PracticeBoard[]>([DEFAULT_BOARD]);
@@ -46,11 +115,28 @@ export function BoardPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [quickNoteMatterId, setQuickNoteMatterId] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<BoardSortField>("manual");
+  const [sortDirection, setSortDirection] = useState<BoardSortDirection>("asc");
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   const stageLabels = createStageLabelMap(currentBoard.stageLabels);
   const quickNoteMatter =
     board.matters.find((matter) => matter.id === quickNoteMatterId) ?? null;
   const activeMatterCount = board.matters.length;
+  const mattersByStage = useMemo(() => {
+    const grouped = Object.fromEntries(
+      STAGES.map((stage) => [stage, [] as Matter[]])
+    ) as Record<MatterStage, Matter[]>;
+
+    for (const matter of board.matters) {
+      grouped[matter.stage].push(matter);
+    }
+
+    for (const stage of STAGES) {
+      grouped[stage] = sortStageMatters(grouped[stage], sortField, sortDirection);
+    }
+
+    return grouped;
+  }, [board.matters, sortDirection, sortField]);
 
   function captureFocusOrigin() {
     const activeElement = document.activeElement;
@@ -125,6 +211,14 @@ export function BoardPage() {
   function handleOpenQuickNote(matterId: string) {
     captureFocusOrigin();
     setQuickNoteMatterId(matterId);
+  }
+
+  function getDraggingMatter() {
+    if (!draggingMatterId) {
+      return null;
+    }
+
+    return board.matters.find((matter) => matter.id === draggingMatterId) ?? null;
   }
 
   useEffect(() => {
@@ -322,9 +416,25 @@ export function BoardPage() {
                 <span className="board-surface__eyebrow">Board view</span>
                 <h2>{currentBoard.name}</h2>
               </div>
-              <div className="board-surface__meta">
-                <span>{activeMatterCount} active matters</span>
-                <span>Drag to move or reorder</span>
+              <div className="board-surface__actions">
+                <div className="board-surface__meta">
+                  <span>{activeMatterCount} active matters</span>
+                  <span>
+                    {sortField === "manual"
+                      ? "Drag to move or reorder"
+                      : `Sorted by ${getSortLabel(sortField)} ${
+                          sortDirection === "asc" ? "ascending" : "descending"
+                        }`}
+                  </span>
+                </div>
+                <BoardSortMenu
+                  field={sortField}
+                  direction={sortDirection}
+                  onChange={(nextField, nextDirection) => {
+                    setSortField(nextField);
+                    setSortDirection(nextDirection);
+                  }}
+                />
               </div>
             </div>
             <div
@@ -336,7 +446,7 @@ export function BoardPage() {
                   key={stage}
                   stage={stage}
                   title={getStageLabel(stage, stageLabels)}
-                  matters={board.matters.filter((matter) => matter.stage === stage)}
+                  matters={mattersByStage[stage]}
                   selectedMatterId={board.selectedMatter?.id ?? null}
                   draggingMatterId={draggingMatterId}
                   isDragTarget={dropTarget?.stage === stage}
@@ -372,11 +482,20 @@ export function BoardPage() {
                     setDropTarget(null);
                   }}
                   onStageDragEnter={(nextStage) =>
-                    setDropTarget((current) =>
-                      current?.stage === nextStage
+                    setDropTarget((current) => {
+                      const draggingMatter = getDraggingMatter();
+                      if (
+                        draggingMatter &&
+                        sortField !== "manual" &&
+                        draggingMatter.stage === nextStage
+                      ) {
+                        return null;
+                      }
+
+                      return current?.stage === nextStage
                         ? current
-                        : { stage: nextStage, beforeMatterId: null }
-                    )
+                        : { stage: nextStage, beforeMatterId: null };
+                    })
                   }
                   onStageDragLeave={(stageToClear) => {
                     if (dropTarget?.stage === stageToClear) {
@@ -384,6 +503,16 @@ export function BoardPage() {
                     }
                   }}
                   onCardDragOver={(nextStage, beforeMatterId) => {
+                    const draggingMatter = getDraggingMatter();
+                    if (
+                      draggingMatter &&
+                      sortField !== "manual" &&
+                      draggingMatter.stage === nextStage
+                    ) {
+                      setDropTarget(null);
+                      return;
+                    }
+
                     setDropTarget({ stage: nextStage, beforeMatterId });
                   }}
                   onStageDrop={async (nextStage, beforeMatterId) => {
@@ -396,6 +525,7 @@ export function BoardPage() {
                     );
                     if (
                       !draggedMatter ||
+                      (sortField !== "manual" && draggedMatter.stage === nextStage) ||
                       (draggedMatter.stage === nextStage &&
                         (beforeMatterId === draggingMatterId ||
                           (beforeMatterId === null &&
