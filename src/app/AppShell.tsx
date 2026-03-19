@@ -58,14 +58,6 @@ export function AppShell() {
                   </svg>
                 </span>
               </button>
-              <div className="app-sidebar__identity">
-                <p className="app-sidebar__eyebrow">Case Management</p>
-                <h1>
-                  <span>Case</span>
-                  <span className="app-header__flow">Flow</span>
-                  <span className="app-header__version">v1.0</span>
-                </h1>
-              </div>
             </div>
             {sidebarContent}
           </div>

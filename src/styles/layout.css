@@ -38,33 +38,8 @@
 .app-sidebar__brand {
   display: flex;
   align-items: center;
-  gap: var(--space-10);
   min-height: 2.25rem;
-  padding: 0 var(--space-6);
-}
-
-.app-sidebar__identity {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.app-sidebar__eyebrow {
-  color: var(--sidebar-section-label);
-  font-size: var(--font-size-11);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.app-sidebar__identity h1 {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0;
-  color: var(--sidebar-ink);
-  font-size: 1.05rem;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+  padding: 0;
 }
 
 .app-sidebar__footer {
@@ -91,7 +66,6 @@
   padding-inline: 0;
 }
 
-.app-shell--sidebar-collapsed .app-sidebar__identity,
 .app-shell--sidebar-collapsed .app-sidebar__user {
   display: none;
 }
@@ -121,18 +95,6 @@
   gap: var(--space-10);
   flex: 1;
   min-width: 0;
-}
-
-.app-header__flow {
-  color: var(--accent-400);
-}
-
-.app-header__version {
-  margin-left: 0.45rem;
-  color: var(--sidebar-section-label);
-  font-size: var(--font-size-12);
-  font-weight: 600;
-  letter-spacing: 0;
 }
 
 .header-toolbar {
