@@ -111,6 +111,7 @@ export function SettingsPage() {
         boardSettings={boardSettings}
         isSaving={isSaving}
         saveMessage={saveMessage}
+        onOpenImport={() => undefined}
         onSave={handleSave}
       />
     </div>

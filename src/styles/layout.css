@@ -6,9 +6,10 @@
     "sidebar header"
     "sidebar main";
   min-height: 100vh;
+  height: 100vh;
   background: var(--shell-bg);
   border-radius: 0;
-  overflow: visible;
+  overflow: hidden;
   box-shadow: none;
 }
 
@@ -24,6 +25,8 @@
   display: grid;
   grid-template-rows: 1fr auto;
   gap: var(--space-16);
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .app-sidebar__content {
@@ -101,7 +104,8 @@
   align-items: center;
   justify-content: end;
   gap: var(--space-10);
-  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .app-header__flow {
@@ -117,11 +121,45 @@
 }
 
 .header-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-10);
-  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+}
+
+.header-toolbar__utility-group {
+  display: flex;
+  align-items: center;
   justify-content: end;
+  gap: var(--space-10);
+}
+
+.board-header-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  min-width: 0;
+}
+
+.board-header-toolbar__start,
+.board-header-toolbar__end {
+  display: flex;
+  align-items: center;
+}
+
+.board-header-toolbar__center {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.board-header-toolbar__center .search-field {
+  width: min(46rem, 100%);
+  min-width: min(36rem, 100%);
 }
 
 .app-main,
@@ -135,6 +173,8 @@
   grid-area: main;
   padding: var(--space-18);
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
   background: var(--shell-bg);
 }
 
@@ -715,9 +755,31 @@
     display: grid;
   }
 
+  .header-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .header-toolbar__utility-group {
+    justify-content: start;
+  }
+
+  .board-header-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .board-header-toolbar__center {
+    justify-content: stretch;
+  }
+
+  .board-header-toolbar__center .search-field {
+    width: 100%;
+    min-width: 0;
+  }
+
   .app-sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--sidebar-border);
+    overflow: visible;
   }
 
   .legend-grid,

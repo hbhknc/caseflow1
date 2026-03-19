@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
 import { ArchiveModal } from "@/features/archive/components/ArchiveModal";
 import { BoardColumn } from "@/features/board/components/BoardColumn";
+import { BoardSwitcher } from "@/features/board/components/BoardSwitcher";
 import { BoardsModal } from "@/features/board/components/BoardsModal";
 import { ImportModal } from "@/features/import/components/ImportModal";
 import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
@@ -85,6 +86,22 @@ export function BoardPage() {
     setIsImportOpen(true);
   }
 
+  async function handleCreateBoard(name: string) {
+    const created = await createBoard(name);
+    setBoards((current) => [...current, created]);
+    setCurrentBoardId(created.id);
+    setBoardActionError(null);
+  }
+
+  async function handleDeleteBoard(boardId: string) {
+    const remainingBoards = await removeBoard(boardId);
+    setBoards(remainingBoards);
+    setCurrentBoardId((current) =>
+      current === boardId ? (remainingBoards[0]?.id ?? DEFAULT_BOARD.id) : current
+    );
+    setBoardActionError(null);
+  }
+
   function handleOpenCreateMatter() {
     captureFocusOrigin();
     board.openCreateMatter();
@@ -135,16 +152,29 @@ export function BoardPage() {
 
   useEffect(() => {
     setHeaderToolbar(
-      <>
-        <SearchField
-          value={board.searchTerm}
-          onChange={board.setSearchTerm}
-          results={searchResults}
-        />
-        <button type="button" className="button" onClick={handleOpenCreateMatter}>
-          New Case
-        </button>
-      </>
+      <div className="board-header-toolbar">
+        <div className="board-header-toolbar__start">
+          <BoardSwitcher
+            boards={boards}
+            currentBoardId={currentBoard.id}
+            onSelectBoard={setCurrentBoardId}
+            onCreateBoard={handleCreateBoard}
+            onManageBoards={handleOpenBoards}
+          />
+        </div>
+        <div className="board-header-toolbar__center">
+          <SearchField
+            value={board.searchTerm}
+            onChange={board.setSearchTerm}
+            results={searchResults}
+          />
+        </div>
+        <div className="board-header-toolbar__end">
+          <button type="button" className="button" onClick={handleOpenCreateMatter}>
+            New Case
+          </button>
+        </div>
+      </div>
     );
 
     setSidebarContent(
@@ -152,45 +182,6 @@ export function BoardPage() {
         <button
           type="button"
           className="sidebar-menu__item sidebar-menu__item--primary"
-          aria-label="Boards"
-          title="Boards"
-          onClick={handleOpenBoards}
-        >
-          <span className="sidebar-menu__icon" aria-hidden="true">
-            <svg viewBox="0 0 18 18" fill="none">
-              <path
-                d="M3.5 4.5h4.5v4.5H3.5zm6 0h4.5v4.5H9.5zm-6 6h4.5v4.5H3.5zm6 0h4.5v4.5H9.5z"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span>Boards</span>
-        </button>
-        <button
-          type="button"
-          className="sidebar-menu__item"
-          aria-label="Import"
-          title="Import"
-          onClick={handleOpenImport}
-        >
-          <span className="sidebar-menu__icon" aria-hidden="true">
-            <svg viewBox="0 0 18 18" fill="none">
-              <path
-                d="M9 3.5v7M6.5 8l2.5 2.5L11.5 8M4.5 13.5h9"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span>Import</span>
-        </button>
-        <button
-          type="button"
-          className="sidebar-menu__item"
           aria-label="Tasks"
           title="Tasks"
           onClick={() => void handleOpenTaskList()}
@@ -278,8 +269,10 @@ export function BoardPage() {
       setSidebarContent(null);
     };
   }, [
+    boards,
     board.searchTerm,
     board.setSearchTerm,
+    currentBoard.id,
     searchResults,
     setHeaderToolbar,
     setSidebarContent
@@ -442,10 +435,7 @@ export function BoardPage() {
           }}
           onCreateBoard={async (name) => {
             try {
-              const created = await createBoard(name);
-              setBoards((current) => [...current, created]);
-              setCurrentBoardId(created.id);
-              setBoardActionError(null);
+              await handleCreateBoard(name);
             } catch (error) {
               setBoardActionError(
                 error instanceof Error ? error.message : "Unable to create board."
@@ -454,12 +444,7 @@ export function BoardPage() {
           }}
           onDeleteBoard={async (boardId) => {
             try {
-              const remainingBoards = await removeBoard(boardId);
-              setBoards(remainingBoards);
-              setCurrentBoardId((current) =>
-                current === boardId ? (remainingBoards[0]?.id ?? DEFAULT_BOARD.id) : current
-              );
-              setBoardActionError(null);
+              await handleDeleteBoard(boardId);
             } catch (error) {
               setBoardActionError(
                 error instanceof Error ? error.message : "Unable to delete board."
@@ -478,6 +463,10 @@ export function BoardPage() {
           boardSettings={{
             columnCount: currentBoard.columnCount,
             stageLabels: currentBoard.stageLabels
+          }}
+          onOpenImport={() => {
+            setIsSettingsOpen(false);
+            handleOpenImport();
           }}
           onSave={async (nextSettings) => {
             const savedBoard = await saveBoard(currentBoard.id, {

@@ -10,6 +10,7 @@ type SettingsPanelProps = {
   boardSettings: BoardSettings | null;
   isSaving: boolean;
   saveMessage: string | null;
+  onOpenImport: () => void;
   onSave: (settings: BoardSettings) => Promise<void>;
 };
 
@@ -18,14 +19,27 @@ export function SettingsPanel({
   boardSettings,
   isSaving,
   saveMessage,
+  onOpenImport,
   onSave
 }: SettingsPanelProps) {
   const { theme, setTheme } = useTheme();
-  const [draft, setDraft] = useState<BoardSettings | null>(boardSettings);
+  const [draft, setDraft] = useState<BoardSettings | null>(() =>
+    boardSettings
+      ? {
+          columnCount: boardSettings.columnCount,
+          stageLabels: { ...boardSettings.stageLabels }
+        }
+      : null
+  );
 
   useEffect(() => {
-    setDraft(boardSettings);
-  }, [boardSettings]);
+    if (!draft && boardSettings) {
+      setDraft({
+        columnCount: boardSettings.columnCount,
+        stageLabels: { ...boardSettings.stageLabels }
+      });
+    }
+  }, [boardSettings, draft]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -111,6 +125,18 @@ export function SettingsPanel({
                 />
               </label>
             ))}
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <div className="section-heading">
+            <h2>Data Tools</h2>
+            <p>Import matters into the current board from a spreadsheet export.</p>
+          </div>
+          <div className="button-row">
+            <button type="button" className="button button--ghost" onClick={onOpenImport}>
+              Import Cases
+            </button>
           </div>
         </div>
 

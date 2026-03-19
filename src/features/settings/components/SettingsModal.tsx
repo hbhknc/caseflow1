@@ -6,12 +6,14 @@ import type { AppStatus, BoardSettings } from "@/types/api";
 
 type SettingsModalProps = {
   boardSettings: BoardSettings;
+  onOpenImport: () => void;
   onSave: (settings: BoardSettings) => Promise<void>;
   onClose: () => void;
 };
 
 export function SettingsModal({
   boardSettings,
+  onOpenImport,
   onSave,
   onClose
 }: SettingsModalProps) {
@@ -63,7 +65,7 @@ export function SettingsModal({
       >
         <Drawer
           title="Settings"
-          subtitle="Adjust the interface theme, board layout, and visible stage titles."
+          subtitle="Adjust the interface theme, board layout, visible stage titles, and data tools."
           actions={
             <button
               ref={closeButtonRef}
@@ -80,6 +82,7 @@ export function SettingsModal({
             boardSettings={boardSettings}
             isSaving={isSaving}
             saveMessage={saveMessage}
+            onOpenImport={onOpenImport}
             onSave={handleSave}
           />
         </Drawer>
