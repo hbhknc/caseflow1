@@ -31,6 +31,45 @@ function getBoardById(boardId: string) {
   return boardStore.find((board) => board.id === boardId);
 }
 
+function sortDemoMatters(items: Matter[]) {
+  return [...items].sort((left, right) => {
+    const stageDelta = STAGES.indexOf(left.stage) - STAGES.indexOf(right.stage);
+
+    if (stageDelta !== 0) {
+      return stageDelta;
+    }
+
+    return left.sortOrder - right.sortOrder;
+  });
+}
+
+function renumberDemoStage(boardId: string, stage: MatterStage) {
+  const mattersInStage = matterStore
+    .filter((matter) => matter.boardId === boardId && !matter.archived && matter.stage === stage)
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+
+  mattersInStage.forEach((matter, index) => {
+    matter.sortOrder = index + 1;
+  });
+}
+
+function getNextDemoStageSortOrder(
+  boardId: string,
+  stage: MatterStage,
+  placement: "start" | "end"
+) {
+  const mattersInStage = matterStore.filter(
+    (matter) => matter.boardId === boardId && !matter.archived && matter.stage === stage
+  );
+
+  if (mattersInStage.length === 0) {
+    return 1;
+  }
+
+  const sortOrders = mattersInStage.map((matter) => matter.sortOrder);
+  return placement === "start" ? Math.min(...sortOrders) - 1 : Math.max(...sortOrders) + 1;
+}
+
 function buildBoardId(name: string) {
   const baseId =
     name
@@ -119,11 +158,9 @@ export async function deleteDemoBoard(boardId: string): Promise<PracticeBoard[]>
 }
 
 export async function listDemoMatters(boardId: string): Promise<Matter[]> {
-  return [...matterStore]
-    .filter((matter) => matter.boardId === boardId && !matter.archived)
-    .sort((left, right) =>
-    right.lastActivityAt.localeCompare(left.lastActivityAt)
-    );
+  return sortDemoMatters(
+    matterStore.filter((matter) => matter.boardId === boardId && !matter.archived)
+  );
 }
 
 export async function listDemoArchivedMatters(boardId: string): Promise<Matter[]> {
@@ -134,7 +171,9 @@ export async function listDemoArchivedMatters(boardId: string): Promise<Matter[]
 
 export async function createDemoMatterRecord(input: MatterFormInput): Promise<Matter> {
   const matter = createDemoMatter(input);
+  matter.sortOrder = getNextDemoStageSortOrder(input.boardId, input.stage, "start");
   matterStore.unshift(matter);
+  renumberDemoStage(input.boardId, input.stage);
   noteStore[matter.id] = [];
   return matter;
 }
@@ -152,16 +191,25 @@ export async function updateDemoMatterRecord(
   matter.decedentName = input.decedentName;
   matter.clientName = input.clientName;
   matter.fileNumber = input.fileNumber;
+  const previousBoardId = matter.boardId;
+  const previousStage = matter.stage;
   matter.boardId = input.boardId;
   matter.stage = input.stage;
   matter.lastActivityAt = new Date().toISOString();
+
+  if (previousBoardId !== input.boardId || previousStage !== input.stage) {
+    matter.sortOrder = getNextDemoStageSortOrder(input.boardId, input.stage, "start");
+    renumberDemoStage(previousBoardId, previousStage);
+    renumberDemoStage(input.boardId, input.stage);
+  }
 
   return matter;
 }
 
 export async function moveDemoMatterRecord(
   matterId: string,
-  stage: MatterStage
+  stage: MatterStage,
+  beforeMatterId: string | null = null
 ): Promise<Matter> {
   const matter = matterStore.find((item) => item.id === matterId);
 
@@ -169,8 +217,40 @@ export async function moveDemoMatterRecord(
     throw new Error("Matter not found.");
   }
 
+  const destinationMatters = matterStore
+    .filter(
+      (item) =>
+        item.boardId === matter.boardId &&
+        !item.archived &&
+        item.stage === stage &&
+        item.id !== matterId
+    )
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+
+  if (beforeMatterId && !destinationMatters.some((item) => item.id === beforeMatterId)) {
+    throw new Error("Target matter for reordering was not found.");
+  }
+
+  const previousStage = matter.stage;
   matter.stage = stage;
-  matter.lastActivityAt = new Date().toISOString();
+  if (previousStage !== stage) {
+    matter.lastActivityAt = new Date().toISOString();
+  }
+  if (beforeMatterId) {
+    const beforeIndex = destinationMatters.findIndex((item) => item.id === beforeMatterId);
+    destinationMatters.splice(beforeIndex, 0, matter);
+  } else {
+    destinationMatters.push(matter);
+  }
+
+  destinationMatters.forEach((item, index) => {
+    item.sortOrder = index + 1;
+  });
+
+  if (previousStage !== stage) {
+    renumberDemoStage(matter.boardId, previousStage);
+  }
+
   return matter;
 }
 

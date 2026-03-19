@@ -74,15 +74,16 @@ export async function saveMatter(
 
 export async function moveMatterStage(
   matterId: string,
-  stage: MatterStage
+  stage: MatterStage,
+  beforeMatterId: string | null = null
 ): Promise<Matter> {
   const response = await requestJsonWithFallback<{ matter: Matter }>(
     `/matters/${matterId}`,
     {
       method: "PATCH",
-      body: { stage }
+      body: { stage, beforeMatterId }
     },
-    async () => ({ matter: await moveDemoMatterRecord(matterId, stage) })
+    async () => ({ matter: await moveDemoMatterRecord(matterId, stage, beforeMatterId) })
   );
 
   return response.matter;

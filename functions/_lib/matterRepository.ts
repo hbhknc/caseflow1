@@ -53,6 +53,7 @@ function mapMatter(row: MatterRecord) {
     clientName: row.client_name,
     fileNumber: row.file_number,
     stage: row.stage,
+    sortOrder: Number(row.sort_order ?? 0),
     createdAt: row.created_at,
     lastActivityAt: row.last_activity_at,
     archived: Boolean(row.archived),
@@ -140,6 +141,106 @@ function createImportedFileNumber(rowNumber: number) {
   return `IMPORT-${compactDate}-${rowNumber}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
+async function normalizeMatterSortOrder(db: D1Database) {
+  await db
+    .prepare(
+      `WITH ranked AS (
+         SELECT
+           id,
+           ROW_NUMBER() OVER (
+             PARTITION BY board_id, stage
+             ORDER BY sort_order ASC, last_activity_at DESC, created_at DESC, id ASC
+           ) AS next_sort_order
+         FROM matters
+         WHERE archived = 0
+       )
+       UPDATE matters
+       SET sort_order = (
+         SELECT ranked.next_sort_order
+         FROM ranked
+         WHERE ranked.id = matters.id
+       )
+       WHERE archived = 0`
+    )
+    .run();
+}
+
+async function getStageMatterIdsOrdered(
+  db: D1Database,
+  boardId: string,
+  stage: MatterStage,
+  excludeMatterId?: string
+) {
+  const query = excludeMatterId
+    ? `SELECT id
+       FROM matters
+       WHERE board_id = ?1
+         AND archived = 0
+         AND stage = ?2
+         AND id != ?3
+       ORDER BY sort_order ASC, last_activity_at DESC, created_at DESC, id ASC`
+    : `SELECT id
+       FROM matters
+       WHERE board_id = ?1
+         AND archived = 0
+         AND stage = ?2
+       ORDER BY sort_order ASC, last_activity_at DESC, created_at DESC, id ASC`;
+  const statement = db.prepare(query);
+  const bound = excludeMatterId
+    ? statement.bind(boardId, stage, excludeMatterId)
+    : statement.bind(boardId, stage);
+  const { results } = await bound.all<{ id: string }>();
+  return results.map((row) => row.id);
+}
+
+async function renumberStageMatterOrder(
+  db: D1Database,
+  matterIds: string[]
+) {
+  if (matterIds.length === 0) {
+    return;
+  }
+
+  await db.batch(
+    matterIds.map((matterId, index) =>
+      db
+        .prepare(
+          `UPDATE matters
+           SET sort_order = ?2
+           WHERE id = ?1`
+        )
+        .bind(matterId, index + 1)
+    )
+  );
+}
+
+async function getNextStageSortOrder(
+  db: D1Database,
+  boardId: string,
+  stage: MatterStage,
+  placement: "start" | "end"
+) {
+  const boundary = await db
+    .prepare(
+      `SELECT MIN(sort_order) AS min_sort_order, MAX(sort_order) AS max_sort_order
+       FROM matters
+       WHERE board_id = ?1
+         AND archived = 0
+         AND stage = ?2`
+    )
+    .bind(boardId, stage)
+    .first<{ min_sort_order: number | null; max_sort_order: number | null }>();
+
+  const minSortOrder = Number(boundary?.min_sort_order ?? 0);
+  const maxSortOrder = Number(boundary?.max_sort_order ?? 0);
+
+  if (!boundary?.min_sort_order && !boundary?.max_sort_order) {
+    return 1;
+  }
+
+  return placement === "start" ? minSortOrder - 1 : maxSortOrder + 1;
+}
+
 async function insertMatterRecord(
   db: D1Database,
   input: {
@@ -148,6 +249,7 @@ async function insertMatterRecord(
     clientName: string;
     fileNumber: string;
     stage: MatterStage;
+    sortOrder: number;
     createdAt: string;
     lastActivityAt: string;
     auditAction: string;
@@ -160,8 +262,8 @@ async function insertMatterRecord(
   await db
     .prepare(
       `INSERT INTO matters (
-        id, board_id, decedent_name, client_name, file_number, stage, created_at, updated_at, last_activity_at, archived, archived_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, NULL)`
+        id, board_id, decedent_name, client_name, file_number, stage, sort_order, created_at, updated_at, last_activity_at, archived, archived_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, NULL)`
     )
     .bind(
       matterId,
@@ -170,6 +272,7 @@ async function insertMatterRecord(
       input.clientName,
       input.fileNumber,
       input.stage,
+      input.sortOrder,
       input.createdAt,
       updatedAt,
       input.lastActivityAt
@@ -196,6 +299,8 @@ async function insertMatterRecord(
 }
 
 async function getMatterRecord(db: D1Database, matterId: string, accountId?: string) {
+  await ensureDefaultAccountData(db);
+
   if (!accountId) {
     return await db
       .prepare("SELECT * FROM matters WHERE id = ?1")
@@ -220,6 +325,8 @@ async function getPracticeBoardRecord(
   boardId: string,
   accountId: string
 ) {
+  await ensureDefaultAccountData(db);
+
   return await db
     .prepare(
       `SELECT *
@@ -354,6 +461,7 @@ async function ensureBaseSchema(db: D1Database) {
             'accounting_closing'
           )
         ),
+        sort_order REAL NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         last_activity_at TEXT NOT NULL,
@@ -379,6 +487,17 @@ async function ensureBaseSchema(db: D1Database) {
        WHERE board_id IS NULL OR board_id = ''`
     )
     .run();
+
+  if (!(await tableHasColumn(db, "matters", "sort_order"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matters
+         ADD COLUMN sort_order REAL NOT NULL DEFAULT 0`
+      )
+      .run();
+  }
+
+  await normalizeMatterSortOrder(db);
 
   await db
     .prepare(
@@ -448,7 +567,7 @@ async function ensureBaseSchema(db: D1Database) {
   await db
     .prepare(
       `CREATE INDEX IF NOT EXISTS idx_matters_stage_archived
-       ON matters(stage, archived, last_activity_at DESC)`
+       ON matters(stage, archived, sort_order ASC, last_activity_at DESC)`
     )
     .run();
 
@@ -462,7 +581,7 @@ async function ensureBaseSchema(db: D1Database) {
   await db
     .prepare(
       `CREATE INDEX IF NOT EXISTS idx_matters_board_stage_archived
-       ON matters(board_id, stage, archived, last_activity_at DESC)`
+       ON matters(board_id, stage, archived, sort_order ASC, last_activity_at DESC)`
     )
     .run();
 
@@ -785,6 +904,8 @@ export async function updateBoardSettings(
 }
 
 export async function listMatters(db: D1Database, accountId: string, boardId: string) {
+  await ensureDefaultAccountData(db);
+
   const { results } = await db
     .prepare(
       `SELECT matters.*
@@ -802,6 +923,7 @@ export async function listMatters(db: D1Database, accountId: string, boardId: st
            WHEN 'accounting_closing' THEN 5
            ELSE 99
          END,
+         matters.sort_order ASC,
          matters.last_activity_at DESC`
     )
     .bind(boardId, accountId)
@@ -815,6 +937,8 @@ export async function listArchivedMatters(
   accountId: string,
   boardId: string
 ) {
+  await ensureDefaultAccountData(db);
+
   const { results } = await db
     .prepare(
       `SELECT matters.*
@@ -832,6 +956,8 @@ export async function listArchivedMatters(
 }
 
 export async function getMatterStats(db: D1Database, accountId: string, boardId: string) {
+  await ensureDefaultAccountData(db);
+
   const { results } = await db
     .prepare(
       `SELECT matters.id, matters.created_at, matters.archived, matters.archived_at
@@ -882,12 +1008,14 @@ export async function createMatter(
     throw new Error("Board not found.");
   }
   const timestamp = nowIso();
+  const sortOrder = await getNextStageSortOrder(db, input.boardId, input.stage, "start");
   const matterId = await insertMatterRecord(db, {
     boardId: input.boardId,
     decedentName: input.decedentName,
     clientName: input.clientName,
     fileNumber: input.fileNumber,
     stage: input.stage,
+    sortOrder,
     createdAt: timestamp,
     lastActivityAt: timestamp,
     auditAction: "matter.created",
@@ -958,6 +1086,8 @@ export async function importMatters(
     }
   }
 
+  const nextStageSortOrders = new Map<MatterStage, number>();
+
   for (const row of normalizedRows) {
     if (!isMatterStage(row.stage)) {
       invalidRows.push({
@@ -994,6 +1124,9 @@ export async function importMatters(
     const fileNumber = row.fileNumber || createImportedFileNumber(row.rowNumber);
     const decedentName = row.decedentName || `Imported Matter ${row.rowNumber}`;
     const clientName = row.clientName || "Imported Client";
+    const nextSortOrder =
+      nextStageSortOrders.get(row.stage) ??
+      (await getNextStageSortOrder(db, boardId, row.stage, "end"));
 
     await insertMatterRecord(db, {
       boardId,
@@ -1001,6 +1134,7 @@ export async function importMatters(
       clientName,
       fileNumber,
       stage: row.stage,
+      sortOrder: nextSortOrder,
       createdAt,
       lastActivityAt,
       auditAction: "matter.imported",
@@ -1010,6 +1144,7 @@ export async function importMatters(
         boardId
       }
     });
+    nextStageSortOrders.set(row.stage, nextSortOrder + 1);
     importedFileNumbers.push(fileNumber);
   }
 
@@ -1048,6 +1183,11 @@ export async function updateMatter(
   }
 
   const timestamp = nowIso();
+  const movedAcrossStageOrBoard =
+    input.stage !== existing.stage || input.boardId !== existing.board_id;
+  const nextSortOrder = movedAcrossStageOrBoard
+    ? await getNextStageSortOrder(db, input.boardId, input.stage, "start")
+    : Number(existing.sort_order ?? 0);
 
   await db
     .prepare(
@@ -1057,8 +1197,9 @@ export async function updateMatter(
            file_number = ?4,
            stage = ?5,
            board_id = ?6,
-           updated_at = ?7,
-           last_activity_at = CASE WHEN ?8 = 1 THEN ?7 ELSE last_activity_at END
+           sort_order = ?7,
+           updated_at = ?8,
+           last_activity_at = CASE WHEN ?9 = 1 THEN ?8 ELSE last_activity_at END
        WHERE id = ?1`
     )
     .bind(
@@ -1068,8 +1209,9 @@ export async function updateMatter(
       input.fileNumber,
       input.stage,
       input.boardId,
+      nextSortOrder,
       timestamp,
-      input.stage !== existing.stage ? 1 : 0
+      movedAcrossStageOrBoard ? 1 : 0
     )
     .run();
 
@@ -1090,12 +1232,31 @@ export async function updateMatter(
       .run();
   }
 
+  if (movedAcrossStageOrBoard) {
+    const destinationIds = await getStageMatterIdsOrdered(db, input.boardId, input.stage);
+    await renumberStageMatterOrder(db, destinationIds);
+
+    if (existing.board_id !== input.boardId || existing.stage !== input.stage) {
+      const sourceIds = await getStageMatterIdsOrdered(
+        db,
+        existing.board_id,
+        existing.stage
+      );
+      await renumberStageMatterOrder(db, sourceIds);
+    }
+  }
+
   await insertAuditEvent(
     db,
     "matter.updated",
     "matter",
     matterId,
-    JSON.stringify({ fromStage: existing.stage, toStage: input.stage })
+    JSON.stringify({
+      fromBoardId: existing.board_id,
+      toBoardId: input.boardId,
+      fromStage: existing.stage,
+      toStage: input.stage
+    })
   );
 
   const updated = await getMatterRecord(db, matterId);
@@ -1106,9 +1267,80 @@ export async function moveMatterStage(
   db: D1Database,
   accountId: string,
   matterId: string,
-  stage: MatterStage
+  input: { stage: MatterStage; beforeMatterId?: string | null }
 ) {
-  return updateMatter(db, accountId, matterId, { stage });
+  const existing = await getMatterRecord(db, matterId, accountId);
+
+  if (!existing) {
+    return null;
+  }
+
+  const beforeMatterId =
+    input.beforeMatterId && input.beforeMatterId !== matterId ? input.beforeMatterId : null;
+  const destinationIds = await getStageMatterIdsOrdered(
+    db,
+    existing.board_id,
+    input.stage,
+    matterId
+  );
+
+  if (beforeMatterId && !destinationIds.includes(beforeMatterId)) {
+    throw new Error("Target matter for reordering was not found.");
+  }
+
+  const insertIndex = beforeMatterId ? destinationIds.indexOf(beforeMatterId) : destinationIds.length;
+  destinationIds.splice(insertIndex, 0, matterId);
+
+  const timestamp = nowIso();
+  const stageChanged = existing.stage !== input.stage;
+
+  await db
+    .prepare(
+      `UPDATE matters
+       SET stage = ?2,
+           updated_at = ?3,
+           last_activity_at = CASE WHEN ?4 = 1 THEN ?3 ELSE last_activity_at END
+       WHERE id = ?1`
+    )
+    .bind(matterId, input.stage, timestamp, stageChanged ? 1 : 0)
+    .run();
+
+  if (stageChanged) {
+    await db
+      .prepare(
+        `INSERT INTO matter_stage_history (id, matter_id, from_stage, to_stage, changed_at, changed_by)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
+      )
+      .bind(
+        crypto.randomUUID(),
+        matterId,
+        existing.stage,
+        input.stage,
+        timestamp,
+        "System"
+      )
+      .run();
+
+    const sourceIds = await getStageMatterIdsOrdered(db, existing.board_id, existing.stage);
+    await renumberStageMatterOrder(db, sourceIds);
+  }
+
+  await renumberStageMatterOrder(db, destinationIds);
+
+  await insertAuditEvent(
+    db,
+    stageChanged ? "matter.moved" : "matter.reordered",
+    "matter",
+    matterId,
+    JSON.stringify({
+      fromStage: existing.stage,
+      toStage: input.stage,
+      beforeMatterId
+    })
+  );
+
+  const updated = await getMatterRecord(db, matterId);
+  return updated ? mapMatter(updated) : null;
 }
 
 export async function deleteMatter(db: D1Database, accountId: string, matterId: string) {
@@ -1211,6 +1443,8 @@ export async function unarchiveMatter(
 }
 
 export async function listNotes(db: D1Database, accountId: string, matterId: string) {
+  await ensureDefaultAccountData(db);
+
   const { results } = await db
     .prepare(
       `SELECT matter_notes.id, matter_notes.matter_id, matter_notes.body, matter_notes.created_at, matter_notes.created_by
@@ -1228,6 +1462,8 @@ export async function listNotes(db: D1Database, accountId: string, matterId: str
 }
 
 export async function listTasks(db: D1Database, accountId: string, boardId: string) {
+  await ensureDefaultAccountData(db);
+
   const { results } = await db
     .prepare(
       `SELECT

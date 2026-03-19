@@ -55,7 +55,11 @@ type UseMattersBoardResult = {
   closeStats: () => void;
   createMatter: (input: MatterFormInput) => Promise<void>;
   updateMatter: (matterId: string, input: MatterFormInput) => Promise<void>;
-  moveMatter: (matterId: string, stage: MatterStage) => Promise<void>;
+  moveMatter: (
+    matterId: string,
+    stage: MatterStage,
+    beforeMatterId?: string | null
+  ) => Promise<void>;
   addNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
   quickAddNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
   deleteMatter: (matterId: string) => Promise<void>;
@@ -136,8 +140,71 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
         return stageDelta;
       }
 
-      return right.lastActivityAt.localeCompare(left.lastActivityAt);
+      return left.sortOrder - right.sortOrder;
     });
+  }
+
+  function reorderMatters(
+    items: Matter[],
+    matterId: string,
+    nextStage: MatterStage,
+    beforeMatterId: string | null,
+    optimisticTimestamp: string
+  ) {
+    const movingMatter = items.find((matter) => matter.id === matterId);
+
+    if (!movingMatter) {
+      return items;
+    }
+
+    const sourceStage = movingMatter.stage;
+    const destinationItems = items
+      .filter(
+        (matter) =>
+          matter.stage === nextStage &&
+          matter.id !== matterId &&
+          !matter.archived
+      )
+      .sort((left, right) => left.sortOrder - right.sortOrder);
+    const sourceItems = items
+      .filter(
+        (matter) =>
+          matter.stage === sourceStage &&
+          matter.id !== matterId &&
+          !matter.archived
+      )
+      .sort((left, right) => left.sortOrder - right.sortOrder);
+    const destinationInsertIndex = beforeMatterId
+      ? destinationItems.findIndex((matter) => matter.id === beforeMatterId)
+      : destinationItems.length;
+    const updatedMovingMatter: Matter = {
+      ...movingMatter,
+      stage: nextStage,
+      lastActivityAt:
+        sourceStage !== nextStage ? optimisticTimestamp : movingMatter.lastActivityAt
+    };
+    const nextDestinationItems = [...destinationItems];
+    nextDestinationItems.splice(
+      destinationInsertIndex >= 0 ? destinationInsertIndex : destinationItems.length,
+      0,
+      updatedMovingMatter
+    );
+
+    const sourceStageUpdates =
+      sourceStage === nextStage
+        ? []
+        : sourceItems.map((matter, index) => ({ ...matter, sortOrder: index + 1 }));
+    const destinationStageUpdates = nextDestinationItems.map((matter, index) => ({
+      ...matter,
+      sortOrder: index + 1
+    }));
+    const stagedUpdates = new Map(
+      [...sourceStageUpdates, ...destinationStageUpdates].map((matter) => [matter.id, matter])
+    );
+
+    return sortMatters(
+      items.map((matter) => stagedUpdates.get(matter.id) ?? matter)
+    );
   }
 
   async function hydrateBoard() {
@@ -221,31 +288,21 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     setSelectedMatterId(matterId);
   }
 
-  async function handleMoveMatter(matterId: string, stage: MatterStage) {
+  async function handleMoveMatter(
+    matterId: string,
+    stage: MatterStage,
+    beforeMatterId: string | null = null
+  ) {
     const previousMatters = matters;
     const optimisticTimestamp = new Date().toISOString();
 
     setMatters((current) =>
-      sortMatters(
-        current.map((matter) =>
-          matter.id === matterId
-            ? {
-                ...matter,
-                stage,
-                lastActivityAt: optimisticTimestamp
-              }
-            : matter
-        )
-      )
+      reorderMatters(current, matterId, stage, beforeMatterId, optimisticTimestamp)
     );
 
     try {
-      const updatedMatter = await moveMatterStage(matterId, stage);
-      setMatters((current) =>
-        sortMatters(
-          current.map((matter) => (matter.id === matterId ? updatedMatter : matter))
-        )
-      );
+      await moveMatterStage(matterId, stage, beforeMatterId);
+      await hydrateBoard();
     } catch (caughtError) {
       setMatters(previousMatters);
       setError(

@@ -2,7 +2,7 @@ import { requireAuth } from "../../_lib/auth";
 import { badRequest, json, notFound, parseJson, serverError } from "../../_lib/http";
 import { deleteMatter, moveMatterStage, updateMatter } from "../../_lib/matterRepository";
 import { isMatterStage } from "../../_lib/stages";
-import type { Env, MatterInput } from "../../_lib/types";
+import type { Env, MatterInput, MatterMoveInput } from "../../_lib/types";
 
 function getMatterId(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -44,7 +44,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
       return notFound("Matter id is required.");
     }
 
-    const payload = await parseJson<{ stage?: string }>(request);
+    const payload = await parseJson<Partial<MatterMoveInput>>(request);
     if (!payload.stage || !isMatterStage(payload.stage)) {
       return badRequest("A valid stage is required.");
     }
@@ -53,7 +53,10 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
       env.DB,
       auth.session.accountId,
       matterId,
-      payload.stage
+      {
+        stage: payload.stage,
+        beforeMatterId: payload.beforeMatterId ?? null
+      }
     );
     return matter ? json({ matter }) : notFound("Matter not found.");
   } catch (error) {

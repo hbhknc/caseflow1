@@ -40,7 +40,10 @@ export function BoardPage() {
   const board = useMattersBoard(currentBoard.id);
   const { setHeaderToolbar, setSidebarContent } = useAppChrome();
   const [draggingMatterId, setDraggingMatterId] = useState<string | null>(null);
-  const [dragOverStage, setDragOverStage] = useState<MatterStage | null>(null);
+  const [dropTarget, setDropTarget] = useState<{
+    stage: MatterStage;
+    beforeMatterId: string | null;
+  } | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [quickNoteMatterId, setQuickNoteMatterId] = useState<string | null>(null);
@@ -314,7 +317,10 @@ export function BoardPage() {
                 matters={board.matters.filter((matter) => matter.stage === stage)}
                 selectedMatterId={board.selectedMatter?.id ?? null}
                 draggingMatterId={draggingMatterId}
-                isDragTarget={dragOverStage === stage}
+                isDragTarget={dropTarget?.stage === stage}
+                dropIndicatorBeforeMatterId={
+                  dropTarget?.stage === stage ? dropTarget.beforeMatterId : undefined
+                }
                 onSelectMatter={handleSelectMatter}
                 onQuickNote={handleOpenQuickNote}
                 onDragStart={(event, matter) => {
@@ -341,15 +347,24 @@ export function BoardPage() {
                 }}
                 onDragEnd={() => {
                   setDraggingMatterId(null);
-                  setDragOverStage(null);
+                  setDropTarget(null);
                 }}
-                onStageDragEnter={setDragOverStage}
+                onStageDragEnter={(nextStage) =>
+                  setDropTarget((current) =>
+                    current?.stage === nextStage
+                      ? current
+                      : { stage: nextStage, beforeMatterId: null }
+                  )
+                }
                 onStageDragLeave={(stageToClear) => {
-                  if (dragOverStage === stageToClear) {
-                    setDragOverStage(null);
+                  if (dropTarget?.stage === stageToClear) {
+                    setDropTarget(null);
                   }
                 }}
-                onStageDrop={async (nextStage) => {
+                onCardDragOver={(nextStage, beforeMatterId) => {
+                  setDropTarget({ stage: nextStage, beforeMatterId });
+                }}
+                onStageDrop={async (nextStage, beforeMatterId) => {
                   if (!draggingMatterId) {
                     return;
                   }
@@ -357,15 +372,24 @@ export function BoardPage() {
                   const draggedMatter = board.matters.find(
                     (matter: Matter) => matter.id === draggingMatterId
                   );
-                  if (!draggedMatter || draggedMatter.stage === nextStage) {
+                  if (
+                    !draggedMatter ||
+                    (draggedMatter.stage === nextStage &&
+                      (beforeMatterId === draggingMatterId ||
+                        beforeMatterId === null &&
+                          board.matters
+                            .filter((matter) => matter.stage === nextStage)
+                            .sort((left, right) => left.sortOrder - right.sortOrder)
+                            .at(-1)?.id === draggingMatterId))
+                  ) {
                     setDraggingMatterId(null);
-                    setDragOverStage(null);
+                    setDropTarget(null);
                     return;
                   }
 
-                  await board.moveMatter(draggingMatterId, nextStage);
+                  await board.moveMatter(draggingMatterId, nextStage, beforeMatterId);
                   setDraggingMatterId(null);
-                  setDragOverStage(null);
+                  setDropTarget(null);
                 }}
               />
             ))}

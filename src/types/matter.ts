@@ -12,6 +12,7 @@ export type Matter = {
   clientName: string;
   fileNumber: string;
   stage: MatterStage;
+  sortOrder: number;
   createdAt: string;
   lastActivityAt: string;
   archived: boolean;

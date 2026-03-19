@@ -33,6 +33,7 @@ export type MatterRecord = {
   client_name: string;
   file_number: string;
   stage: MatterStage;
+  sort_order: number;
   created_at: string;
   updated_at: string;
   last_activity_at: string;
@@ -82,6 +83,11 @@ export type MatterInput = {
   clientName: string;
   fileNumber: string;
   stage: MatterStage;
+};
+
+export type MatterMoveInput = {
+  stage: MatterStage;
+  beforeMatterId?: string | null;
 };
 
 export type MatterImportRowInput = {

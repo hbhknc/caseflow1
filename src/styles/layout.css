@@ -263,6 +263,31 @@
   gap: var(--space-10);
 }
 
+.board-column__card-slot {
+  position: relative;
+}
+
+.board-column__card-slot--drop-before::before,
+.board-column__drop-indicator {
+  content: "";
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(33, 108, 255, 0.72);
+  box-shadow: 0 0 0 1px rgba(33, 108, 255, 0.12);
+}
+
+.board-column__card-slot--drop-before::before {
+  position: absolute;
+  top: -6px;
+  left: 0.4rem;
+  right: 0.4rem;
+}
+
+.board-column__drop-indicator {
+  margin: -0.1rem 0.4rem 0.2rem;
+}
+
 .board-column__empty,
 .board-empty-inline {
   padding: var(--space-14);
