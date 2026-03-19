@@ -63,7 +63,7 @@ export function SettingsModal({
       >
         <Drawer
           title="Settings"
-          subtitle="Adjust the board layout and visible stage titles."
+          subtitle="Adjust the interface theme, board layout, and visible stage titles."
           actions={
             <button
               ref={closeButtonRef}

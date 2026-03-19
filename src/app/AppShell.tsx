@@ -3,10 +3,12 @@ import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "@/app/AuthContext";
 import { AppChromeContext } from "@/app/AppChrome";
+import { useTheme } from "@/app/ThemeContext";
 import { LoginScreen } from "@/features/auth/components/LoginScreen";
 
 export function AppShell() {
   const auth = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [headerToolbar, setHeaderToolbar] = useState<ReactNode>(null);
   const [sidebarContent, setSidebarContent] = useState<ReactNode>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -62,6 +64,31 @@ export function AppShell() {
           </div>
           <div className="app-sidebar__footer">
             <div className="app-sidebar__user">{auth.currentUser?.username}</div>
+            <button type="button" className="sidebar-menu__item" onClick={toggleTheme}>
+              <span className="sidebar-menu__icon" aria-hidden="true">
+                {theme === "dark" ? (
+                  <svg viewBox="0 0 18 18" fill="none">
+                    <path
+                      d="M9 3.25v1.5M9 13.25v1.5M4.76 4.76l1.06 1.06M12.18 12.18l1.06 1.06M3.25 9h1.5M13.25 9h1.5M4.76 13.24l1.06-1.06M12.18 5.82l1.06-1.06M9 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 18 18" fill="none">
+                    <path
+                      d="M13.75 10.27A5 5 0 1 1 7.73 4.25a4 4 0 0 0 6.02 6.02Z"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </span>
+              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+            </button>
             <button type="button" className="sidebar-menu__item" onClick={() => void auth.logout()}>
               <span className="sidebar-menu__icon" aria-hidden="true">
                 <svg viewBox="0 0 18 18" fill="none">

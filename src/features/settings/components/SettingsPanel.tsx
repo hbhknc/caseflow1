@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTheme } from "@/app/ThemeContext";
 import { StatusPill } from "@/components/StatusPill";
 import type { AppStatus, BoardSettings } from "@/types/api";
 import type { MatterStage } from "@/types/matter";
@@ -19,6 +20,7 @@ export function SettingsPanel({
   saveMessage,
   onSave
 }: SettingsPanelProps) {
+  const { theme, setTheme } = useTheme();
   const [draft, setDraft] = useState<BoardSettings | null>(boardSettings);
 
   useEffect(() => {
@@ -59,6 +61,19 @@ export function SettingsPanel({
 
         <div className="settings-section">
           <div className="settings-form-grid">
+            <label className="field">
+              <span>Theme</span>
+              <select
+                value={theme}
+                onChange={(event) => setTheme(event.target.value as "dark" | "light")}
+              >
+                <option value="dark">Dark mode</option>
+                <option value="light">Light mode</option>
+              </select>
+              <small className="field-hint">
+                Applies to the full CaseFlow interface and stays saved in this browser.
+              </small>
+            </label>
             <label className="field">
               <span>Columns per row</span>
               <select
