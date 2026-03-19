@@ -57,6 +57,7 @@ type UseMattersBoardResult = {
   updateMatter: (matterId: string, input: MatterFormInput) => Promise<void>;
   moveMatter: (matterId: string, stage: MatterStage) => Promise<void>;
   addNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
+  quickAddNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
   deleteMatter: (matterId: string) => Promise<void>;
   archiveMatter: (matterId: string) => Promise<void>;
   unarchiveMatter: (matterId: string) => Promise<void>;
@@ -259,6 +260,15 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     setSelectedMatterId(matterId);
   }
 
+  async function handleQuickAddNote(
+    matterId: string,
+    body: string,
+    addToTaskList: boolean
+  ) {
+    await saveMatterNote(matterId, body, addToTaskList);
+    await Promise.all([hydrateBoard(), hydrateTasks()]);
+  }
+
   async function handleDeleteMatter(matterId: string) {
     await deleteMatter(matterId);
     setSelectedMatterId(null);
@@ -339,6 +349,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     updateMatter: handleUpdateMatter,
     moveMatter: handleMoveMatter,
     addNote: handleAddNote,
+    quickAddNote: handleQuickAddNote,
     deleteMatter: handleDeleteMatter,
     archiveMatter: handleArchiveMatter,
     unarchiveMatter: handleUnarchiveMatter,

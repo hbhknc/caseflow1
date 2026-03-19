@@ -10,6 +10,7 @@ type BoardColumnProps = {
   draggingMatterId: string | null;
   isDragTarget: boolean;
   onSelectMatter: (matterId: string) => void;
+  onQuickNote: (matterId: string) => void;
   onDragStart: (event: DragEvent<HTMLElement>, matter: Matter) => void;
   onDragEnd: () => void;
   onStageDragEnter: (stage: MatterStage) => void;
@@ -25,6 +26,7 @@ export function BoardColumn({
   draggingMatterId,
   isDragTarget,
   onSelectMatter,
+  onQuickNote,
   onDragStart,
   onDragEnd,
   onStageDragEnter,
@@ -52,9 +54,11 @@ export function BoardColumn({
     >
       <header className="board-column__header">
         <div className="board-column__title-group">
-          <h3>{title}</h3>
+          <div className="board-column__heading">
+            <h3>{title}</h3>
+            <span className="board-column__count">{matters.length}</span>
+          </div>
         </div>
-        <span className="board-column__count">{matters.length}</span>
       </header>
       <div className="board-column__body">
         {matters.map((matter) => (
@@ -64,6 +68,7 @@ export function BoardColumn({
             isSelected={matter.id === selectedMatterId}
             isDragging={matter.id === draggingMatterId}
             onSelect={() => onSelectMatter(matter.id)}
+            onQuickNote={() => onQuickNote(matter.id)}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
           />

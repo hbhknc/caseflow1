@@ -9,6 +9,7 @@ import { BoardSwitcher } from "@/features/board/components/BoardSwitcher";
 import { BoardsModal } from "@/features/board/components/BoardsModal";
 import { ImportModal } from "@/features/import/components/ImportModal";
 import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
+import { QuickNoteModal } from "@/features/notes/components/QuickNoteModal";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { StatsModal } from "@/features/stats/components/StatsModal";
 import { TaskListModal } from "@/features/tasks/components/TaskListModal";
@@ -42,8 +43,11 @@ export function BoardPage() {
   const [dragOverStage, setDragOverStage] = useState<MatterStage | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [quickNoteMatterId, setQuickNoteMatterId] = useState<string | null>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
   const stageLabels = createStageLabelMap(currentBoard.stageLabels);
+  const quickNoteMatter =
+    board.matters.find((matter) => matter.id === quickNoteMatterId) ?? null;
 
   function captureFocusOrigin() {
     const activeElement = document.activeElement;
@@ -113,6 +117,11 @@ export function BoardPage() {
     }
 
     board.selectMatter(matterId);
+  }
+
+  function handleOpenQuickNote(matterId: string) {
+    captureFocusOrigin();
+    setQuickNoteMatterId(matterId);
   }
 
   useEffect(() => {
@@ -307,6 +316,7 @@ export function BoardPage() {
                 draggingMatterId={draggingMatterId}
                 isDragTarget={dragOverStage === stage}
                 onSelectMatter={handleSelectMatter}
+                onQuickNote={handleOpenQuickNote}
                 onDragStart={(event, matter) => {
                   event.dataTransfer.effectAllowed = "move";
                   event.dataTransfer.setData("text/plain", matter.id);
@@ -387,6 +397,19 @@ export function BoardPage() {
           onAddNote={board.addNote}
         />
       )}
+
+      {quickNoteMatter ? (
+        <QuickNoteModal
+          matter={quickNoteMatter}
+          onSubmit={(body, addToTaskList) =>
+            board.quickAddNote(quickNoteMatter.id, body, addToTaskList)
+          }
+          onClose={() => {
+            setQuickNoteMatterId(null);
+            restoreFocusOrigin();
+          }}
+        />
+      ) : null}
 
       {board.isTaskListOpen ? (
         <TaskListModal

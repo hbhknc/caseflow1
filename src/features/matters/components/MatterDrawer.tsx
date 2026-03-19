@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Drawer } from "@/components/Drawer";
 import { EmptyState } from "@/components/EmptyState";
-import { StatusPill } from "@/components/StatusPill";
 import { NotesTimeline } from "@/features/notes/components/NotesTimeline";
 import { formatDateTime } from "@/lib/dates";
 import { ARCHIVE_READY_STAGE, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
@@ -207,6 +206,9 @@ export function MatterDrawer({
                 <div className="matter-drawer__summary-item">
                   <span>Status</span>
                   <strong>{matter.archived ? "Archived" : "Active"}</strong>
+                  {matter.archivedAt ? (
+                    <small>{formatDateTime(matter.archivedAt)}</small>
+                  ) : null}
                 </div>
               </section>
             ) : null}
@@ -277,9 +279,6 @@ export function MatterDrawer({
                     <button type="button" className="button button--danger" onClick={handleDelete}>
                       Delete
                     </button>
-                  ) : null}
-                  {!isCreateMode && matter?.archived ? (
-                    <StatusPill tone="warn">Archived on {formatDateTime(matter.archivedAt)}</StatusPill>
                   ) : null}
                 </div>
                 <div className="button-row matter-drawer__action-group matter-drawer__action-group--primary">
