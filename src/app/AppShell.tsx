@@ -94,9 +94,22 @@ export function AppShell() {
               aria-pressed={isSidebarCollapsed}
               onClick={() => setIsSidebarCollapsed((current) => !current)}
             >
-              <span className="sidebar-toggle__panel" aria-hidden="true">
-                <span className="sidebar-toggle__rail" />
-                <span className="sidebar-toggle__body" />
+              <span className="sidebar-toggle__icon" aria-hidden="true">
+                <svg viewBox="0 0 18 18" fill="none">
+                  <path
+                    d="M3.25 4.25h11.5v9.5H3.25zM6.5 4.25v9.5"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d={isSidebarCollapsed ? "10 9h3M11.75 7.25 13.5 9l-1.75 1.75" : "11 9H8M9.25 7.25 7.5 9l1.75 1.75"}
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </span>
             </button>
             {sidebarContent}

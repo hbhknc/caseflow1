@@ -198,10 +198,11 @@ export function BoardPage() {
           <span className="sidebar-menu__icon" aria-hidden="true">
             <svg viewBox="0 0 18 18" fill="none">
               <path
-                d="M5 4.5h8M5 9h8M5 13.5h8M3.5 4.5h.01M3.5 9h.01M3.5 13.5h.01"
+                d="m3.75 4.8 1.05 1.05 1.7-1.9M8.4 5.15h5.1M3.75 8.85 4.8 9.9 6.5 8M8.4 9.2h5.1M3.75 12.9l1.05 1.05 1.7-1.9M8.4 13.25h5.1"
                 stroke="currentColor"
                 strokeWidth="1.5"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               />
             </svg>
           </span>
