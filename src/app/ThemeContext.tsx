@@ -14,11 +14,11 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getInitialTheme(): ThemeMode {
   if (typeof window === "undefined") {
-    return "dark";
+    return "light";
   }
 
   const savedTheme = window.localStorage.getItem(STORAGE_KEY);
-  return savedTheme === "light" ? "light" : "dark";
+  return savedTheme === "dark" ? "dark" : "light";
 }
 
 export function ThemeProvider({ children }: PropsWithChildren) {

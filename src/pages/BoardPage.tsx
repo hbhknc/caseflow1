@@ -20,7 +20,6 @@ import {
   removeBoard,
   saveBoard
 } from "@/services/boards";
-import type { BoardSettings } from "@/types/api";
 import type { Matter, MatterStage, PracticeBoard } from "@/types/matter";
 import { DEFAULT_STAGE_LABELS, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
 
@@ -51,6 +50,7 @@ export function BoardPage() {
   const stageLabels = createStageLabelMap(currentBoard.stageLabels);
   const quickNoteMatter =
     board.matters.find((matter) => matter.id === quickNoteMatterId) ?? null;
+  const activeMatterCount = board.matters.length;
 
   function captureFocusOrigin() {
     const activeElement = document.activeElement;
@@ -200,88 +200,94 @@ export function BoardPage() {
 
     setSidebarContent(
       <nav className="sidebar-menu" aria-label="Board actions">
-        <button
-          type="button"
-          className="sidebar-menu__item sidebar-menu__item--primary"
-          aria-label="Tasks"
-          title="Tasks"
-          onClick={() => void handleOpenTaskList()}
-        >
-          <span className="sidebar-menu__icon" aria-hidden="true">
-            <svg viewBox="0 0 18 18" fill="none">
-              <path
-                d="m3.75 4.8 1.05 1.05 1.7-1.9M8.4 5.15h5.1M3.75 8.85 4.8 9.9 6.5 8M8.4 9.2h5.1M3.75 12.9l1.05 1.05 1.7-1.9M8.4 13.25h5.1"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span>Tasks</span>
-        </button>
-        <button
-          type="button"
-          className="sidebar-menu__item"
-          aria-label="Archive"
-          title="Archive"
-          onClick={() => void handleOpenArchive()}
-        >
-          <span className="sidebar-menu__icon" aria-hidden="true">
-            <svg viewBox="0 0 18 18" fill="none">
-              <path
-                d="M4.5 5.5h9v8h-9zM3.5 5.5h11M6.5 3.5h5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span>Archive</span>
-        </button>
-        <button
-          type="button"
-          className="sidebar-menu__item"
-          aria-label="Stats"
-          title="Stats"
-          onClick={() => void handleOpenStats()}
-        >
-          <span className="sidebar-menu__icon" aria-hidden="true">
-            <svg viewBox="0 0 18 18" fill="none">
-              <path
-                d="M4 13.5V9.5M9 13.5V5M14 13.5V7.5"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          <span>Stats</span>
-        </button>
-        <button
-          type="button"
-          className="sidebar-menu__item"
-          aria-label="Settings"
-          title="Settings"
-          onClick={handleOpenSettings}
-        >
-          <span className="sidebar-menu__icon" aria-hidden="true">
-            <svg viewBox="0 0 18 18" fill="none">
-              <path
-                d="M9 4.25a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Zm0 7.1a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8ZM4.25 9a.9.9 0 1 0 1.8 0 .9.9 0 0 0-1.8 0Zm7.7 0a.9.9 0 1 0 1.8 0 .9.9 0 0 0-1.8 0Z"
-                fill="currentColor"
-              />
-              <path
-                d="M9 2.75v1.2M9 14.05v1.2M2.75 9h1.2M14.05 9h1.2M4.58 4.58l.85.85M12.57 12.57l.85.85M4.58 13.42l.85-.85M12.57 5.43l.85-.85"
-                stroke="currentColor"
-                strokeWidth="1.25"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          <span>Settings</span>
-        </button>
+        <section className="sidebar-menu__section" aria-label="Workspace">
+          <p className="sidebar-menu__section-label">Workspace</p>
+          <button
+            type="button"
+            className="sidebar-menu__item sidebar-menu__item--primary"
+            aria-label="Tasks"
+            title="Tasks"
+            onClick={() => void handleOpenTaskList()}
+          >
+            <span className="sidebar-menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path
+                  d="m3.75 4.8 1.05 1.05 1.7-1.9M8.4 5.15h5.1M3.75 8.85 4.8 9.9 6.5 8M8.4 9.2h5.1M3.75 12.9l1.05 1.05 1.7-1.9M8.4 13.25h5.1"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span>Tasks</span>
+          </button>
+          <button
+            type="button"
+            className="sidebar-menu__item"
+            aria-label="Archive"
+            title="Archive"
+            onClick={() => void handleOpenArchive()}
+          >
+            <span className="sidebar-menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path
+                  d="M4.5 5.5h9v8h-9zM3.5 5.5h11M6.5 3.5h5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span>Archive</span>
+          </button>
+          <button
+            type="button"
+            className="sidebar-menu__item"
+            aria-label="Stats"
+            title="Stats"
+            onClick={() => void handleOpenStats()}
+          >
+            <span className="sidebar-menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path
+                  d="M4 13.5V9.5M9 13.5V5M14 13.5V7.5"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+            <span>Stats</span>
+          </button>
+        </section>
+        <section className="sidebar-menu__section" aria-label="Admin">
+          <p className="sidebar-menu__section-label">Admin</p>
+          <button
+            type="button"
+            className="sidebar-menu__item"
+            aria-label="Settings"
+            title="Settings"
+            onClick={handleOpenSettings}
+          >
+            <span className="sidebar-menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path
+                  d="M9 4.25a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Zm0 7.1a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8ZM4.25 9a.9.9 0 1 0 1.8 0 .9.9 0 0 0-1.8 0Zm7.7 0a.9.9 0 1 0 1.8 0 .9.9 0 0 0-1.8 0Z"
+                  fill="currentColor"
+                />
+                <path
+                  d="M9 2.75v1.2M9 14.05v1.2M2.75 9h1.2M14.05 9h1.2M4.58 4.58l.85.85M12.57 12.57l.85.85M4.58 13.42l.85-.85M12.57 5.43l.85-.85"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+            <span>Settings</span>
+          </button>
+        </section>
       </nav>
     );
 
@@ -310,94 +316,106 @@ export function BoardPage() {
         ) : board.error ? (
           <EmptyState title="Unable to load matters" message={board.error} />
         ) : (
-          <div
-            className="board-grid"
-            style={{ "--board-column-count": currentBoard.columnCount } as CSSProperties}
-          >
-            {STAGES.map((stage) => (
-              <BoardColumn
-                key={stage}
-                stage={stage}
-                title={getStageLabel(stage, stageLabels)}
-                matters={board.matters.filter((matter) => matter.stage === stage)}
-                selectedMatterId={board.selectedMatter?.id ?? null}
-                draggingMatterId={draggingMatterId}
-                isDragTarget={dropTarget?.stage === stage}
-                dropIndicatorBeforeMatterId={
-                  dropTarget?.stage === stage ? dropTarget.beforeMatterId : undefined
-                }
-                onSelectMatter={handleSelectMatter}
-                onQuickNote={handleOpenQuickNote}
-                onDragStart={(event, matter) => {
-                  event.dataTransfer.effectAllowed = "move";
-                  event.dataTransfer.setData("text/plain", matter.id);
-                  event.dataTransfer.setData("application/caseflow-stage", matter.stage);
-
-                  const dragPreview = event.currentTarget.cloneNode(true) as HTMLElement;
-                  const { width, height } = event.currentTarget.getBoundingClientRect();
-                  dragPreview.style.width = `${width}px`;
-                  dragPreview.style.height = `${height}px`;
-                  dragPreview.style.position = "fixed";
-                  dragPreview.style.top = "-1000px";
-                  dragPreview.style.left = "-1000px";
-                  dragPreview.style.opacity = "1";
-                  dragPreview.style.pointerEvents = "none";
-                  dragPreview.style.transform = "none";
-                  dragPreview.style.boxShadow = "0 18px 38px rgba(18, 19, 24, 0.16)";
-                  document.body.appendChild(dragPreview);
-                  event.dataTransfer.setDragImage(dragPreview, width / 2, 24);
-                  requestAnimationFrame(() => document.body.removeChild(dragPreview));
-
-                  setDraggingMatterId(matter.id);
-                }}
-                onDragEnd={() => {
-                  setDraggingMatterId(null);
-                  setDropTarget(null);
-                }}
-                onStageDragEnter={(nextStage) =>
-                  setDropTarget((current) =>
-                    current?.stage === nextStage
-                      ? current
-                      : { stage: nextStage, beforeMatterId: null }
-                  )
-                }
-                onStageDragLeave={(stageToClear) => {
-                  if (dropTarget?.stage === stageToClear) {
-                    setDropTarget(null);
+          <div className="board-surface">
+            <div className="board-surface__header">
+              <div className="board-surface__heading">
+                <span className="board-surface__eyebrow">Board view</span>
+                <h2>{currentBoard.name}</h2>
+              </div>
+              <div className="board-surface__meta">
+                <span>{activeMatterCount} active matters</span>
+                <span>Drag to move or reorder</span>
+              </div>
+            </div>
+            <div
+              className="board-grid"
+              style={{ "--board-column-count": currentBoard.columnCount } as CSSProperties}
+            >
+              {STAGES.map((stage) => (
+                <BoardColumn
+                  key={stage}
+                  stage={stage}
+                  title={getStageLabel(stage, stageLabels)}
+                  matters={board.matters.filter((matter) => matter.stage === stage)}
+                  selectedMatterId={board.selectedMatter?.id ?? null}
+                  draggingMatterId={draggingMatterId}
+                  isDragTarget={dropTarget?.stage === stage}
+                  dropIndicatorBeforeMatterId={
+                    dropTarget?.stage === stage ? dropTarget.beforeMatterId : undefined
                   }
-                }}
-                onCardDragOver={(nextStage, beforeMatterId) => {
-                  setDropTarget({ stage: nextStage, beforeMatterId });
-                }}
-                onStageDrop={async (nextStage, beforeMatterId) => {
-                  if (!draggingMatterId) {
-                    return;
-                  }
+                  onSelectMatter={handleSelectMatter}
+                  onQuickNote={handleOpenQuickNote}
+                  onDragStart={(event, matter) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", matter.id);
+                    event.dataTransfer.setData("application/caseflow-stage", matter.stage);
 
-                  const draggedMatter = board.matters.find(
-                    (matter: Matter) => matter.id === draggingMatterId
-                  );
-                  if (
-                    !draggedMatter ||
-                    (draggedMatter.stage === nextStage &&
-                      (beforeMatterId === draggingMatterId ||
-                        beforeMatterId === null &&
-                          board.matters
-                            .filter((matter) => matter.stage === nextStage)
-                            .sort((left, right) => left.sortOrder - right.sortOrder)
-                            .at(-1)?.id === draggingMatterId))
-                  ) {
+                    const dragPreview = event.currentTarget.cloneNode(true) as HTMLElement;
+                    const { width, height } = event.currentTarget.getBoundingClientRect();
+                    dragPreview.style.width = `${width}px`;
+                    dragPreview.style.height = `${height}px`;
+                    dragPreview.style.position = "fixed";
+                    dragPreview.style.top = "-1000px";
+                    dragPreview.style.left = "-1000px";
+                    dragPreview.style.opacity = "1";
+                    dragPreview.style.pointerEvents = "none";
+                    dragPreview.style.transform = "none";
+                    dragPreview.style.boxShadow = "0 14px 28px rgba(25, 38, 67, 0.18)";
+                    document.body.appendChild(dragPreview);
+                    event.dataTransfer.setDragImage(dragPreview, width / 2, 24);
+                    requestAnimationFrame(() => document.body.removeChild(dragPreview));
+
+                    setDraggingMatterId(matter.id);
+                  }}
+                  onDragEnd={() => {
                     setDraggingMatterId(null);
                     setDropTarget(null);
-                    return;
+                  }}
+                  onStageDragEnter={(nextStage) =>
+                    setDropTarget((current) =>
+                      current?.stage === nextStage
+                        ? current
+                        : { stage: nextStage, beforeMatterId: null }
+                    )
                   }
+                  onStageDragLeave={(stageToClear) => {
+                    if (dropTarget?.stage === stageToClear) {
+                      setDropTarget(null);
+                    }
+                  }}
+                  onCardDragOver={(nextStage, beforeMatterId) => {
+                    setDropTarget({ stage: nextStage, beforeMatterId });
+                  }}
+                  onStageDrop={async (nextStage, beforeMatterId) => {
+                    if (!draggingMatterId) {
+                      return;
+                    }
 
-                  await board.moveMatter(draggingMatterId, nextStage, beforeMatterId);
-                  setDraggingMatterId(null);
-                  setDropTarget(null);
-                }}
-              />
-            ))}
+                    const draggedMatter = board.matters.find(
+                      (matter: Matter) => matter.id === draggingMatterId
+                    );
+                    if (
+                      !draggedMatter ||
+                      (draggedMatter.stage === nextStage &&
+                        (beforeMatterId === draggingMatterId ||
+                          (beforeMatterId === null &&
+                            board.matters
+                              .filter((matter) => matter.stage === nextStage)
+                              .sort((left, right) => left.sortOrder - right.sortOrder)
+                              .at(-1)?.id === draggingMatterId)))
+                    ) {
+                      setDraggingMatterId(null);
+                      setDropTarget(null);
+                      return;
+                    }
+
+                    await board.moveMatter(draggingMatterId, nextStage, beforeMatterId);
+                    setDraggingMatterId(null);
+                    setDropTarget(null);
+                  }}
+                />
+              ))}
+            </div>
           </div>
         )}
         {!board.isLoading && !board.error && board.matters.length === 0 ? (

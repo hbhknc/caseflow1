@@ -59,6 +59,7 @@ export function AppShell() {
                 </span>
               </button>
               <div className="app-sidebar__identity">
+                <p className="app-sidebar__eyebrow">Case Management</p>
                 <h1>
                   <span>Case</span>
                   <span className="app-header__flow">Flow</span>
@@ -110,7 +111,7 @@ export function AppShell() {
                   </button>
                   <button
                     type="button"
-                    className="button button--ghost button--small"
+                    className="button button--ghost button--small app-header__logout"
                     onClick={() => void auth.logout()}
                   >
                     Logout
