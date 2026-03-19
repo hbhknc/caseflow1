@@ -600,6 +600,11 @@
   font-weight: 600;
 }
 
+.matter-drawer__header-stage {
+  color: var(--drawer-muted);
+  font-weight: 600;
+}
+
 .matter-drawer__summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -661,6 +666,10 @@
 
 .matter-drawer__form-grid {
   gap: var(--space-8) var(--space-12);
+}
+
+.matter-drawer__field--wide {
+  grid-column: 1 / -1;
 }
 
 .matter-drawer__action-bar {

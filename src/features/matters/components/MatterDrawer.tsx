@@ -93,30 +93,36 @@ export function MatterDrawer({
 
   const panelSubtitle = useMemo(() => {
     if (isCreateMode) {
-      return "Create a new matter and place it on the board.";
+      return "Add a new matter.";
     }
 
     if (!matter) {
-      return "Review matter details, update its stage, and capture follow-up activity.";
+      return "Review matter details and capture activity.";
     }
 
     return (
       <div className="matter-drawer__header-meta">
         <span>{matter.clientName}</span>
         <span className="matter-drawer__header-separator" aria-hidden="true">
-          •
+          |
         </span>
         <span className="matter-drawer__header-file">{matter.fileNumber}</span>
+        <span className="matter-drawer__header-separator" aria-hidden="true">
+          |
+        </span>
+        <span className="matter-drawer__header-stage">
+          {getStageLabel(matter.stage, resolvedStageLabels)}
+        </span>
       </div>
     );
-  }, [isCreateMode, matter]);
+  }, [isCreateMode, matter, resolvedStageLabels]);
 
   if (!matter && !isCreateMode) {
     return (
       <Drawer title={panelTitle} subtitle={panelSubtitle}>
         <EmptyState
           title="Nothing selected"
-          message="Pick a matter from the board to review activity, edit stage details, and add notes."
+          message="Pick a matter from the board to review details, add notes, and keep work moving."
         />
       </Drawer>
     );
@@ -245,7 +251,9 @@ export function MatterDrawer({
                     }
                   />
                 </label>
-                <label className="field">
+                <label
+                  className={`field${!isCreateMode ? " matter-drawer__field--wide" : ""}`}
+                >
                   <span>File number</span>
                   <input
                     required
@@ -255,27 +263,26 @@ export function MatterDrawer({
                     }
                   />
                 </label>
-                <label className="field">
-                  <span>Stage</span>
-                  <select
-                    value={draft.stage}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        stage: event.target.value as MatterStage
-                      }))
-                    }
-                  >
-                    {STAGES.map((stage) => (
-                      <option key={stage} value={stage}>
-                        {getStageLabel(stage, resolvedStageLabels)}
-                      </option>
-                    ))}
-                  </select>
-                  {!isCreateMode ? (
-                    <small className="field-hint">Use this field to move the matter.</small>
-                  ) : null}
-                </label>
+                {isCreateMode ? (
+                  <label className="field">
+                    <span>Stage</span>
+                    <select
+                      value={draft.stage}
+                      onChange={(event) =>
+                        setDraft((current) => ({
+                          ...current,
+                          stage: event.target.value as MatterStage
+                        }))
+                      }
+                    >
+                      {STAGES.map((stage) => (
+                        <option key={stage} value={stage}>
+                          {getStageLabel(stage, resolvedStageLabels)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
               </div>
 
               <div className="matter-drawer__action-bar">
