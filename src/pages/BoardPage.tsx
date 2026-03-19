@@ -170,8 +170,14 @@ export function BoardPage() {
           />
         </div>
         <div className="board-header-toolbar__end">
-          <button type="button" className="button" onClick={handleOpenCreateMatter}>
-            New Case
+          <button
+            type="button"
+            className="button button--icon"
+            aria-label="New Case"
+            title="New Case"
+            onClick={handleOpenCreateMatter}
+          >
+            <span aria-hidden="true">+</span>
           </button>
         </div>
       </div>
