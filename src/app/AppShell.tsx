@@ -30,10 +30,35 @@ export function AppShell() {
           isSidebarCollapsed ? "app-shell app-shell--sidebar-collapsed" : "app-shell"
         }
       >
-        <header className="app-header">
-          <div className="app-header__body">
-            <div className="app-header__lead">
-              <div className="app-header__identity">
+        <aside className="app-sidebar">
+          <div className="app-sidebar__content">
+            <div className="app-sidebar__brand">
+              <button
+                type="button"
+                className="sidebar-toggle"
+                aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                aria-pressed={isSidebarCollapsed}
+                onClick={() => setIsSidebarCollapsed((current) => !current)}
+              >
+                <span className="sidebar-toggle__icon" aria-hidden="true">
+                  <svg viewBox="0 0 18 18" fill="none">
+                    <path
+                      d="M3.25 4.25h11.5v9.5H3.25zM6.5 4.25v9.5"
+                      stroke="currentColor"
+                      strokeWidth="1.2"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d={isSidebarCollapsed ? "10 9h3M11.75 7.25 13.5 9l-1.75 1.75" : "11 9H8M9.25 7.25 7.5 9l1.75 1.75"}
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+              </button>
+              <div className="app-sidebar__identity">
                 <h1>
                   <span>Case</span>
                   <span className="app-header__flow">Flow</span>
@@ -41,6 +66,14 @@ export function AppShell() {
                 </h1>
               </div>
             </div>
+            {sidebarContent}
+          </div>
+          <div className="app-sidebar__footer">
+            <div className="app-sidebar__user">{auth.currentUser?.username}</div>
+          </div>
+        </aside>
+        <header className="app-header">
+          <div className="app-header__body">
             <div className="app-header__actions">
               <div className="header-toolbar">
                 {headerToolbar}
@@ -85,39 +118,6 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <aside className="app-sidebar">
-          <div className="app-sidebar__content">
-            <button
-              type="button"
-              className="sidebar-toggle"
-              aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-pressed={isSidebarCollapsed}
-              onClick={() => setIsSidebarCollapsed((current) => !current)}
-            >
-              <span className="sidebar-toggle__icon" aria-hidden="true">
-                <svg viewBox="0 0 18 18" fill="none">
-                  <path
-                    d="M3.25 4.25h11.5v9.5H3.25zM6.5 4.25v9.5"
-                    stroke="currentColor"
-                    strokeWidth="1.2"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d={isSidebarCollapsed ? "10 9h3M11.75 7.25 13.5 9l-1.75 1.75" : "11 9H8M9.25 7.25 7.5 9l1.75 1.75"}
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-            </button>
-            {sidebarContent}
-          </div>
-          <div className="app-sidebar__footer">
-            <div className="app-sidebar__user">{auth.currentUser?.username}</div>
-          </div>
-        </aside>
         <main className="app-main">
           <Outlet />
         </main>

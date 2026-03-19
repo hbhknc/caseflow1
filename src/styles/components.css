@@ -164,6 +164,7 @@
 .sidebar-menu {
   display: grid;
   gap: var(--space-4);
+  width: 100%;
 }
 
 .sidebar-menu__item {
@@ -213,10 +214,6 @@
 
 .app-shell--sidebar-collapsed .sidebar-menu__item span:not(.sidebar-menu__icon) {
   display: none;
-}
-
-.app-shell--sidebar-collapsed .app-sidebar__content {
-  justify-items: center;
 }
 
 .search-field,
