@@ -1,31 +1,46 @@
 import { useEffect, useRef, useState } from "react";
 import { Drawer } from "@/components/Drawer";
 import { SettingsPanel } from "@/features/settings/components/SettingsPanel";
-import { getAppStatus } from "@/services/settings";
+import { getSettingsOverview } from "@/services/settings";
 import type { AppStatus, BoardSettings } from "@/types/api";
+import type { DeadlineTemplateSettings } from "@/types/deadlines";
 
 type SettingsModalProps = {
   boardSettings: BoardSettings;
   onOpenImport: () => void;
-  onSave: (settings: BoardSettings) => Promise<BoardSettings>;
+  onSaveBoardSettings: (settings: BoardSettings) => Promise<BoardSettings>;
+  onSaveDeadlineTemplateSettings: (
+    settings: DeadlineTemplateSettings
+  ) => Promise<DeadlineTemplateSettings>;
   onClose: () => void;
 };
 
 export function SettingsModal({
   boardSettings,
   onOpenImport,
-  onSave,
+  onSaveBoardSettings,
+  onSaveDeadlineTemplateSettings,
   onClose
 }: SettingsModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [status, setStatus] = useState<AppStatus | null>(null);
+  const [deadlineTemplateSettings, setDeadlineTemplateSettings] =
+    useState<DeadlineTemplateSettings | null>(null);
 
   useEffect(() => {
     closeButtonRef.current?.focus();
   }, []);
 
   useEffect(() => {
-    void getAppStatus().then(setStatus).catch(() => setStatus(null));
+    void getSettingsOverview()
+      .then((response) => {
+        setStatus(response.status);
+        setDeadlineTemplateSettings(response.deadlineTemplateSettings);
+      })
+      .catch(() => {
+        setStatus(null);
+        setDeadlineTemplateSettings(null);
+      });
   }, []);
 
   useEffect(() => {
@@ -51,7 +66,7 @@ export function SettingsModal({
       >
         <Drawer
           title="Settings"
-          subtitle="Adjust the interface theme, board layout, visible stage titles, and data tools."
+          subtitle="Adjust the interface theme, board layout, visible stage titles, deadline templates, and data tools."
           actions={
             <button
               ref={closeButtonRef}
@@ -66,8 +81,14 @@ export function SettingsModal({
           <SettingsPanel
             status={status}
             boardSettings={boardSettings}
+            deadlineTemplateSettings={deadlineTemplateSettings}
             onOpenImport={onOpenImport}
-            onSave={onSave}
+            onSaveBoardSettings={onSaveBoardSettings}
+            onSaveDeadlineTemplateSettings={async (settings) => {
+              const saved = await onSaveDeadlineTemplateSettings(settings);
+              setDeadlineTemplateSettings(saved);
+              return saved;
+            }}
           />
         </Drawer>
       </div>

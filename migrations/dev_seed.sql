@@ -8,6 +8,28 @@ INSERT INTO matters (
   ('matter_seed_005', 'Florence Avery', 'Jon Avery', 'PR-2025-0119', 'accounting_closing', '2025-11-12T11:00:00.000Z', '2026-03-10T12:30:00.000Z', '2026-03-10T12:30:00.000Z', 0, NULL),
   ('matter_seed_006', 'Margaret Sloan', 'Thomas Sloan', 'PR-2025-0084', 'accounting_closing', '2025-07-08T09:15:00.000Z', '2026-01-18T14:30:00.000Z', '2026-01-18T14:30:00.000Z', 1, '2026-01-18T14:30:00.000Z');
 
+UPDATE matters
+SET deadline_template_key = CASE id
+  WHEN 'matter_seed_004' THEN 'custom_manual_only'
+  ELSE 'standard_estate_administration'
+END,
+qualification_date = CASE id
+  WHEN 'matter_seed_001' THEN '2026-02-12'
+  WHEN 'matter_seed_002' THEN '2026-02-18'
+  WHEN 'matter_seed_003' THEN '2025-12-15'
+  WHEN 'matter_seed_005' THEN '2025-11-15'
+  WHEN 'matter_seed_006' THEN '2025-07-15'
+  ELSE NULL
+END,
+publication_date = CASE id
+  WHEN 'matter_seed_001' THEN '2026-03-08'
+  WHEN 'matter_seed_002' THEN '2026-02-28'
+  WHEN 'matter_seed_003' THEN '2025-12-28'
+  WHEN 'matter_seed_005' THEN '2025-11-23'
+  WHEN 'matter_seed_006' THEN '2025-07-22'
+  ELSE NULL
+END;
+
 INSERT INTO matter_notes (id, matter_id, body, created_at, created_by) VALUES
   ('note_seed_001', 'matter_seed_001', 'Published notice to creditors and logged publication dates.', '2026-03-12T16:45:00.000Z', 'Probate Team'),
   ('note_seed_002', 'matter_seed_001', 'Letters testamentary issued by the clerk.', '2026-03-05T10:15:00.000Z', 'Probate Team'),
@@ -19,6 +41,18 @@ INSERT INTO matter_notes (id, matter_id, body, created_at, created_by) VALUES
 INSERT INTO task_items (id, matter_id, body, created_at, completed_at, source_note_id) VALUES
   ('task_seed_001', 'matter_seed_003', 'Prepare final accounting exhibits for attorney review.', '2026-03-15T15:10:00.000Z', NULL, NULL),
   ('task_seed_002', 'matter_seed_004', 'Collect intake packet signatures and confirm venue details.', '2026-03-16T09:30:00.000Z', NULL, NULL);
+
+INSERT INTO matter_deadlines (
+  id, matter_id, title, category, due_date, assignee, priority, source_type, notes, template_key, template_item_key, is_overridden, created_at, updated_at, completed_at, completed_by, completed_by_email, completed_by_id, completion_note, dismissed_at, dismissed_by, dismissed_by_email, dismissed_by_id
+) VALUES
+  ('deadline_seed_001', 'matter_seed_001', 'Publication follow-up', 'Notice to creditors', '2026-04-07', 'Probate Team', 'medium', 'template', NULL, 'standard_estate_administration', 'publication_follow_up', 0, '2026-03-08T09:00:00.000Z', '2026-03-08T09:00:00.000Z', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+  ('deadline_seed_002', 'matter_seed_001', 'Inventory due', 'Inventory', '2026-05-13', 'Marcus Whitfield', 'high', 'template', NULL, 'standard_estate_administration', 'inventory_due', 0, '2026-02-12T14:20:00.000Z', '2026-02-12T14:20:00.000Z', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+  ('deadline_seed_003', 'matter_seed_002', 'Inventory due', 'Inventory', '2026-05-19', 'Olivia McIntyre', 'high', 'template', 'Draft is in progress.', 'standard_estate_administration', 'inventory_due', 1, '2026-02-18T10:05:00.000Z', '2026-03-14T11:10:00.000Z', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+  ('deadline_seed_004', 'matter_seed_002', 'Accounting due', 'Accounting', '2027-02-18', 'Probate Team', 'medium', 'template', NULL, 'standard_estate_administration', 'accounting_due', 0, '2026-02-18T10:05:00.000Z', '2026-02-18T10:05:00.000Z', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+  ('deadline_seed_005', 'matter_seed_003', 'Closing review target', 'Closing', '2026-03-10', 'CaseFlow Demo', 'low', 'template', 'Waiting on one final receipt.', 'standard_estate_administration', 'closing_review_target', 0, '2025-12-15T08:30:00.000Z', '2026-03-15T15:00:00.000Z', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+  ('deadline_seed_006', 'matter_seed_003', 'Draft final accounting exhibits', 'Accounting', '2026-03-17', 'CaseFlow Demo', 'high', 'manual', 'Coordinate with attorney before filing.', NULL, NULL, 0, '2026-03-15T15:10:00.000Z', '2026-03-15T15:10:00.000Z', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+  ('deadline_seed_007', 'matter_seed_005', 'Closing review target', 'Closing', '2026-02-10', 'Probate Team', 'low', 'template', NULL, 'standard_estate_administration', 'closing_review_target', 0, '2025-11-15T11:00:00.000Z', '2026-02-12T09:30:00.000Z', '2026-02-12T09:30:00.000Z', 'Probate Team', NULL, NULL, 'Reviewed and approved for closing packet.', NULL, NULL, NULL, NULL),
+  ('deadline_seed_008', 'matter_seed_004', 'Collect qualification documents', 'Intake', '2026-03-24', 'Jane Doe', 'medium', 'manual', 'Need original will and death certificate.', NULL, NULL, 0, '2026-03-16T09:20:00.000Z', '2026-03-16T09:20:00.000Z', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 INSERT INTO matter_stage_history (id, matter_id, from_stage, to_stage, changed_at, changed_by) VALUES
   ('history_seed_001', 'matter_seed_001', NULL, 'intake', '2026-02-03T14:20:00.000Z', 'Probate Team'),

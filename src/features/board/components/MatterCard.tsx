@@ -1,5 +1,5 @@
 import type { DragEvent } from "react";
-import { formatDate } from "@/lib/dates";
+import { formatDate, formatDateOnly } from "@/lib/dates";
 import type { Matter } from "@/types/matter";
 
 type MatterCardProps = {
@@ -21,6 +21,17 @@ export function MatterCard({
   onDragStart,
   onDragEnd
 }: MatterCardProps) {
+  const deadlineSummary =
+    matter.deadlineSummary.overdueCount > 0
+      ? `${matter.deadlineSummary.overdueCount} overdue deadline${
+          matter.deadlineSummary.overdueCount === 1 ? "" : "s"
+        }`
+      : matter.deadlineSummary.dueTodayCount > 0
+        ? `${matter.deadlineSummary.dueTodayCount} due today`
+        : matter.deadlineSummary.nextDeadlineDueDate
+          ? `Next deadline ${formatDateOnly(matter.deadlineSummary.nextDeadlineDueDate)}`
+          : "No active deadlines";
+
   return (
     <article
       draggable
@@ -40,9 +51,20 @@ export function MatterCard({
         </div>
       </button>
       <div className="matter-card__footer">
-        <p className="matter-card__activity-line">
-          Last activity {formatDate(matter.lastActivityAt)}
-        </p>
+        <div className="matter-card__footer-copy">
+          <p className="matter-card__activity-line">
+            Last activity {formatDate(matter.lastActivityAt)}
+          </p>
+          <p
+            className={
+              matter.deadlineSummary.overdueCount > 0
+                ? "matter-card__deadline-line matter-card__deadline-line--overdue"
+                : "matter-card__deadline-line"
+            }
+          >
+            {deadlineSummary}
+          </p>
+        </div>
         <button
           type="button"
           className="matter-card__note-button"

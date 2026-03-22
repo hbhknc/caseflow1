@@ -2,14 +2,25 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { Drawer } from "@/components/Drawer";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusPill } from "@/components/StatusPill";
+import { MatterDeadlinesSection } from "@/features/deadlines/components/MatterDeadlinesSection";
 import { NotesTimeline } from "@/features/notes/components/NotesTimeline";
 import { formatDateTime } from "@/lib/dates";
 import { ARCHIVE_READY_STAGE, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
+import type {
+  Deadline,
+  DeadlineInput,
+  DeadlineUpdateInput,
+  MatterDeadlineSettings,
+  MatterDeadlineSettingsInput
+} from "@/types/deadlines";
 import type { Matter, MatterFormInput, MatterNote, MatterStage } from "@/types/matter";
 
 type MatterDrawerProps = {
   matter: Matter | null;
   notes: MatterNote[];
+  deadlines: Deadline[];
+  deadlineSettings: MatterDeadlineSettings | null;
+  deadlineError: string | null;
   isCreateMode: boolean;
   defaultBoardId?: string;
   stageLabels?: Partial<Record<MatterStage, string>>;
@@ -19,6 +30,14 @@ type MatterDrawerProps = {
   onDeleteMatter: (matterId: string) => Promise<void>;
   onArchiveMatter: (matterId: string) => Promise<void>;
   onAddNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
+  onSaveDeadlineSettings: (
+    matterId: string,
+    input: MatterDeadlineSettingsInput
+  ) => Promise<void>;
+  onCreateDeadline: (input: DeadlineInput) => Promise<void>;
+  onUpdateDeadline: (deadlineId: string, input: DeadlineUpdateInput) => Promise<void>;
+  onCompleteDeadline: (deadlineId: string, completionNote: string) => Promise<void>;
+  onDismissDeadline: (deadlineId: string) => Promise<void>;
 };
 
 const AUTO_SAVE_DELAY_MS = 500;
@@ -56,6 +75,9 @@ function isMatterInputComplete(input: MatterFormInput): boolean {
 export function MatterDrawer({
   matter,
   notes,
+  deadlines,
+  deadlineSettings,
+  deadlineError,
   isCreateMode,
   defaultBoardId = "probate",
   stageLabels,
@@ -64,7 +86,12 @@ export function MatterDrawer({
   onUpdateMatter,
   onDeleteMatter,
   onArchiveMatter,
-  onAddNote
+  onAddNote,
+  onSaveDeadlineSettings,
+  onCreateDeadline,
+  onUpdateDeadline,
+  onCompleteDeadline,
+  onDismissDeadline
 }: MatterDrawerProps) {
   const [draft, setDraft] = useState<MatterFormInput>(
     buildInitialState(matter, defaultBoardId)
@@ -472,6 +499,20 @@ export function MatterDrawer({
                 </div>
               </div>
             </form>
+
+            {!isCreateMode && matter ? (
+              <MatterDeadlinesSection
+                matter={matter}
+                settings={deadlineSettings}
+                deadlines={deadlines}
+                error={deadlineError}
+                onSaveSettings={onSaveDeadlineSettings}
+                onCreateDeadline={onCreateDeadline}
+                onUpdateDeadline={onUpdateDeadline}
+                onCompleteDeadline={onCompleteDeadline}
+                onDismissDeadline={onDismissDeadline}
+              />
+            ) : null}
 
             {!isCreateMode && matter ? (
               <section className="drawer-section matter-drawer__activity">

@@ -1,8 +1,35 @@
+import {
+  DEFAULT_DEADLINE_TEMPLATE_SETTINGS,
+  calculateDeadlineStatus,
+  getTodayDateOnly,
+  isValidDateOnly,
+  normalizeOptionalDateOnly,
+  reconcileGeneratedDeadlines
+} from "../../src/lib/deadlineRules";
+import type {
+  Deadline,
+  DeadlineDashboardData,
+  DeadlinePriority,
+  DeadlineStatus,
+  DeadlineTemplateItemConfig,
+  DeadlineTemplateKey,
+  DeadlineTemplateSettings,
+  MatterDeadlineSettings,
+  MatterDeadlineSummary
+} from "../../src/types/deadlines";
 import { ARCHIVE_READY_STAGE, DEFAULT_STAGE_LABELS, STAGES, isMatterStage } from "./stages";
 import type {
   AuthenticatedUser,
   AppSettingRecord,
   BoardSettings,
+  DeadlineDashboardOverview,
+  MatterDeadlineCompleteInput,
+  MatterDeadlineDashboardQuery,
+  MatterDeadlineDismissInput,
+  MatterDeadlineInput,
+  MatterDeadlineRecord,
+  MatterDeadlineSettingsInput,
+  MatterDeadlineUpdateInput,
   MatterStats,
   MatterStatsMonth,
   MatterImportIssue,
@@ -52,6 +79,15 @@ const DEFAULT_BOARDS: PracticeBoard[] = [
 const DEFAULT_SHARED_ACCOUNT_ID = "account_default";
 const DEFAULT_SHARED_ACCOUNT_USERNAME = "caseflow";
 const LEGACY_SHARED_ACCOUNT_ID = "account_hbhklaw";
+const DEADLINE_TEMPLATE_SETTINGS_KEY = "deadlines.template_settings";
+const EMPTY_DEADLINE_SUMMARY: MatterDeadlineSummary = {
+  overdueCount: 0,
+  dueTodayCount: 0,
+  activeCount: 0,
+  nextDeadlineTitle: null,
+  nextDeadlineDueDate: null,
+  nextDeadlineStatus: null
+};
 
 function buildDefaultBoards(settings: BoardSettings = DEFAULT_BOARD_SETTINGS): PracticeBoard[] {
   return [
@@ -64,6 +100,101 @@ function buildDefaultBoards(settings: BoardSettings = DEFAULT_BOARD_SETTINGS): P
   ];
 }
 
+function isDeadlineTemplateKey(value: string | null | undefined): value is DeadlineTemplateKey {
+  return value === "standard_estate_administration" || value === "custom_manual_only";
+}
+
+function isDeadlinePriority(value: string | null | undefined): value is DeadlinePriority {
+  return value === "low" || value === "medium" || value === "high";
+}
+
+function cloneDeadlineTemplateSettings(
+  settings: DeadlineTemplateSettings = DEFAULT_DEADLINE_TEMPLATE_SETTINGS
+): DeadlineTemplateSettings {
+  return {
+    templates: settings.templates.map((template) => ({
+      ...template,
+      items: template.items.map((item) => ({ ...item }))
+    }))
+  };
+}
+
+function normalizeDeadlineTemplateSettings(
+  settings: DeadlineTemplateSettings | null | undefined
+): DeadlineTemplateSettings {
+  const normalizedDefaults = cloneDeadlineTemplateSettings(DEFAULT_DEADLINE_TEMPLATE_SETTINGS);
+  const incomingTemplates = new Map((settings?.templates ?? []).map((template) => [template.key, template]));
+
+  return {
+    templates: normalizedDefaults.templates.map((defaultTemplate) => {
+      const incomingTemplate = incomingTemplates.get(defaultTemplate.key);
+
+      if (!incomingTemplate) {
+        return defaultTemplate;
+      }
+
+      const incomingItems = new Map((incomingTemplate.items ?? []).map((item) => [item.key, item]));
+
+      return {
+        key: defaultTemplate.key,
+        label: incomingTemplate.label?.trim() || defaultTemplate.label,
+        description: incomingTemplate.description?.trim() || defaultTemplate.description,
+        items: defaultTemplate.items.map((defaultItem) => {
+          const incomingItem = incomingItems.get(defaultItem.key);
+
+          return {
+            key: defaultItem.key,
+            title: incomingItem?.title?.trim() || defaultItem.title,
+            category: incomingItem?.category?.trim() || defaultItem.category,
+            anchorType:
+              incomingItem?.anchorType === "publication_date" ||
+              incomingItem?.anchorType === "qualification_date"
+                ? incomingItem.anchorType
+                : defaultItem.anchorType,
+            offsetDays: Number.isFinite(Number(incomingItem?.offsetDays))
+              ? Math.round(Number(incomingItem?.offsetDays))
+              : defaultItem.offsetDays,
+            defaultPriority: isDeadlinePriority(incomingItem?.defaultPriority)
+              ? incomingItem.defaultPriority
+              : defaultItem.defaultPriority,
+            enabled: incomingItem?.enabled ?? defaultItem.enabled
+          };
+        })
+      };
+    })
+  };
+}
+
+function getMatterDeadlineSummary(row: MatterRecord): MatterDeadlineSummary {
+  const nextDeadlineDueDate = row.next_deadline_due_date ?? null;
+
+  return {
+    overdueCount: Number(row.deadline_overdue_count ?? 0),
+    dueTodayCount: Number(row.deadline_due_today_count ?? 0),
+    activeCount: Number(row.deadline_active_count ?? 0),
+    nextDeadlineTitle: row.next_deadline_title ?? null,
+    nextDeadlineDueDate,
+    nextDeadlineStatus: nextDeadlineDueDate
+      ? (calculateDeadlineStatus({
+          dueDate: nextDeadlineDueDate,
+          completedAt: null,
+          dismissedAt: null
+        }) as "upcoming" | "due_today" | "overdue")
+      : null
+  };
+}
+
+function mapMatterDeadlineSettings(row: MatterRecord): MatterDeadlineSettings {
+  return {
+    matterId: row.id,
+    templateKey: isDeadlineTemplateKey(row.deadline_template_key)
+      ? row.deadline_template_key
+      : "custom_manual_only",
+    qualificationDate: row.qualification_date ?? null,
+    publicationDate: row.publication_date ?? null
+  };
+}
+
 function mapMatter(row: MatterRecord) {
   return {
     id: row.id,
@@ -71,6 +202,12 @@ function mapMatter(row: MatterRecord) {
     decedentName: row.decedent_name,
     clientName: row.client_name,
     fileNumber: row.file_number,
+    deadlineTemplateKey: isDeadlineTemplateKey(row.deadline_template_key)
+      ? row.deadline_template_key
+      : "custom_manual_only",
+    qualificationDate: row.qualification_date ?? null,
+    publicationDate: row.publication_date ?? null,
+    deadlineSummary: getMatterDeadlineSummary(row),
     stage: row.stage,
     sortOrder: Number(row.sort_order ?? 0),
     createdAt: row.created_at,
@@ -111,6 +248,40 @@ function mapNote(row: MatterNoteRecord) {
   };
 }
 
+function mapDeadline(row: MatterDeadlineRecord): Deadline {
+  return {
+    id: row.id,
+    matterId: row.matter_id,
+    boardId: row.board_id,
+    boardName: row.board_name,
+    matterName: row.decedent_name,
+    clientName: row.client_name,
+    fileNumber: row.file_number,
+    title: row.title,
+    category: row.category,
+    dueDate: row.due_date,
+    assignee: row.assignee,
+    status: calculateDeadlineStatus({
+      dueDate: row.due_date,
+      completedAt: row.completed_at,
+      dismissedAt: row.dismissed_at
+    }),
+    priority: row.priority,
+    sourceType: row.source_type,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    completedAt: row.completed_at,
+    completedBy: row.completed_by,
+    completionNote: row.completion_note,
+    dismissedAt: row.dismissed_at,
+    dismissedBy: row.dismissed_by,
+    templateKey: row.template_key,
+    templateItemKey: row.template_item_key,
+    isOverridden: Boolean(row.is_overridden)
+  };
+}
+
 function assertMatterInput(input: Partial<MatterInput>): MatterInput {
   if (!input.boardId?.trim()) {
     throw new Error("Board id is required.");
@@ -141,6 +312,116 @@ function assertMatterInput(input: Partial<MatterInput>): MatterInput {
   };
 }
 
+function normalizeOptionalText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function assertDeadlineInput(
+  input: Partial<MatterDeadlineInput>,
+  existing?: MatterDeadlineRecord
+) {
+  const matterId = input.matterId?.trim() || existing?.matter_id;
+  const title = input.title?.trim() || existing?.title;
+  const category = input.category?.trim() || existing?.category;
+  const dueDate = input.dueDate?.trim() || existing?.due_date;
+  const priority = input.priority ?? existing?.priority;
+  const assignee = normalizeOptionalText(input.assignee ?? existing?.assignee);
+  const notes = normalizeOptionalText(input.notes ?? existing?.notes);
+
+  if (!matterId) {
+    throw new Error("Matter id is required.");
+  }
+
+  if (!title) {
+    throw new Error("Deadline title is required.");
+  }
+
+  if (!category) {
+    throw new Error("Deadline category is required.");
+  }
+
+  if (!dueDate || !isValidDateOnly(dueDate)) {
+    throw new Error("Deadline due date must be a valid date.");
+  }
+
+  if (!isDeadlinePriority(priority)) {
+    throw new Error("Deadline priority is required.");
+  }
+
+  return {
+    matterId,
+    title,
+    category,
+    dueDate,
+    assignee,
+    priority,
+    notes
+  };
+}
+
+function assertMatterDeadlineSettingsInput(
+  input: Partial<MatterDeadlineSettingsInput>,
+  existing?: MatterRecord
+): MatterDeadlineSettings {
+  const matterId = input.matterId?.trim() || existing?.id;
+  const templateKey =
+    input.templateKey ??
+    (isDeadlineTemplateKey(existing?.deadline_template_key)
+      ? existing.deadline_template_key
+      : "custom_manual_only");
+
+  if (!matterId) {
+    throw new Error("Matter id is required.");
+  }
+
+  if (!isDeadlineTemplateKey(templateKey)) {
+    throw new Error("A valid deadline template is required.");
+  }
+
+  const qualificationDate =
+    input.qualificationDate === undefined
+      ? existing?.qualification_date ?? null
+      : normalizeOptionalDateOnly(input.qualificationDate);
+  const publicationDate =
+    input.publicationDate === undefined
+      ? existing?.publication_date ?? null
+      : normalizeOptionalDateOnly(input.publicationDate);
+
+  if (input.qualificationDate !== undefined && input.qualificationDate && !qualificationDate) {
+    throw new Error("Qualification date must be a valid date.");
+  }
+
+  if (input.publicationDate !== undefined && input.publicationDate && !publicationDate) {
+    throw new Error("Publication date must be a valid date.");
+  }
+
+  return {
+    matterId,
+    templateKey,
+    qualificationDate,
+    publicationDate
+  };
+}
+
+function hasTemplateDeadlineOverrideChanges(
+  existing: MatterDeadlineRecord,
+  nextValues: ReturnType<typeof assertDeadlineInput>
+) {
+  return (
+    nextValues.title !== existing.title ||
+    nextValues.category !== existing.category ||
+    nextValues.dueDate !== existing.due_date ||
+    nextValues.assignee !== normalizeOptionalText(existing.assignee) ||
+    nextValues.priority !== existing.priority ||
+    nextValues.notes !== normalizeOptionalText(existing.notes)
+  );
+}
+
+function compareOptionalText(left: string | null, right: string | null) {
+  return (left ?? "").localeCompare(right ?? "", undefined, { sensitivity: "base" });
+}
+
 function normalizeImportTimestamp(value: string | undefined, label: string) {
   const trimmed = value?.trim();
 
@@ -160,6 +441,50 @@ function normalizeImportTimestamp(value: string | undefined, label: string) {
 function createImportedFileNumber(rowNumber: number) {
   const compactDate = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   return `IMPORT-${compactDate}-${rowNumber}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
+function getMatterDeadlineSummarySelect(currentDatePlaceholder: string) {
+  return `(
+      SELECT COUNT(*)
+      FROM matter_deadlines
+      WHERE matter_deadlines.matter_id = matters.id
+        AND matter_deadlines.completed_at IS NULL
+        AND matter_deadlines.dismissed_at IS NULL
+        AND matter_deadlines.due_date < ${currentDatePlaceholder}
+    ) AS deadline_overdue_count,
+    (
+      SELECT COUNT(*)
+      FROM matter_deadlines
+      WHERE matter_deadlines.matter_id = matters.id
+        AND matter_deadlines.completed_at IS NULL
+        AND matter_deadlines.dismissed_at IS NULL
+        AND matter_deadlines.due_date = ${currentDatePlaceholder}
+    ) AS deadline_due_today_count,
+    (
+      SELECT COUNT(*)
+      FROM matter_deadlines
+      WHERE matter_deadlines.matter_id = matters.id
+        AND matter_deadlines.completed_at IS NULL
+        AND matter_deadlines.dismissed_at IS NULL
+    ) AS deadline_active_count,
+    (
+      SELECT matter_deadlines.title
+      FROM matter_deadlines
+      WHERE matter_deadlines.matter_id = matters.id
+        AND matter_deadlines.completed_at IS NULL
+        AND matter_deadlines.dismissed_at IS NULL
+      ORDER BY matter_deadlines.due_date ASC, matter_deadlines.created_at ASC
+      LIMIT 1
+    ) AS next_deadline_title,
+    (
+      SELECT matter_deadlines.due_date
+      FROM matter_deadlines
+      WHERE matter_deadlines.matter_id = matters.id
+        AND matter_deadlines.completed_at IS NULL
+        AND matter_deadlines.dismissed_at IS NULL
+      ORDER BY matter_deadlines.due_date ASC, matter_deadlines.created_at ASC
+      LIMIT 1
+    ) AS next_deadline_due_date`;
 }
 
 async function normalizeMatterSortOrder(db: D1Database) {
@@ -344,25 +669,50 @@ async function insertMatterRecord(
   return matterId;
 }
 
+async function touchMatterActivity(
+  db: D1Database,
+  matterId: string,
+  actor: AuthenticatedUser,
+  timestamp: string,
+  includeLastActivity = true
+) {
+  await db
+    .prepare(
+      `UPDATE matters
+       SET updated_at = ?2,
+           last_updated_by_email = ?3,
+           last_updated_by_id = ?4,
+           last_activity_at = CASE WHEN ?5 = 1 THEN ?2 ELSE last_activity_at END
+       WHERE id = ?1`
+    )
+    .bind(matterId, timestamp, actor.email, actor.id, includeLastActivity ? 1 : 0)
+    .run();
+}
+
 async function getMatterRecord(db: D1Database, matterId: string, accountId?: string) {
   await ensureDefaultAccountData(db);
+  const today = getTodayDateOnly();
 
   if (!accountId) {
     return await db
-      .prepare("SELECT * FROM matters WHERE id = ?1")
-      .bind(matterId)
+      .prepare(
+        `SELECT matters.*, ${getMatterDeadlineSummarySelect("?2")}
+         FROM matters
+         WHERE matters.id = ?1`
+      )
+      .bind(matterId, today)
       .first<MatterRecord>();
   }
 
   return await db
     .prepare(
-      `SELECT matters.*
+      `SELECT matters.*, ${getMatterDeadlineSummarySelect("?3")}
        FROM matters
        INNER JOIN practice_boards ON practice_boards.id = matters.board_id
        WHERE matters.id = ?1
          AND practice_boards.account_id = ?2`
     )
-    .bind(matterId, accountId)
+    .bind(matterId, accountId, today)
     .first<MatterRecord>();
 }
 
@@ -382,6 +732,281 @@ async function getPracticeBoardRecord(
     )
     .bind(boardId, accountId)
     .first<PracticeBoardRecord>();
+}
+
+async function listMatterDeadlineRecords(
+  db: D1Database,
+  accountId: string,
+  matterId: string
+) {
+  await ensureDefaultAccountData(db);
+
+  const { results } = await db
+    .prepare(
+      `SELECT
+         matter_deadlines.*,
+         matters.board_id,
+         practice_boards.name AS board_name,
+         matters.decedent_name,
+         matters.client_name,
+         matters.file_number
+       FROM matter_deadlines
+       INNER JOIN matters ON matters.id = matter_deadlines.matter_id
+       INNER JOIN practice_boards ON practice_boards.id = matters.board_id
+       WHERE matter_deadlines.matter_id = ?1
+         AND practice_boards.account_id = ?2
+       ORDER BY
+         CASE
+           WHEN matter_deadlines.completed_at IS NOT NULL THEN 3
+           WHEN matter_deadlines.dismissed_at IS NOT NULL THEN 4
+           ELSE 1
+         END,
+         matter_deadlines.due_date ASC,
+         matter_deadlines.updated_at DESC`
+    )
+    .bind(matterId, accountId)
+    .all<MatterDeadlineRecord>();
+
+  return results;
+}
+
+async function listAccountDeadlineRecords(db: D1Database, accountId: string) {
+  await ensureDefaultAccountData(db);
+
+  const { results } = await db
+    .prepare(
+      `SELECT
+         matter_deadlines.*,
+         matters.board_id,
+         practice_boards.name AS board_name,
+         matters.decedent_name,
+         matters.client_name,
+         matters.file_number
+       FROM matter_deadlines
+       INNER JOIN matters ON matters.id = matter_deadlines.matter_id
+       INNER JOIN practice_boards ON practice_boards.id = matters.board_id
+       WHERE practice_boards.account_id = ?1
+       ORDER BY
+         CASE
+           WHEN matter_deadlines.completed_at IS NOT NULL THEN 3
+           WHEN matter_deadlines.dismissed_at IS NOT NULL THEN 4
+           ELSE 1
+         END,
+         matter_deadlines.due_date ASC,
+         matter_deadlines.updated_at DESC`
+    )
+    .bind(accountId)
+    .all<MatterDeadlineRecord>();
+
+  return results;
+}
+
+async function listGeneratedDeadlineRecords(db: D1Database, matterId: string) {
+  const { results } = await db
+    .prepare(
+      `SELECT
+         matter_deadlines.*,
+         matters.board_id,
+         NULL AS board_name,
+         matters.decedent_name,
+         matters.client_name,
+         matters.file_number
+       FROM matter_deadlines
+       INNER JOIN matters ON matters.id = matter_deadlines.matter_id
+       WHERE matter_deadlines.matter_id = ?1
+         AND matter_deadlines.source_type = 'template'`
+    )
+    .bind(matterId)
+    .all<MatterDeadlineRecord>();
+
+  return results;
+}
+
+async function getMatterDeadlineRecord(
+  db: D1Database,
+  accountId: string,
+  deadlineId: string
+) {
+  await ensureDefaultAccountData(db);
+
+  return await db
+    .prepare(
+      `SELECT
+         matter_deadlines.*,
+         matters.board_id,
+         practice_boards.name AS board_name,
+         matters.decedent_name,
+         matters.client_name,
+         matters.file_number
+       FROM matter_deadlines
+       INNER JOIN matters ON matters.id = matter_deadlines.matter_id
+       INNER JOIN practice_boards ON practice_boards.id = matters.board_id
+       WHERE matter_deadlines.id = ?1
+         AND practice_boards.account_id = ?2`
+    )
+    .bind(deadlineId, accountId)
+    .first<MatterDeadlineRecord>();
+}
+
+async function insertDeadlineRecord(
+  db: D1Database,
+  input: {
+    matterId: string;
+    title: string;
+    category: string;
+    dueDate: string;
+    assignee: string | null;
+    priority: DeadlinePriority;
+    sourceType: Deadline["sourceType"];
+    notes: string | null;
+    templateKey?: DeadlineTemplateKey | null;
+    templateItemKey?: Deadline["templateItemKey"];
+    isOverridden?: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }
+) {
+  const deadlineId = crypto.randomUUID();
+
+  await db
+    .prepare(
+      `INSERT INTO matter_deadlines (
+        id,
+        matter_id,
+        title,
+        category,
+        due_date,
+        assignee,
+        priority,
+        source_type,
+        notes,
+        template_key,
+        template_item_key,
+        is_overridden,
+        created_at,
+        updated_at,
+        completed_at,
+        completed_by,
+        completed_by_email,
+        completed_by_id,
+        completion_note,
+        dismissed_at,
+        dismissed_by,
+        dismissed_by_email,
+        dismissed_by_id
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)`
+    )
+    .bind(
+      deadlineId,
+      input.matterId,
+      input.title,
+      input.category,
+      input.dueDate,
+      input.assignee,
+      input.priority,
+      input.sourceType,
+      input.notes,
+      input.templateKey ?? null,
+      input.templateItemKey ?? null,
+      input.isOverridden ? 1 : 0,
+      input.createdAt,
+      input.updatedAt
+    )
+    .run();
+
+  return deadlineId;
+}
+
+async function reconcileMatterGeneratedDeadlines(
+  db: D1Database,
+  matter: MatterRecord,
+  actor: AuthenticatedUser,
+  templateSettings: DeadlineTemplateSettings,
+  timestamp: string
+) {
+  const existingGeneratedDeadlines = await listGeneratedDeadlineRecords(db, matter.id);
+  const reconciliation = reconcileGeneratedDeadlines({
+    settings: mapMatterDeadlineSettings(matter),
+    templateSettings,
+    existingDeadlines: existingGeneratedDeadlines.map((deadline) => ({
+      id: deadline.id,
+      templateKey: deadline.template_key,
+      templateItemKey: deadline.template_item_key,
+      sourceType: deadline.source_type,
+      isOverridden: Boolean(deadline.is_overridden),
+      completedAt: deadline.completed_at,
+      dismissedAt: deadline.dismissed_at
+    }))
+  });
+
+  for (const deadline of reconciliation.toCreate) {
+    await insertDeadlineRecord(db, {
+      matterId: matter.id,
+      title: deadline.title,
+      category: deadline.category,
+      dueDate: deadline.dueDate,
+      assignee: null,
+      priority: deadline.priority,
+      sourceType: "template",
+      notes: null,
+      templateKey: deadline.templateKey,
+      templateItemKey: deadline.templateItemKey,
+      isOverridden: false,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    });
+  }
+
+  for (const deadline of reconciliation.toUpdate) {
+    await db
+      .prepare(
+        `UPDATE matter_deadlines
+         SET title = ?2,
+             category = ?3,
+             due_date = ?4,
+             priority = ?5,
+             template_key = ?6,
+             template_item_key = ?7,
+             updated_at = ?8
+         WHERE id = ?1
+           AND completed_at IS NULL
+           AND dismissed_at IS NULL`
+      )
+      .bind(
+        deadline.id,
+        deadline.title,
+        deadline.category,
+        deadline.dueDate,
+        deadline.priority,
+        deadline.templateKey,
+        deadline.templateItemKey,
+        timestamp
+      )
+      .run();
+  }
+
+  for (const deadlineId of reconciliation.toDismiss) {
+    await db
+      .prepare(
+        `UPDATE matter_deadlines
+         SET dismissed_at = ?2,
+             dismissed_by = ?3,
+             dismissed_by_email = ?4,
+             dismissed_by_id = ?5,
+             updated_at = ?2
+         WHERE id = ?1
+           AND completed_at IS NULL
+           AND dismissed_at IS NULL`
+      )
+      .bind(
+        deadlineId,
+        timestamp,
+        actorDisplayName(actor),
+        actor.email,
+        actor.id
+      )
+      .run();
+  }
 }
 
 async function insertAuditEvent(db: D1Database, input: AuditEventInput) {
@@ -555,6 +1180,9 @@ async function ensureBaseSchema(db: D1Database) {
         decedent_name TEXT NOT NULL,
         client_name TEXT NOT NULL,
         file_number TEXT NOT NULL UNIQUE,
+        deadline_template_key TEXT NOT NULL DEFAULT 'custom_manual_only',
+        qualification_date TEXT,
+        publication_date TEXT,
         stage TEXT NOT NULL CHECK (
           stage IN (
             'intake',
@@ -603,6 +1231,41 @@ async function ensureBaseSchema(db: D1Database) {
       )
       .run();
   }
+
+  if (!(await tableHasColumn(db, "matters", "deadline_template_key"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matters
+         ADD COLUMN deadline_template_key TEXT NOT NULL DEFAULT 'custom_manual_only'`
+      )
+      .run();
+  }
+
+  if (!(await tableHasColumn(db, "matters", "qualification_date"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matters
+         ADD COLUMN qualification_date TEXT`
+      )
+      .run();
+  }
+
+  if (!(await tableHasColumn(db, "matters", "publication_date"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matters
+         ADD COLUMN publication_date TEXT`
+      )
+      .run();
+  }
+
+  await db
+    .prepare(
+      `UPDATE matters
+       SET deadline_template_key = 'custom_manual_only'
+       WHERE deadline_template_key IS NULL OR deadline_template_key = ''`
+    )
+    .run();
 
   if (!(await tableHasColumn(db, "matters", "created_by_email"))) {
     await db
@@ -686,6 +1349,37 @@ async function ensureBaseSchema(db: D1Database) {
         source_note_id TEXT,
         FOREIGN KEY (matter_id) REFERENCES matters(id) ON DELETE CASCADE,
         FOREIGN KEY (source_note_id) REFERENCES matter_notes(id) ON DELETE SET NULL
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS matter_deadlines (
+        id TEXT PRIMARY KEY,
+        matter_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        category TEXT NOT NULL,
+        due_date TEXT NOT NULL,
+        assignee TEXT,
+        priority TEXT NOT NULL CHECK (priority IN ('low', 'medium', 'high')),
+        source_type TEXT NOT NULL CHECK (source_type IN ('manual', 'template')),
+        notes TEXT,
+        template_key TEXT,
+        template_item_key TEXT,
+        is_overridden INTEGER NOT NULL DEFAULT 0 CHECK (is_overridden IN (0, 1)),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT,
+        completed_by TEXT,
+        completed_by_email TEXT,
+        completed_by_id TEXT,
+        completion_note TEXT,
+        dismissed_at TEXT,
+        dismissed_by TEXT,
+        dismissed_by_email TEXT,
+        dismissed_by_id TEXT,
+        FOREIGN KEY (matter_id) REFERENCES matters(id) ON DELETE CASCADE
       )`
     )
     .run();
@@ -799,6 +1493,27 @@ async function ensureBaseSchema(db: D1Database) {
     .prepare(
       `CREATE INDEX IF NOT EXISTS idx_task_items_created
        ON task_items(created_at DESC, completed_at)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_matter_deadlines_matter_due
+       ON matter_deadlines(matter_id, due_date ASC, updated_at DESC)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_matter_deadlines_due_active
+       ON matter_deadlines(due_date ASC, completed_at, dismissed_at)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_matter_deadlines_assignee_due
+       ON matter_deadlines(assignee, due_date ASC)`
     )
     .run();
 
@@ -952,6 +1667,33 @@ export async function getBoardSettings(db: D1Database): Promise<BoardSettings> {
     columnCount: clampColumnCount(settings.get("board.column_count")),
     stageLabels
   };
+}
+
+export async function getDeadlineTemplateSettings(
+  db: D1Database
+): Promise<DeadlineTemplateSettings> {
+  await ensureBaseSchema(db);
+
+  const record = await db
+    .prepare(
+      `SELECT key, value, updated_at
+       FROM app_settings
+       WHERE key = ?1`
+    )
+    .bind(DEADLINE_TEMPLATE_SETTINGS_KEY)
+    .first<AppSettingRecord>();
+
+  if (!record?.value) {
+    return cloneDeadlineTemplateSettings(DEFAULT_DEADLINE_TEMPLATE_SETTINGS);
+  }
+
+  try {
+    return normalizeDeadlineTemplateSettings(
+      JSON.parse(record.value) as DeadlineTemplateSettings
+    );
+  } catch {
+    return cloneDeadlineTemplateSettings(DEFAULT_DEADLINE_TEMPLATE_SETTINGS);
+  }
 }
 
 export async function listBoards(db: D1Database, accountId: string): Promise<PracticeBoard[]> {
@@ -1125,8 +1867,54 @@ export async function updateBoardSettings(
   return settings;
 }
 
+export async function updateDeadlineTemplateSettings(
+  db: D1Database,
+  accountId: string,
+  actor: AuthenticatedUser,
+  input: DeadlineTemplateSettings
+): Promise<DeadlineTemplateSettings> {
+  await ensureDefaultAccountData(db);
+
+  const settings = normalizeDeadlineTemplateSettings(input);
+  const timestamp = nowIso();
+
+  await upsertAppSetting(
+    db,
+    DEADLINE_TEMPLATE_SETTINGS_KEY,
+    JSON.stringify(settings),
+    timestamp
+  );
+
+  const { results } = await db
+    .prepare(
+      `SELECT matters.*, ${getMatterDeadlineSummarySelect("?2")}
+       FROM matters
+       INNER JOIN practice_boards ON practice_boards.id = matters.board_id
+       WHERE practice_boards.account_id = ?1`
+    )
+    .bind(accountId, getTodayDateOnly())
+    .all<MatterRecord>();
+
+  for (const matter of results) {
+    await reconcileMatterGeneratedDeadlines(db, matter, actor, settings, timestamp);
+  }
+
+  await insertAuditEvent(db, {
+    action: "settings.deadline_templates.updated",
+    entityType: "app_setting",
+    entityId: DEADLINE_TEMPLATE_SETTINGS_KEY,
+    actor,
+    metadata: {
+      templateCount: settings.templates.length
+    }
+  });
+
+  return settings;
+}
+
 export async function listMatters(db: D1Database, accountId: string, boardId: string) {
   await ensureDefaultAccountData(db);
+  const today = getTodayDateOnly();
 
   const { results } = await db
     .prepare(
@@ -1147,7 +1935,8 @@ export async function listMatters(db: D1Database, accountId: string, boardId: st
            SELECT COUNT(*)
            FROM matter_notes
            WHERE matter_notes.matter_id = matters.id
-         ) AS interaction_count
+         ) AS interaction_count,
+         ${getMatterDeadlineSummarySelect("?3")}
        FROM matters
        INNER JOIN practice_boards ON practice_boards.id = matters.board_id
        WHERE matters.archived = 0
@@ -1165,7 +1954,7 @@ export async function listMatters(db: D1Database, accountId: string, boardId: st
          matters.sort_order ASC,
          matters.last_activity_at DESC`
     )
-    .bind(boardId, accountId)
+    .bind(boardId, accountId, today)
     .all<MatterRecord>();
 
   return results.map(mapMatter);
@@ -1177,6 +1966,7 @@ export async function listArchivedMatters(
   boardId: string
 ) {
   await ensureDefaultAccountData(db);
+  const today = getTodayDateOnly();
 
   const { results } = await db
     .prepare(
@@ -1197,7 +1987,8 @@ export async function listArchivedMatters(
            SELECT COUNT(*)
            FROM matter_notes
            WHERE matter_notes.matter_id = matters.id
-         ) AS interaction_count
+         ) AS interaction_count,
+         ${getMatterDeadlineSummarySelect("?3")}
        FROM matters
        INNER JOIN practice_boards ON practice_boards.id = matters.board_id
        WHERE matters.archived = 1
@@ -1205,7 +1996,7 @@ export async function listArchivedMatters(
          AND practice_boards.account_id = ?2
        ORDER BY matters.archived_at DESC, matters.last_activity_at DESC`
     )
-    .bind(boardId, accountId)
+    .bind(boardId, accountId, today)
     .all<MatterRecord>();
 
   return results.map(mapMatter);
@@ -1927,6 +2718,472 @@ export async function createNote(
     .first<MatterNoteRecord>();
 
   return note ? mapNote(note) : null;
+}
+
+export async function getMatterDeadlines(
+  db: D1Database,
+  accountId: string,
+  matterId: string
+) {
+  const matter = await getMatterRecord(db, matterId, accountId);
+
+  if (!matter) {
+    return null;
+  }
+
+  const deadlines = await listMatterDeadlineRecords(db, accountId, matterId);
+
+  return {
+    matter: mapMatter(matter),
+    settings: mapMatterDeadlineSettings(matter),
+    deadlines: deadlines.map(mapDeadline)
+  };
+}
+
+export async function listDeadlineDashboard(
+  db: D1Database,
+  accountId: string,
+  query: MatterDeadlineDashboardQuery = {}
+): Promise<DeadlineDashboardOverview> {
+  const records = await listAccountDeadlineRecords(db, accountId);
+  const mappedDeadlines = records.map(mapDeadline);
+  const assigneeFilter = normalizeOptionalText(query.assignee);
+  const matterIdFilter = query.matterId?.trim() || null;
+  const statusFilter = query.status && query.status !== "all" ? query.status : "all";
+
+  const deadlines = mappedDeadlines.filter((deadline) => {
+    if (assigneeFilter && compareOptionalText(deadline.assignee, assigneeFilter) !== 0) {
+      return false;
+    }
+
+    if (matterIdFilter && deadline.matterId !== matterIdFilter) {
+      return false;
+    }
+
+    if (statusFilter !== "all" && deadline.status !== statusFilter) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const assignees = Array.from(
+    new Set(
+      mappedDeadlines
+        .map((deadline) => normalizeOptionalText(deadline.assignee))
+        .filter((value): value is string => Boolean(value))
+    )
+  ).sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
+
+  const matters = Array.from(
+    new Map(
+      records.map((record) => [
+        record.matter_id,
+        {
+          matterId: record.matter_id,
+          boardId: record.board_id,
+          boardName: record.board_name,
+          label: `${record.decedent_name} | ${record.file_number}`
+        }
+      ])
+    ).values()
+  ).sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
+
+  return {
+    deadlines,
+    assignees,
+    matters
+  };
+}
+
+export async function createDeadline(
+  db: D1Database,
+  accountId: string,
+  actor: AuthenticatedUser,
+  payload: Partial<MatterDeadlineInput>
+) {
+  const input = assertDeadlineInput(payload);
+  const matter = await getMatterRecord(db, input.matterId, accountId);
+
+  if (!matter) {
+    return null;
+  }
+
+  const timestamp = nowIso();
+  const deadlineId = await insertDeadlineRecord(db, {
+    matterId: input.matterId,
+    title: input.title,
+    category: input.category,
+    dueDate: input.dueDate,
+    assignee: input.assignee,
+    priority: input.priority,
+    sourceType: "manual",
+    notes: input.notes,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  });
+
+  await touchMatterActivity(db, input.matterId, actor, timestamp);
+
+  await insertAuditEvent(db, {
+    action: "deadline.created",
+    entityType: "matter_deadline",
+    entityId: deadlineId,
+    matterId: input.matterId,
+    actor,
+    metadata: {
+      sourceType: "manual",
+      dueDate: input.dueDate
+    }
+  });
+
+  const [updatedMatter, deadline] = await Promise.all([
+    getMatterRecord(db, input.matterId, accountId),
+    getMatterDeadlineRecord(db, accountId, deadlineId)
+  ]);
+
+  if (!updatedMatter || !deadline) {
+    return null;
+  }
+
+  return {
+    matter: mapMatter(updatedMatter),
+    deadline: mapDeadline(deadline)
+  };
+}
+
+export async function updateDeadline(
+  db: D1Database,
+  accountId: string,
+  actor: AuthenticatedUser,
+  deadlineId: string,
+  payload: Partial<MatterDeadlineUpdateInput>
+) {
+  const existing = await getMatterDeadlineRecord(db, accountId, deadlineId);
+
+  if (!existing) {
+    return null;
+  }
+
+  if (existing.completed_at) {
+    throw new Error("Completed deadlines cannot be edited.");
+  }
+
+  if (existing.dismissed_at) {
+    throw new Error("Dismissed deadlines cannot be edited.");
+  }
+
+  const input = assertDeadlineInput(payload, existing);
+  const timestamp = nowIso();
+  const isOverridden =
+    existing.source_type === "template" &&
+    (Boolean(existing.is_overridden) || hasTemplateDeadlineOverrideChanges(existing, input));
+
+  await db
+    .prepare(
+      `UPDATE matter_deadlines
+       SET title = ?2,
+           category = ?3,
+           due_date = ?4,
+           assignee = ?5,
+           priority = ?6,
+           notes = ?7,
+           is_overridden = ?8,
+           updated_at = ?9
+       WHERE id = ?1`
+    )
+    .bind(
+      deadlineId,
+      input.title,
+      input.category,
+      input.dueDate,
+      input.assignee,
+      input.priority,
+      input.notes,
+      isOverridden ? 1 : 0,
+      timestamp
+    )
+    .run();
+
+  await touchMatterActivity(db, existing.matter_id, actor, timestamp);
+
+  await insertAuditEvent(db, {
+    action: "deadline.updated",
+    entityType: "matter_deadline",
+    entityId: deadlineId,
+    matterId: existing.matter_id,
+    actor,
+    metadata: {
+      sourceType: existing.source_type,
+      isOverridden
+    }
+  });
+
+  const [updatedMatter, deadline] = await Promise.all([
+    getMatterRecord(db, existing.matter_id, accountId),
+    getMatterDeadlineRecord(db, accountId, deadlineId)
+  ]);
+
+  if (!updatedMatter || !deadline) {
+    return null;
+  }
+
+  return {
+    matter: mapMatter(updatedMatter),
+    deadline: mapDeadline(deadline)
+  };
+}
+
+export async function completeDeadline(
+  db: D1Database,
+  accountId: string,
+  actor: AuthenticatedUser,
+  input: MatterDeadlineCompleteInput
+) {
+  if (!input.deadlineId?.trim()) {
+    throw new Error("Deadline id is required.");
+  }
+
+  const existing = await getMatterDeadlineRecord(db, accountId, input.deadlineId);
+
+  if (!existing) {
+    return null;
+  }
+
+  if (existing.dismissed_at) {
+    throw new Error("Dismissed deadlines cannot be completed.");
+  }
+
+  if (existing.completed_at) {
+    const matter = await getMatterRecord(db, existing.matter_id, accountId);
+
+    if (!matter) {
+      return null;
+    }
+
+    return {
+      matter: mapMatter(matter),
+      deadline: mapDeadline(existing)
+    };
+  }
+
+  const completedAt = nowIso();
+  const completionNote = normalizeOptionalText(input.completionNote);
+
+  await db
+    .prepare(
+      `UPDATE matter_deadlines
+       SET completed_at = ?2,
+           completed_by = ?3,
+           completed_by_email = ?4,
+           completed_by_id = ?5,
+           completion_note = ?6,
+           updated_at = ?2
+       WHERE id = ?1
+         AND completed_at IS NULL
+         AND dismissed_at IS NULL`
+    )
+    .bind(
+      existing.id,
+      completedAt,
+      actorDisplayName(actor),
+      actor.email,
+      actor.id,
+      completionNote
+    )
+    .run();
+
+  await touchMatterActivity(db, existing.matter_id, actor, completedAt);
+
+  await insertAuditEvent(db, {
+    action: "deadline.completed",
+    entityType: "matter_deadline",
+    entityId: existing.id,
+    matterId: existing.matter_id,
+    actor,
+    metadata: {
+      completedAt,
+      completionNote
+    }
+  });
+
+  const [updatedMatter, deadline] = await Promise.all([
+    getMatterRecord(db, existing.matter_id, accountId),
+    getMatterDeadlineRecord(db, accountId, existing.id)
+  ]);
+
+  if (!updatedMatter || !deadline) {
+    return null;
+  }
+
+  return {
+    matter: mapMatter(updatedMatter),
+    deadline: mapDeadline(deadline)
+  };
+}
+
+export async function dismissDeadline(
+  db: D1Database,
+  accountId: string,
+  actor: AuthenticatedUser,
+  input: MatterDeadlineDismissInput
+) {
+  if (!input.deadlineId?.trim()) {
+    throw new Error("Deadline id is required.");
+  }
+
+  const existing = await getMatterDeadlineRecord(db, accountId, input.deadlineId);
+
+  if (!existing) {
+    return null;
+  }
+
+  if (existing.completed_at) {
+    throw new Error("Completed deadlines cannot be dismissed.");
+  }
+
+  if (existing.dismissed_at) {
+    const matter = await getMatterRecord(db, existing.matter_id, accountId);
+
+    if (!matter) {
+      return null;
+    }
+
+    return {
+      matter: mapMatter(matter),
+      deadline: mapDeadline(existing)
+    };
+  }
+
+  const dismissedAt = nowIso();
+
+  await db
+    .prepare(
+      `UPDATE matter_deadlines
+       SET dismissed_at = ?2,
+           dismissed_by = ?3,
+           dismissed_by_email = ?4,
+           dismissed_by_id = ?5,
+           updated_at = ?2
+       WHERE id = ?1
+         AND completed_at IS NULL
+         AND dismissed_at IS NULL`
+    )
+    .bind(existing.id, dismissedAt, actorDisplayName(actor), actor.email, actor.id)
+    .run();
+
+  await touchMatterActivity(db, existing.matter_id, actor, dismissedAt);
+
+  await insertAuditEvent(db, {
+    action: "deadline.dismissed",
+    entityType: "matter_deadline",
+    entityId: existing.id,
+    matterId: existing.matter_id,
+    actor,
+    metadata: {
+      dismissedAt
+    }
+  });
+
+  const [updatedMatter, deadline] = await Promise.all([
+    getMatterRecord(db, existing.matter_id, accountId),
+    getMatterDeadlineRecord(db, accountId, existing.id)
+  ]);
+
+  if (!updatedMatter || !deadline) {
+    return null;
+  }
+
+  return {
+    matter: mapMatter(updatedMatter),
+    deadline: mapDeadline(deadline)
+  };
+}
+
+export async function saveMatterDeadlineSettings(
+  db: D1Database,
+  accountId: string,
+  actor: AuthenticatedUser,
+  payload: Partial<MatterDeadlineSettingsInput>
+) {
+  if (!payload.matterId?.trim()) {
+    throw new Error("Matter id is required.");
+  }
+
+  const existingMatter = await getMatterRecord(db, payload.matterId, accountId);
+
+  if (!existingMatter) {
+    return null;
+  }
+
+  const settings = assertMatterDeadlineSettingsInput(payload, existingMatter);
+  const templateSettings = await getDeadlineTemplateSettings(db);
+  const timestamp = nowIso();
+
+  await db
+    .prepare(
+      `UPDATE matters
+       SET deadline_template_key = ?2,
+           qualification_date = ?3,
+           publication_date = ?4,
+           updated_at = ?5,
+           last_updated_by_email = ?6,
+           last_updated_by_id = ?7,
+           last_activity_at = ?5
+       WHERE id = ?1`
+    )
+    .bind(
+      existingMatter.id,
+      settings.templateKey,
+      settings.qualificationDate,
+      settings.publicationDate,
+      timestamp,
+      actor.email,
+      actor.id
+    )
+    .run();
+
+  const updatedMatterRecord = await getMatterRecord(db, existingMatter.id, accountId);
+
+  if (!updatedMatterRecord) {
+    return null;
+  }
+
+  await reconcileMatterGeneratedDeadlines(
+    db,
+    updatedMatterRecord,
+    actor,
+    templateSettings,
+    timestamp
+  );
+
+  await insertAuditEvent(db, {
+    action: "matter.deadline_settings.updated",
+    entityType: "matter",
+    entityId: existingMatter.id,
+    matterId: existingMatter.id,
+    actor,
+    metadata: {
+      templateKey: settings.templateKey,
+      qualificationDate: settings.qualificationDate,
+      publicationDate: settings.publicationDate
+    }
+  });
+
+  const [finalMatter, deadlineRecords] = await Promise.all([
+    getMatterRecord(db, existingMatter.id, accountId),
+    listMatterDeadlineRecords(db, accountId, existingMatter.id)
+  ]);
+
+  if (!finalMatter) {
+    return null;
+  }
+
+  return {
+    matter: mapMatter(finalMatter),
+    settings: mapMatterDeadlineSettings(finalMatter),
+    deadlines: deadlineRecords.map(mapDeadline)
+  };
 }
 
 export async function getAppStatus(env: { APP_NAME?: string; ACCESS_DEV_BYPASS?: string }) {

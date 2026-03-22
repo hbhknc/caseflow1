@@ -6,7 +6,15 @@ type RequestOptions = {
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
-const PROTECTED_PREFIXES = ["/boards", "/matters", "/notes", "/tasks", "/stats", "/settings"];
+const PROTECTED_PREFIXES = [
+  "/boards",
+  "/matters",
+  "/notes",
+  "/tasks",
+  "/stats",
+  "/settings",
+  "/deadlines"
+];
 
 export class ApiError extends Error {
   status: number;

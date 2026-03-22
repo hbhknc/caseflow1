@@ -2,23 +2,32 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAppChrome } from "@/app/AppChrome";
 import { SettingsPanel } from "@/features/settings/components/SettingsPanel";
-import { getSettingsOverview, saveBoardSettings } from "@/services/settings";
+import {
+  getSettingsOverview,
+  saveBoardSettings,
+  saveDeadlineTemplateSettings
+} from "@/services/settings";
 import type { AppStatus, BoardSettings } from "@/types/api";
+import type { DeadlineTemplateSettings } from "@/types/deadlines";
 
 export function SettingsPage() {
   const { setHeaderToolbar, setSidebarContent } = useAppChrome();
   const [status, setStatus] = useState<AppStatus | null>(null);
   const [boardSettings, setBoardSettings] = useState<BoardSettings | null>(null);
+  const [deadlineTemplateSettings, setDeadlineTemplateSettings] =
+    useState<DeadlineTemplateSettings | null>(null);
 
   useEffect(() => {
     void getSettingsOverview()
       .then((response) => {
         setStatus(response.status);
         setBoardSettings(response.boardSettings);
+        setDeadlineTemplateSettings(response.deadlineTemplateSettings);
       })
       .catch(() => {
         setStatus(null);
         setBoardSettings(null);
+        setDeadlineTemplateSettings(null);
       });
   }, []);
 
@@ -86,22 +95,32 @@ export function SettingsPage() {
     return saved;
   }
 
+  async function handleSaveDeadlineTemplateSettings(
+    nextSettings: DeadlineTemplateSettings
+  ): Promise<DeadlineTemplateSettings> {
+    const saved = await saveDeadlineTemplateSettings(nextSettings);
+    setDeadlineTemplateSettings(saved);
+    return saved;
+  }
+
   return (
     <div className="page-stack">
       <section className="panel">
         <div className="section-heading">
           <h1>Settings</h1>
           <p>
-            Operational scaffolding for environment details, board configuration, and
-            Cloudflare Access identity wiring.
+            Operational scaffolding for environment details, board configuration,
+            deadline templates, and Cloudflare Access identity wiring.
           </p>
         </div>
       </section>
       <SettingsPanel
         status={status}
         boardSettings={boardSettings}
+        deadlineTemplateSettings={deadlineTemplateSettings}
         onOpenImport={() => undefined}
-        onSave={handleSave}
+        onSaveBoardSettings={handleSave}
+        onSaveDeadlineTemplateSettings={handleSaveDeadlineTemplateSettings}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+import type { DeadlineTemplateSettings } from "@/types/deadlines";
 import type { MatterStage } from "@/types/matter";
 
 export type AppStatus = {
@@ -23,6 +24,12 @@ export type CurrentUserResponse = {
 export type BoardSettings = {
   columnCount: number;
   stageLabels: Record<MatterStage, string>;
+};
+
+export type SettingsOverview = {
+  status: AppStatus;
+  boardSettings: BoardSettings;
+  deadlineTemplateSettings: DeadlineTemplateSettings;
 };
 
 export type MatterStatsMonth = {

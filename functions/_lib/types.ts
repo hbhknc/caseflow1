@@ -3,6 +3,16 @@ import type {
   JWTPayload as CloudflareAccessJWTPayload,
   PluginData as CloudflareAccessPluginData
 } from "@cloudflare/pages-plugin-cloudflare-access";
+import type {
+  DeadlineDashboardData,
+  DeadlineInput,
+  DeadlineStatus,
+  DeadlineTemplateKey,
+  DeadlineTemplateItemKey,
+  DeadlineTemplateSettings,
+  DeadlineUpdateInput,
+  MatterDeadlineSettings
+} from "../../src/types/deadlines";
 
 export type Env = {
   DB: D1Database;
@@ -65,6 +75,9 @@ export type MatterRecord = {
   decedent_name: string;
   client_name: string;
   file_number: string;
+  deadline_template_key: DeadlineTemplateKey | null;
+  qualification_date: string | null;
+  publication_date: string | null;
   stage: MatterStage;
   sort_order: number;
   created_at: string;
@@ -76,6 +89,11 @@ export type MatterRecord = {
   last_activity_at: string;
   stage_entered_at?: string | null;
   interaction_count?: number | null;
+  deadline_overdue_count?: number | null;
+  deadline_due_today_count?: number | null;
+  deadline_active_count?: number | null;
+  next_deadline_title?: string | null;
+  next_deadline_due_date?: string | null;
   archived: number;
   archived_at: string | null;
 };
@@ -113,6 +131,39 @@ export type MatterTaskRecord = {
   created_at: string;
   completed_at: string | null;
   source_note_id: string | null;
+  decedent_name: string;
+  client_name: string;
+  file_number: string;
+};
+
+export type MatterDeadlineRecord = {
+  id: string;
+  matter_id: string;
+  title: string;
+  category: string;
+  due_date: string;
+  assignee: string | null;
+  priority: "low" | "medium" | "high";
+  source_type: "manual" | "template";
+  notes: string | null;
+  template_key: DeadlineTemplateKey | null;
+  template_item_key:
+    | DeadlineTemplateItemKey
+    | null;
+  is_overridden: number;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  completed_by: string | null;
+  completed_by_email: string | null;
+  completed_by_id: string | null;
+  completion_note: string | null;
+  dismissed_at: string | null;
+  dismissed_by: string | null;
+  dismissed_by_email: string | null;
+  dismissed_by_id: string | null;
+  board_id: string;
+  board_name: string | null;
   decedent_name: string;
   client_name: string;
   file_number: string;
@@ -162,9 +213,35 @@ export type MatterNoteInput = {
   addToTaskList?: boolean;
 };
 
+export type MatterDeadlineInput = DeadlineInput;
+
+export type MatterDeadlineUpdateInput = DeadlineUpdateInput;
+
+export type MatterDeadlineSettingsInput = MatterDeadlineSettings;
+
+export type MatterDeadlineCompleteInput = {
+  deadlineId: string;
+  completionNote?: string;
+};
+
+export type MatterDeadlineDismissInput = {
+  deadlineId: string;
+};
+
+export type MatterDeadlineDashboardQuery = {
+  assignee?: string;
+  matterId?: string;
+  status?: DeadlineStatus | "all";
+};
+
 export type BoardSettings = {
   columnCount: number;
   stageLabels: Record<MatterStage, string>;
+};
+
+export type SettingsOverview = {
+  boardSettings: BoardSettings;
+  deadlineTemplateSettings: DeadlineTemplateSettings;
 };
 
 export type MatterStatsMonth = {
@@ -187,3 +264,5 @@ export type PracticeBoard = {
   columnCount: number;
   stageLabels: Record<MatterStage, string>;
 };
+
+export type DeadlineDashboardOverview = DeadlineDashboardData;

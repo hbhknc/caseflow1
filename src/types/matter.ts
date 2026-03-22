@@ -1,3 +1,8 @@
+import type {
+  DeadlineTemplateKey,
+  MatterDeadlineSummary
+} from "@/types/deadlines";
+
 export type MatterStage =
   | "intake"
   | "qualified_opened"
@@ -11,6 +16,10 @@ export type Matter = {
   decedentName: string;
   clientName: string;
   fileNumber: string;
+  deadlineTemplateKey: DeadlineTemplateKey;
+  qualificationDate: string | null;
+  publicationDate: string | null;
+  deadlineSummary: MatterDeadlineSummary;
   stage: MatterStage;
   sortOrder: number;
   createdAt: string;

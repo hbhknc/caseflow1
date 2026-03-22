@@ -8,6 +8,7 @@ import { BoardColumn } from "@/features/board/components/BoardColumn";
 import { BoardSortMenu } from "@/features/board/components/BoardSortMenu";
 import { BoardSwitcher } from "@/features/board/components/BoardSwitcher";
 import { BoardsModal } from "@/features/board/components/BoardsModal";
+import { DeadlinesModal } from "@/features/deadlines/components/DeadlinesModal";
 import { ImportModal } from "@/features/import/components/ImportModal";
 import { MatterDrawer } from "@/features/matters/components/MatterDrawer";
 import { QuickNoteModal } from "@/features/notes/components/QuickNoteModal";
@@ -22,6 +23,7 @@ import {
   removeBoard,
   saveBoard
 } from "@/services/boards";
+import { saveDeadlineTemplateSettings } from "@/services/settings";
 import type {
   BoardSortDirection,
   BoardSortField,
@@ -115,6 +117,10 @@ export function BoardPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [quickNoteMatterId, setQuickNoteMatterId] = useState<string | null>(null);
+  const [pendingMatterOpen, setPendingMatterOpen] = useState<{
+    boardId: string;
+    matterId: string;
+  } | null>(null);
   const [sortField, setSortField] = useState<BoardSortField>("manual");
   const [sortDirection, setSortDirection] = useState<BoardSortDirection>("asc");
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
@@ -161,6 +167,11 @@ export function BoardPage() {
   async function handleOpenStats() {
     captureFocusOrigin();
     await board.openStats();
+  }
+
+  async function handleOpenDeadlines() {
+    captureFocusOrigin();
+    await board.openDeadlines();
   }
 
   function handleOpenBoards() {
@@ -234,6 +245,23 @@ export function BoardPage() {
         setCurrentBoardId(DEFAULT_BOARD.id);
       });
   }, []);
+
+  useEffect(() => {
+    if (!pendingMatterOpen) {
+      return;
+    }
+
+    if (currentBoardId !== pendingMatterOpen.boardId || board.isLoading) {
+      return;
+    }
+
+    if (!board.matters.some((matter) => matter.id === pendingMatterOpen.matterId)) {
+      return;
+    }
+
+    board.selectMatter(pendingMatterOpen.matterId);
+    setPendingMatterOpen(null);
+  }, [board.isLoading, board.matters, currentBoardId, pendingMatterOpen]);
 
   const searchResults = useMemo(
     () => [
@@ -315,6 +343,26 @@ export function BoardPage() {
               </svg>
             </span>
             <span>Tasks</span>
+          </button>
+          <button
+            type="button"
+            className="sidebar-menu__item"
+            aria-label="Deadlines"
+            title="Deadlines"
+            onClick={() => void handleOpenDeadlines()}
+          >
+            <span className="sidebar-menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path
+                  d="M5 3.75v2.1M13 3.75v2.1M4.25 6.6h9.5M4.75 4.8h8.5a1 1 0 0 1 1 1v7.45a1 1 0 0 1-1 1h-8.5a1 1 0 0 1-1-1V5.8a1 1 0 0 1 1-1ZM6.8 9.55h1.6M6.8 12h4.4"
+                  stroke="currentColor"
+                  strokeWidth="1.45"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span>Deadlines</span>
           </button>
           <button
             type="button"
@@ -559,6 +607,9 @@ export function BoardPage() {
         <MatterDrawer
           matter={board.selectedMatter}
           notes={board.selectedMatterNotes}
+          deadlines={board.selectedMatterDeadlines}
+          deadlineSettings={board.selectedMatterDeadlineSettings}
+          deadlineError={board.deadlineError}
           isCreateMode={board.isCreateMode}
           defaultBoardId={currentBoard.id}
           stageLabels={stageLabels}
@@ -572,6 +623,11 @@ export function BoardPage() {
           onDeleteMatter={board.deleteMatter}
           onArchiveMatter={board.archiveMatter}
           onAddNote={board.addNote}
+          onSaveDeadlineSettings={board.saveMatterDeadlineSettings}
+          onCreateDeadline={board.createDeadline}
+          onUpdateDeadline={board.updateDeadline}
+          onCompleteDeadline={board.completeDeadline}
+          onDismissDeadline={board.dismissDeadline}
         />
       )}
 
@@ -629,6 +685,33 @@ export function BoardPage() {
         />
       ) : null}
 
+      {board.isDeadlinesOpen ? (
+        <DeadlinesModal
+          dashboard={board.deadlineDashboard}
+          filters={board.deadlineDashboardFilters}
+          error={board.deadlineDashboardError}
+          onChangeFilters={board.setDeadlineDashboardFilters}
+          onOpenMatter={(deadline) => {
+            board.closeDeadlines();
+
+            if (deadline.boardId !== currentBoard.id) {
+              setPendingMatterOpen({
+                boardId: deadline.boardId,
+                matterId: deadline.matterId
+              });
+              setCurrentBoardId(deadline.boardId);
+              return;
+            }
+
+            board.selectMatter(deadline.matterId);
+          }}
+          onClose={() => {
+            board.closeDeadlines();
+            restoreFocusOrigin();
+          }}
+        />
+      ) : null}
+
       {isBoardsOpen ? (
         <BoardsModal
           boards={boards}
@@ -674,7 +757,7 @@ export function BoardPage() {
             setIsSettingsOpen(false);
             handleOpenImport();
           }}
-          onSave={async (nextSettings) => {
+          onSaveBoardSettings={async (nextSettings) => {
             const savedBoard = await saveBoard(currentBoard.id, {
               columnCount: nextSettings.columnCount,
               stageLabels: nextSettings.stageLabels
@@ -687,6 +770,7 @@ export function BoardPage() {
               stageLabels: savedBoard.stageLabels
             };
           }}
+          onSaveDeadlineTemplateSettings={saveDeadlineTemplateSettings}
           onClose={() => {
             setIsSettingsOpen(false);
             restoreFocusOrigin();

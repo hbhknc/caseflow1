@@ -1,13 +1,29 @@
 import {
+  buildMatterDeadlineSummary,
+  calculateDeadlineStatus,
+  DEFAULT_DEADLINE_TEMPLATE_SETTINGS,
+  normalizeOptionalDateOnly,
+  reconcileGeneratedDeadlines
+} from "@/lib/deadlineRules";
+import {
   createDemoMatter,
   demoBoards,
   demoBoardSettings,
+  demoDeadlineTemplateSettings,
+  demoDeadlines,
   demoMatters,
   demoNotes,
   demoStatus,
   demoTasks
 } from "@/lib/demoData";
 import type { AppStatus, BoardSettings, MatterStats, MatterStatsMonth } from "@/types/api";
+import type {
+  Deadline,
+  DeadlineDashboardData,
+  DeadlinePriority,
+  DeadlineTemplateSettings,
+  MatterDeadlineSettings
+} from "@/types/deadlines";
 import type {
   Matter,
   MatterFormInput,
@@ -18,17 +34,31 @@ import type {
 } from "@/types/matter";
 import { DEFAULT_STAGE_LABELS, STAGES } from "@/utils/stages";
 
-const matterStore = [...demoMatters];
+const matterStore: Matter[] = structuredClone(demoMatters);
 const noteStore = structuredClone(demoNotes);
-const taskStore = [...demoTasks];
+const taskStore: MatterTask[] = structuredClone(demoTasks);
 const boardStore: PracticeBoard[] = structuredClone(demoBoards);
+const deadlineStore: Deadline[] = structuredClone(demoDeadlines);
+let boardSettingsStore: BoardSettings = structuredClone(demoBoardSettings);
+let deadlineTemplateSettingsStore: DeadlineTemplateSettings = structuredClone(
+  demoDeadlineTemplateSettings
+);
 
 export function shouldUseDemoFallback() {
   return (import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? "true") === "true";
 }
 
+function normalizeOptionalText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 function getBoardById(boardId: string) {
-  return boardStore.find((board) => board.id === boardId);
+  return boardStore.find((board) => board.id === boardId) ?? null;
+}
+
+function getMatterById(matterId: string) {
+  return matterStore.find((matter) => matter.id === matterId) ?? null;
 }
 
 function sortDemoMatters(items: Matter[]) {
@@ -41,6 +71,96 @@ function sortDemoMatters(items: Matter[]) {
 
     return left.sortOrder - right.sortOrder;
   });
+}
+
+function sortDeadlines(items: Deadline[]) {
+  return [...items].sort((left, right) => {
+    const leftStatus = calculateDeadlineStatus(left);
+    const rightStatus = calculateDeadlineStatus(right);
+    const rank = (status: Deadline["status"]) => {
+      switch (status) {
+        case "overdue":
+          return 0;
+        case "due_today":
+          return 1;
+        case "upcoming":
+          return 2;
+        case "completed":
+          return 3;
+        case "dismissed":
+          return 4;
+        default:
+          return 5;
+      }
+    };
+    const statusDelta = rank(leftStatus) - rank(rightStatus);
+
+    if (statusDelta !== 0) {
+      return statusDelta;
+    }
+
+    if (left.dueDate !== right.dueDate) {
+      return left.dueDate.localeCompare(right.dueDate);
+    }
+
+    return right.updatedAt.localeCompare(left.updatedAt);
+  });
+}
+
+function hydrateDeadline(deadline: Deadline) {
+  const matter = getMatterById(deadline.matterId);
+  const board = matter ? getBoardById(matter.boardId) : null;
+
+  if (matter) {
+    deadline.boardId = matter.boardId;
+    deadline.matterName = matter.decedentName;
+    deadline.clientName = matter.clientName;
+    deadline.fileNumber = matter.fileNumber;
+  }
+
+  deadline.boardName = board?.name ?? deadline.boardName;
+  deadline.status = calculateDeadlineStatus(deadline);
+
+  return deadline;
+}
+
+function syncDeadlineMetadataForMatter(matter: Matter) {
+  for (const deadline of deadlineStore) {
+    if (deadline.matterId === matter.id) {
+      hydrateDeadline(deadline);
+    }
+  }
+}
+
+function listMatterDeadlinesInternal(matterId: string) {
+  return sortDeadlines(
+    deadlineStore
+      .filter((deadline) => deadline.matterId === matterId)
+      .map((deadline) => hydrateDeadline(deadline))
+  );
+}
+
+function buildMatterDeadlineSettings(matter: Matter): MatterDeadlineSettings {
+  return {
+    matterId: matter.id,
+    templateKey: matter.deadlineTemplateKey,
+    qualificationDate: matter.qualificationDate,
+    publicationDate: matter.publicationDate
+  };
+}
+
+function refreshMatterDeadlineSummary(matterId: string) {
+  const matter = getMatterById(matterId);
+
+  if (!matter) {
+    return;
+  }
+
+  matter.deadlineSummary = buildMatterDeadlineSummary(listMatterDeadlinesInternal(matterId));
+}
+
+function refreshAllMatterDeadlineSummaries() {
+  matterStore.forEach((matter) => refreshMatterDeadlineSummary(matter.id));
 }
 
 function renumberDemoStage(boardId: string, stage: MatterStage) {
@@ -88,6 +208,91 @@ function buildBoardId(name: string) {
   return candidate;
 }
 
+function syncGeneratedDeadlinesForMatter(matter: Matter, timestamp = new Date().toISOString()) {
+  const reconciliation = reconcileGeneratedDeadlines({
+    settings: buildMatterDeadlineSettings(matter),
+    templateSettings: deadlineTemplateSettingsStore,
+    existingDeadlines: deadlineStore
+      .filter((deadline) => deadline.matterId === matter.id && deadline.sourceType === "template")
+      .map((deadline) => ({
+        id: deadline.id,
+        templateKey: deadline.templateKey,
+        templateItemKey: deadline.templateItemKey,
+        sourceType: deadline.sourceType,
+        isOverridden: deadline.isOverridden,
+        completedAt: deadline.completedAt,
+        dismissedAt: deadline.dismissedAt
+      }))
+  });
+
+  for (const draft of reconciliation.toCreate) {
+    deadlineStore.push(
+      hydrateDeadline({
+        id: crypto.randomUUID(),
+        matterId: matter.id,
+        boardId: matter.boardId,
+        boardName: getBoardById(matter.boardId)?.name ?? matter.boardId,
+        matterName: matter.decedentName,
+        clientName: matter.clientName,
+        fileNumber: matter.fileNumber,
+        title: draft.title,
+        category: draft.category,
+        dueDate: draft.dueDate,
+        assignee: null,
+        status: "upcoming",
+        priority: draft.priority,
+        sourceType: "template",
+        notes: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        completedAt: null,
+        completedBy: null,
+        completionNote: null,
+        dismissedAt: null,
+        dismissedBy: null,
+        templateKey: draft.templateKey,
+        templateItemKey: draft.templateItemKey,
+        isOverridden: false
+      })
+    );
+  }
+
+  for (const draft of reconciliation.toUpdate) {
+    const existing = deadlineStore.find((deadline) => deadline.id === draft.id);
+
+    if (!existing || existing.completedAt || existing.dismissedAt) {
+      continue;
+    }
+
+    existing.title = draft.title;
+    existing.category = draft.category;
+    existing.dueDate = draft.dueDate;
+    existing.priority = draft.priority;
+    existing.templateKey = draft.templateKey;
+    existing.templateItemKey = draft.templateItemKey;
+    existing.updatedAt = timestamp;
+    hydrateDeadline(existing);
+  }
+
+  for (const deadlineId of reconciliation.toDismiss) {
+    const existing = deadlineStore.find((deadline) => deadline.id === deadlineId);
+
+    if (!existing || existing.completedAt || existing.dismissedAt) {
+      continue;
+    }
+
+    existing.dismissedAt = timestamp;
+    existing.dismissedBy = "CaseFlow Demo";
+    existing.updatedAt = timestamp;
+    hydrateDeadline(existing);
+  }
+
+  syncDeadlineMetadataForMatter(matter);
+  refreshMatterDeadlineSummary(matter.id);
+}
+
+refreshAllMatterDeadlineSummaries();
+
 export async function listDemoBoards(): Promise<PracticeBoard[]> {
   return structuredClone(boardStore);
 }
@@ -101,8 +306,8 @@ export async function createDemoBoard(name: string): Promise<PracticeBoard> {
   const board: PracticeBoard = {
     id: buildBoardId(trimmed),
     name: trimmed,
-    columnCount: demoBoardSettings.columnCount,
-    stageLabels: { ...demoBoardSettings.stageLabels }
+    columnCount: boardSettingsStore.columnCount,
+    stageLabels: { ...boardSettingsStore.stageLabels }
   };
 
   boardStore.push(board);
@@ -136,6 +341,12 @@ export async function updateDemoBoard(
       input.stageLabels?.accounting_closing?.trim() || board.stageLabels.accounting_closing
   };
 
+  deadlineStore
+    .filter((deadline) => deadline.boardId === board.id)
+    .forEach((deadline) => {
+      deadline.boardName = board.name;
+    });
+
   return structuredClone(board);
 }
 
@@ -158,15 +369,17 @@ export async function deleteDemoBoard(boardId: string): Promise<PracticeBoard[]>
 }
 
 export async function listDemoMatters(boardId: string): Promise<Matter[]> {
-  return sortDemoMatters(
-    matterStore.filter((matter) => matter.boardId === boardId && !matter.archived)
+  return structuredClone(
+    sortDemoMatters(matterStore.filter((matter) => matter.boardId === boardId && !matter.archived))
   );
 }
 
 export async function listDemoArchivedMatters(boardId: string): Promise<Matter[]> {
-  return [...matterStore]
-    .filter((matter) => matter.boardId === boardId && matter.archived)
-    .sort((left, right) => (right.archivedAt ?? "").localeCompare(left.archivedAt ?? ""));
+  return structuredClone(
+    [...matterStore]
+      .filter((matter) => matter.boardId === boardId && matter.archived)
+      .sort((left, right) => (right.archivedAt ?? "").localeCompare(left.archivedAt ?? ""))
+  );
 }
 
 export async function createDemoMatterRecord(input: MatterFormInput): Promise<Matter> {
@@ -175,14 +388,15 @@ export async function createDemoMatterRecord(input: MatterFormInput): Promise<Ma
   matterStore.unshift(matter);
   renumberDemoStage(input.boardId, input.stage);
   noteStore[matter.id] = [];
-  return matter;
+  refreshMatterDeadlineSummary(matter.id);
+  return structuredClone(matter);
 }
 
 export async function updateDemoMatterRecord(
   matterId: string,
   input: MatterFormInput
 ): Promise<Matter> {
-  const matter = matterStore.find((item) => item.id === matterId);
+  const matter = getMatterById(matterId);
 
   if (!matter) {
     throw new Error("Matter not found.");
@@ -207,7 +421,10 @@ export async function updateDemoMatterRecord(
     renumberDemoStage(input.boardId, input.stage);
   }
 
-  return matter;
+  syncDeadlineMetadataForMatter(matter);
+  refreshMatterDeadlineSummary(matter.id);
+
+  return structuredClone(matter);
 }
 
 export async function moveDemoMatterRecord(
@@ -215,7 +432,7 @@ export async function moveDemoMatterRecord(
   stage: MatterStage,
   beforeMatterId: string | null = null
 ): Promise<Matter> {
-  const matter = matterStore.find((item) => item.id === matterId);
+  const matter = getMatterById(matterId);
 
   if (!matter) {
     throw new Error("Matter not found.");
@@ -256,7 +473,7 @@ export async function moveDemoMatterRecord(
     renumberDemoStage(matter.boardId, previousStage);
   }
 
-  return matter;
+  return structuredClone(matter);
 }
 
 export async function deleteDemoMatterRecord(matterId: string): Promise<void> {
@@ -266,11 +483,17 @@ export async function deleteDemoMatterRecord(matterId: string): Promise<void> {
     matterStore.splice(index, 1);
   }
 
+  for (let deadlineIndex = deadlineStore.length - 1; deadlineIndex >= 0; deadlineIndex -= 1) {
+    if (deadlineStore[deadlineIndex]?.matterId === matterId) {
+      deadlineStore.splice(deadlineIndex, 1);
+    }
+  }
+
   delete noteStore[matterId];
 }
 
 export async function archiveDemoMatterRecord(matterId: string): Promise<Matter> {
-  const matter = matterStore.find((item) => item.id === matterId);
+  const matter = getMatterById(matterId);
 
   if (!matter) {
     throw new Error("Matter not found.");
@@ -279,11 +502,11 @@ export async function archiveDemoMatterRecord(matterId: string): Promise<Matter>
   matter.archived = true;
   matter.archivedAt = new Date().toISOString();
   matter.lastActivityAt = matter.archivedAt;
-  return matter;
+  return structuredClone(matter);
 }
 
 export async function unarchiveDemoMatterRecord(matterId: string): Promise<Matter> {
-  const matter = matterStore.find((item) => item.id === matterId);
+  const matter = getMatterById(matterId);
 
   if (!matter) {
     throw new Error("Matter not found.");
@@ -292,12 +515,14 @@ export async function unarchiveDemoMatterRecord(matterId: string): Promise<Matte
   matter.archived = false;
   matter.archivedAt = null;
   matter.lastActivityAt = new Date().toISOString();
-  return matter;
+  return structuredClone(matter);
 }
 
 export async function listDemoNotes(matterId: string): Promise<MatterNote[]> {
-  return [...(noteStore[matterId] ?? [])].sort((left, right) =>
-    right.createdAt.localeCompare(left.createdAt)
+  return structuredClone(
+    [...(noteStore[matterId] ?? [])].sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt)
+    )
   );
 }
 
@@ -306,7 +531,7 @@ export async function addDemoNote(
   body: string,
   addToTaskList = false
 ): Promise<MatterNote> {
-  const matter = matterStore.find((item) => item.id === matterId);
+  const matter = getMatterById(matterId);
 
   if (!matter) {
     throw new Error("Matter not found.");
@@ -337,14 +562,295 @@ export async function addDemoNote(
     });
   }
 
-  return note;
+  return structuredClone(note);
 }
 
 export async function listDemoTasks(boardId: string): Promise<MatterTask[]> {
-  return [...taskStore]
-    .filter((task) => !task.completedAt)
-    .filter((task) => matterStore.find((matter) => matter.id === task.matterId)?.boardId === boardId)
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  return structuredClone(
+    [...taskStore]
+      .filter((task) => !task.completedAt)
+      .filter((task) => getMatterById(task.matterId)?.boardId === boardId)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+  );
+}
+
+export async function getDemoMatterDeadlines(matterId: string) {
+  const matter = getMatterById(matterId);
+
+  if (!matter) {
+    throw new Error("Matter not found.");
+  }
+
+  return {
+    matter: structuredClone(matter),
+    settings: structuredClone(buildMatterDeadlineSettings(matter)),
+    deadlines: structuredClone(listMatterDeadlinesInternal(matterId))
+  };
+}
+
+export async function createDemoDeadlineRecord(input: {
+  matterId: string;
+  title: string;
+  category: string;
+  dueDate: string;
+  assignee: string;
+  priority: DeadlinePriority;
+  notes: string;
+}) {
+  const matter = getMatterById(input.matterId);
+
+  if (!matter) {
+    throw new Error("Matter not found.");
+  }
+
+  const timestamp = new Date().toISOString();
+  const deadline: Deadline = hydrateDeadline({
+    id: crypto.randomUUID(),
+    matterId: matter.id,
+    boardId: matter.boardId,
+    boardName: getBoardById(matter.boardId)?.name ?? matter.boardId,
+    matterName: matter.decedentName,
+    clientName: matter.clientName,
+    fileNumber: matter.fileNumber,
+    title: input.title.trim(),
+    category: input.category.trim(),
+    dueDate: input.dueDate,
+    assignee: normalizeOptionalText(input.assignee),
+    status: "upcoming",
+    priority: input.priority,
+    sourceType: "manual",
+    notes: normalizeOptionalText(input.notes),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    completedAt: null,
+    completedBy: null,
+    completionNote: null,
+    dismissedAt: null,
+    dismissedBy: null,
+    templateKey: null,
+    templateItemKey: null,
+    isOverridden: false
+  });
+
+  deadlineStore.push(deadline);
+  matter.lastActivityAt = timestamp;
+  refreshMatterDeadlineSummary(matter.id);
+
+  return {
+    matter: structuredClone(matter),
+    deadline: structuredClone(deadline)
+  };
+}
+
+export async function updateDemoDeadlineRecord(
+  deadlineId: string,
+  input: {
+    title: string;
+    category: string;
+    dueDate: string;
+    assignee: string;
+    priority: DeadlinePriority;
+    notes: string;
+  }
+) {
+  const deadline = deadlineStore.find((item) => item.id === deadlineId);
+
+  if (!deadline) {
+    throw new Error("Deadline not found.");
+  }
+
+  if (deadline.completedAt) {
+    throw new Error("Completed deadlines cannot be edited.");
+  }
+
+  if (deadline.dismissedAt) {
+    throw new Error("Dismissed deadlines cannot be edited.");
+  }
+
+  const nextAssignee = normalizeOptionalText(input.assignee);
+  const nextNotes = normalizeOptionalText(input.notes);
+  const hasOverrideChanges =
+    deadline.title !== input.title.trim() ||
+    deadline.category !== input.category.trim() ||
+    deadline.dueDate !== input.dueDate ||
+    deadline.assignee !== nextAssignee ||
+    deadline.priority !== input.priority ||
+    deadline.notes !== nextNotes;
+
+  deadline.title = input.title.trim();
+  deadline.category = input.category.trim();
+  deadline.dueDate = input.dueDate;
+  deadline.assignee = nextAssignee;
+  deadline.priority = input.priority;
+  deadline.notes = nextNotes;
+  deadline.updatedAt = new Date().toISOString();
+  if (deadline.sourceType === "template" && hasOverrideChanges) {
+    deadline.isOverridden = true;
+  }
+  hydrateDeadline(deadline);
+
+  const matter = getMatterById(deadline.matterId);
+  if (!matter) {
+    throw new Error("Matter not found.");
+  }
+
+  matter.lastActivityAt = deadline.updatedAt;
+  refreshMatterDeadlineSummary(matter.id);
+
+  return {
+    matter: structuredClone(matter),
+    deadline: structuredClone(deadline)
+  };
+}
+
+export async function completeDemoDeadlineRecord(
+  deadlineId: string,
+  completionNote = ""
+) {
+  const deadline = deadlineStore.find((item) => item.id === deadlineId);
+
+  if (!deadline) {
+    throw new Error("Deadline not found.");
+  }
+
+  if (deadline.dismissedAt) {
+    throw new Error("Dismissed deadlines cannot be completed.");
+  }
+
+  if (!deadline.completedAt) {
+    const timestamp = new Date().toISOString();
+    deadline.completedAt = timestamp;
+    deadline.completedBy = "CaseFlow Demo";
+    deadline.completionNote = normalizeOptionalText(completionNote);
+    deadline.updatedAt = timestamp;
+    hydrateDeadline(deadline);
+  }
+
+  const matter = getMatterById(deadline.matterId);
+  if (!matter) {
+    throw new Error("Matter not found.");
+  }
+
+  matter.lastActivityAt = deadline.updatedAt;
+  refreshMatterDeadlineSummary(matter.id);
+
+  return {
+    matter: structuredClone(matter),
+    deadline: structuredClone(deadline)
+  };
+}
+
+export async function dismissDemoDeadlineRecord(deadlineId: string) {
+  const deadline = deadlineStore.find((item) => item.id === deadlineId);
+
+  if (!deadline) {
+    throw new Error("Deadline not found.");
+  }
+
+  if (deadline.completedAt) {
+    throw new Error("Completed deadlines cannot be dismissed.");
+  }
+
+  if (!deadline.dismissedAt) {
+    const timestamp = new Date().toISOString();
+    deadline.dismissedAt = timestamp;
+    deadline.dismissedBy = "CaseFlow Demo";
+    deadline.updatedAt = timestamp;
+    hydrateDeadline(deadline);
+  }
+
+  const matter = getMatterById(deadline.matterId);
+  if (!matter) {
+    throw new Error("Matter not found.");
+  }
+
+  matter.lastActivityAt = deadline.updatedAt;
+  refreshMatterDeadlineSummary(matter.id);
+
+  return {
+    matter: structuredClone(matter),
+    deadline: structuredClone(deadline)
+  };
+}
+
+export async function saveDemoMatterDeadlineSettings(
+  matterId: string,
+  input: Omit<MatterDeadlineSettings, "matterId">
+) {
+  const matter = getMatterById(matterId);
+
+  if (!matter) {
+    throw new Error("Matter not found.");
+  }
+
+  matter.deadlineTemplateKey = input.templateKey;
+  matter.qualificationDate = normalizeOptionalDateOnly(input.qualificationDate);
+  matter.publicationDate = normalizeOptionalDateOnly(input.publicationDate);
+  matter.lastActivityAt = new Date().toISOString();
+
+  syncGeneratedDeadlinesForMatter(matter, matter.lastActivityAt);
+
+  return {
+    matter: structuredClone(matter),
+    settings: structuredClone(buildMatterDeadlineSettings(matter)),
+    deadlines: structuredClone(listMatterDeadlinesInternal(matter.id))
+  };
+}
+
+export async function getDemoDeadlineDashboard(filters?: {
+  assignee?: string;
+  matterId?: string;
+  status?: Deadline["status"] | "all";
+}): Promise<DeadlineDashboardData> {
+  const allDeadlines = sortDeadlines(deadlineStore.map((deadline) => hydrateDeadline(deadline)));
+  const assigneeFilter = normalizeOptionalText(filters?.assignee);
+  const matterIdFilter = filters?.matterId?.trim() || null;
+  const statusFilter = filters?.status && filters.status !== "all" ? filters.status : "all";
+
+  return {
+    deadlines: structuredClone(
+      allDeadlines.filter((deadline) => {
+        if (
+          assigneeFilter &&
+          (deadline.assignee ?? "").localeCompare(assigneeFilter, undefined, {
+            sensitivity: "base"
+          }) !== 0
+        ) {
+          return false;
+        }
+
+        if (matterIdFilter && deadline.matterId !== matterIdFilter) {
+          return false;
+        }
+
+        if (statusFilter !== "all" && deadline.status !== statusFilter) {
+          return false;
+        }
+
+        return true;
+      })
+    ),
+    assignees: Array.from(
+      new Set(
+        allDeadlines
+          .map((deadline) => normalizeOptionalText(deadline.assignee))
+          .filter((value): value is string => Boolean(value))
+      )
+    ).sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" })),
+    matters: Array.from(
+      new Map(
+        allDeadlines.map((deadline) => [
+          deadline.matterId,
+          {
+            matterId: deadline.matterId,
+            boardId: deadline.boardId,
+            boardName: deadline.boardName,
+            label: `${deadline.matterName} | ${deadline.fileNumber}`
+          }
+        ])
+      ).values()
+    ).sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: "base" }))
+  };
 }
 
 function calculateAveragePerYear(timestamps: string[]) {
@@ -401,9 +907,7 @@ function buildOpenedCasesByMonthLast12Months(
 
 export async function getDemoMatterStats(boardId: string): Promise<MatterStats> {
   const boardMatters = matterStore.filter((matter) => matter.boardId === boardId);
-  const archivedMatters = boardMatters.filter(
-    (matter) => matter.archived && matter.archivedAt
-  );
+  const archivedMatters = boardMatters.filter((matter) => matter.archived && matter.archivedAt);
 
   const averageCaseLengthDays =
     archivedMatters.length === 0
@@ -440,30 +944,48 @@ export async function getDemoStatus(): Promise<AppStatus> {
 }
 
 export async function getDemoBoardSettings(): Promise<BoardSettings> {
-  return structuredClone(demoBoardSettings);
+  return structuredClone(boardSettingsStore);
 }
 
 export async function updateDemoBoardSettings(
   input: Partial<BoardSettings>
 ): Promise<BoardSettings> {
-  const stageLabels = {
-    intake: input.stageLabels?.intake?.trim() || DEFAULT_STAGE_LABELS.intake,
-    qualified_opened:
-      input.stageLabels?.qualified_opened?.trim() || DEFAULT_STAGE_LABELS.qualified_opened,
-    notice_admin: input.stageLabels?.notice_admin?.trim() || DEFAULT_STAGE_LABELS.notice_admin,
-    inventory_collection:
-      input.stageLabels?.inventory_collection?.trim() ||
-      DEFAULT_STAGE_LABELS.inventory_collection,
-    accounting_closing:
-      input.stageLabels?.accounting_closing?.trim() ||
-      DEFAULT_STAGE_LABELS.accounting_closing
-  };
-
-  return {
+  boardSettingsStore = {
     columnCount: Math.min(
       STAGES.length,
-      Math.max(1, Math.round(Number(input.columnCount ?? demoBoardSettings.columnCount)))
+      Math.max(1, Math.round(Number(input.columnCount ?? boardSettingsStore.columnCount)))
     ),
-    stageLabels
+    stageLabels: {
+      intake: input.stageLabels?.intake?.trim() || DEFAULT_STAGE_LABELS.intake,
+      qualified_opened:
+        input.stageLabels?.qualified_opened?.trim() || DEFAULT_STAGE_LABELS.qualified_opened,
+      notice_admin: input.stageLabels?.notice_admin?.trim() || DEFAULT_STAGE_LABELS.notice_admin,
+      inventory_collection:
+        input.stageLabels?.inventory_collection?.trim() ||
+        DEFAULT_STAGE_LABELS.inventory_collection,
+      accounting_closing:
+        input.stageLabels?.accounting_closing?.trim() ||
+        DEFAULT_STAGE_LABELS.accounting_closing
+    }
   };
+
+  return structuredClone(boardSettingsStore);
+}
+
+export async function getDemoDeadlineTemplateSettings(): Promise<DeadlineTemplateSettings> {
+  return structuredClone(deadlineTemplateSettingsStore);
+}
+
+export async function updateDemoDeadlineTemplateSettings(
+  input: DeadlineTemplateSettings
+): Promise<DeadlineTemplateSettings> {
+  deadlineTemplateSettingsStore = structuredClone(
+    input.templates?.length ? input : DEFAULT_DEADLINE_TEMPLATE_SETTINGS
+  );
+
+  for (const matter of matterStore) {
+    syncGeneratedDeadlinesForMatter(matter);
+  }
+
+  return structuredClone(deadlineTemplateSettingsStore);
 }

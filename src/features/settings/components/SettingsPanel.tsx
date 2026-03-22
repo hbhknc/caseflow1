@@ -2,14 +2,29 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTheme } from "@/app/ThemeContext";
 import { StatusPill } from "@/components/StatusPill";
 import type { AppStatus, BoardSettings } from "@/types/api";
+import type {
+  DeadlineAnchorType,
+  DeadlinePriority,
+  DeadlineTemplateItemConfig,
+  DeadlineTemplateSettings
+} from "@/types/deadlines";
 import type { MatterStage } from "@/types/matter";
 import { STAGES, getStageLabel } from "@/utils/stages";
 
 type SettingsPanelProps = {
   status: AppStatus | null;
   boardSettings: BoardSettings | null;
+  deadlineTemplateSettings: DeadlineTemplateSettings | null;
   onOpenImport: () => void;
-  onSave: (settings: BoardSettings) => Promise<BoardSettings>;
+  onSaveBoardSettings: (settings: BoardSettings) => Promise<BoardSettings>;
+  onSaveDeadlineTemplateSettings: (
+    settings: DeadlineTemplateSettings
+  ) => Promise<DeadlineTemplateSettings>;
+};
+
+type SettingsDraft = {
+  boardSettings: BoardSettings | null;
+  deadlineTemplateSettings: DeadlineTemplateSettings | null;
 };
 
 const AUTO_SAVE_DELAY_MS = 500;
@@ -21,19 +36,44 @@ function cloneBoardSettings(boardSettings: BoardSettings): BoardSettings {
   };
 }
 
-function serializeBoardSettings(boardSettings: BoardSettings | null): string | null {
-  return boardSettings ? JSON.stringify(boardSettings) : null;
+function cloneDeadlineTemplateSettings(
+  deadlineTemplateSettings: DeadlineTemplateSettings
+): DeadlineTemplateSettings {
+  return {
+    templates: deadlineTemplateSettings.templates.map((template) => ({
+      ...template,
+      items: template.items.map((item) => ({ ...item }))
+    }))
+  };
+}
+
+function buildDraft(
+  boardSettings: BoardSettings | null,
+  deadlineTemplateSettings: DeadlineTemplateSettings | null
+): SettingsDraft {
+  return {
+    boardSettings: boardSettings ? cloneBoardSettings(boardSettings) : null,
+    deadlineTemplateSettings: deadlineTemplateSettings
+      ? cloneDeadlineTemplateSettings(deadlineTemplateSettings)
+      : null
+  };
+}
+
+function serializeDraft(draft: SettingsDraft | null) {
+  return draft ? JSON.stringify(draft) : null;
 }
 
 export function SettingsPanel({
   status,
   boardSettings,
+  deadlineTemplateSettings,
   onOpenImport,
-  onSave
+  onSaveBoardSettings,
+  onSaveDeadlineTemplateSettings
 }: SettingsPanelProps) {
   const { theme, setTheme } = useTheme();
-  const [draft, setDraft] = useState<BoardSettings | null>(() =>
-    boardSettings ? cloneBoardSettings(boardSettings) : null
+  const [draft, setDraft] = useState<SettingsDraft | null>(() =>
+    buildDraft(boardSettings, deadlineTemplateSettings)
   );
   const [saveTone, setSaveTone] = useState<"neutral" | "success" | "warn">("neutral");
   const [saveMessage, setSaveMessage] = useState("Changes save automatically.");
@@ -41,25 +81,18 @@ export function SettingsPanel({
   const saveTimerRef = useRef<number | null>(null);
   const isSavingRef = useRef(false);
   const shouldSaveAgainRef = useRef(false);
-  const lastSavedSnapshotRef = useRef<string | null>(serializeBoardSettings(boardSettings));
+  const lastSavedSnapshotRef = useRef<string | null>(
+    serializeDraft(buildDraft(boardSettings, deadlineTemplateSettings))
+  );
 
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
 
   useEffect(() => {
-    if (!boardSettings) {
-      setDraft(null);
-      draftRef.current = null;
-      lastSavedSnapshotRef.current = null;
-      setSaveTone("neutral");
-      setSaveMessage("Changes save automatically.");
-      return;
-    }
-
-    const nextDraft = cloneBoardSettings(boardSettings);
-    const incomingSerialized = serializeBoardSettings(nextDraft);
-    const currentSerialized = serializeBoardSettings(draftRef.current);
+    const nextDraft = buildDraft(boardSettings, deadlineTemplateSettings);
+    const incomingSerialized = serializeDraft(nextDraft);
+    const currentSerialized = serializeDraft(draftRef.current);
     const shouldSyncDraft =
       currentSerialized === null || currentSerialized === lastSavedSnapshotRef.current;
 
@@ -69,11 +102,14 @@ export function SettingsPanel({
       setDraft(nextDraft);
       draftRef.current = nextDraft;
     }
-  }, [boardSettings]);
+
+    setSaveTone("neutral");
+    setSaveMessage("Changes save automatically.");
+  }, [boardSettings, deadlineTemplateSettings]);
 
   const runAutoSave = useEffectEvent(async () => {
     const nextDraft = draftRef.current;
-    const serializedDraft = serializeBoardSettings(nextDraft);
+    const serializedDraft = serializeDraft(nextDraft);
 
     if (!nextDraft || !serializedDraft || serializedDraft === lastSavedSnapshotRef.current) {
       return;
@@ -89,10 +125,25 @@ export function SettingsPanel({
     setSaveMessage("Saving changes...");
 
     try {
-      const savedSettings = await onSave(nextDraft);
-      const syncedDraft = cloneBoardSettings(savedSettings);
-      const savedSerialized = serializeBoardSettings(syncedDraft);
-      const currentSerialized = serializeBoardSettings(draftRef.current);
+      const previousDraft = JSON.parse(lastSavedSnapshotRef.current ?? "null") as SettingsDraft | null;
+      const boardChanged =
+        JSON.stringify(nextDraft.boardSettings) !== JSON.stringify(previousDraft?.boardSettings ?? null);
+      const templatesChanged =
+        JSON.stringify(nextDraft.deadlineTemplateSettings) !==
+        JSON.stringify(previousDraft?.deadlineTemplateSettings ?? null);
+
+      const savedBoardSettings =
+        boardChanged && nextDraft.boardSettings
+          ? await onSaveBoardSettings(nextDraft.boardSettings)
+          : nextDraft.boardSettings;
+      const savedDeadlineTemplateSettings =
+        templatesChanged && nextDraft.deadlineTemplateSettings
+          ? await onSaveDeadlineTemplateSettings(nextDraft.deadlineTemplateSettings)
+          : nextDraft.deadlineTemplateSettings;
+
+      const syncedDraft = buildDraft(savedBoardSettings, savedDeadlineTemplateSettings);
+      const savedSerialized = serializeDraft(syncedDraft);
+      const currentSerialized = serializeDraft(draftRef.current);
 
       lastSavedSnapshotRef.current = savedSerialized;
 
@@ -124,7 +175,7 @@ export function SettingsPanel({
       return;
     }
 
-    const serializedDraft = serializeBoardSettings(draft);
+    const serializedDraft = serializeDraft(draft);
 
     if (!serializedDraft || serializedDraft === lastSavedSnapshotRef.current) {
       return;
@@ -153,12 +204,41 @@ export function SettingsPanel({
 
   function handleLabelChange(stage: MatterStage, value: string) {
     setDraft((current) =>
-      current
+      current?.boardSettings
         ? {
             ...current,
-            stageLabels: {
-              ...current.stageLabels,
-              [stage]: value
+            boardSettings: {
+              ...current.boardSettings,
+              stageLabels: {
+                ...current.boardSettings.stageLabels,
+                [stage]: value
+              }
+            }
+          }
+        : current
+    );
+  }
+
+  function handleTemplateItemChange(
+    templateKey: string,
+    itemKey: string,
+    patch: Partial<DeadlineTemplateItemConfig>
+  ) {
+    setDraft((current) =>
+      current?.deadlineTemplateSettings
+        ? {
+            ...current,
+            deadlineTemplateSettings: {
+              templates: current.deadlineTemplateSettings.templates.map((template) =>
+                template.key === templateKey
+                  ? {
+                      ...template,
+                      items: template.items.map((item) =>
+                        item.key === itemKey ? { ...item, ...patch } : item
+                      )
+                    }
+                  : template
+              )
             }
           }
         : current
@@ -191,14 +271,17 @@ export function SettingsPanel({
             <label className="field">
               <span>Columns per row</span>
               <select
-                value={draft?.columnCount ?? 5}
-                disabled={!draft}
+                value={draft?.boardSettings?.columnCount ?? 5}
+                disabled={!draft?.boardSettings}
                 onChange={(event) =>
                   setDraft((current) =>
-                    current
+                    current?.boardSettings
                       ? {
                           ...current,
-                          columnCount: Number(event.target.value)
+                          boardSettings: {
+                            ...current.boardSettings,
+                            columnCount: Number(event.target.value)
+                          }
                         }
                       : current
                   )
@@ -221,11 +304,121 @@ export function SettingsPanel({
               <label key={stage} className="field">
                 <span>{getStageLabel(stage)}</span>
                 <input
-                  value={draft?.stageLabels[stage] ?? ""}
-                  disabled={!draft}
+                  value={draft?.boardSettings?.stageLabels[stage] ?? ""}
+                  disabled={!draft?.boardSettings}
                   onChange={(event) => handleLabelChange(stage, event.target.value)}
                 />
               </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <div className="section-heading">
+            <h2>Deadline Templates</h2>
+            <p>Configure the generated probate deadlines used inside each matter.</p>
+          </div>
+
+          <div className="deadline-template-list">
+            {(draft?.deadlineTemplateSettings?.templates ?? []).map((template) => (
+              <section key={template.key} className="deadline-template-card">
+                <div className="section-heading">
+                  <h3>{template.label}</h3>
+                  <p>{template.description}</p>
+                </div>
+
+                {template.items.length === 0 ? (
+                  <p className="task-card__meta">
+                    This template keeps the matter manual-only with no generated deadlines.
+                  </p>
+                ) : (
+                  <div className="deadline-template-item-list">
+                    {template.items.map((item) => (
+                      <div key={item.key} className="deadline-template-item">
+                        <div className="settings-form-grid deadline-template-item__grid">
+                          <label className="field">
+                            <span>Title</span>
+                            <input
+                              value={item.title}
+                              onChange={(event) =>
+                                handleTemplateItemChange(template.key, item.key, {
+                                  title: event.target.value
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="field">
+                            <span>Category</span>
+                            <input
+                              value={item.category}
+                              onChange={(event) =>
+                                handleTemplateItemChange(template.key, item.key, {
+                                  category: event.target.value
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="field">
+                            <span>Anchor</span>
+                            <select
+                              value={item.anchorType}
+                              onChange={(event) =>
+                                handleTemplateItemChange(template.key, item.key, {
+                                  anchorType: event.target.value as DeadlineAnchorType
+                                })
+                              }
+                            >
+                              <option value="qualification_date">Qualification date</option>
+                              <option value="publication_date">Publication date</option>
+                            </select>
+                          </label>
+                          <label className="field">
+                            <span>Offset days</span>
+                            <input
+                              type="number"
+                              value={item.offsetDays}
+                              onChange={(event) =>
+                                handleTemplateItemChange(template.key, item.key, {
+                                  offsetDays: Number(event.target.value)
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="field">
+                            <span>Priority</span>
+                            <select
+                              value={item.defaultPriority}
+                              onChange={(event) =>
+                                handleTemplateItemChange(template.key, item.key, {
+                                  defaultPriority: event.target.value as DeadlinePriority
+                                })
+                              }
+                            >
+                              <option value="high">High</option>
+                              <option value="medium">Medium</option>
+                              <option value="low">Low</option>
+                            </select>
+                          </label>
+                          <label className="checkbox-field deadline-template-item__toggle">
+                            <input
+                              type="checkbox"
+                              checked={item.enabled}
+                              onChange={(event) =>
+                                handleTemplateItemChange(template.key, item.key, {
+                                  enabled: event.target.checked
+                                })
+                              }
+                            />
+                            <span className="checkbox-field__copy">
+                              <strong>Enabled</strong>
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
             ))}
           </div>
         </div>
