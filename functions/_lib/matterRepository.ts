@@ -1169,6 +1169,27 @@ async function tableHasColumn(db: D1Database, tableName: string, columnName: str
   return results.some((column) => column.name === columnName);
 }
 
+async function ensureTableColumn(
+  db: D1Database,
+  tableName: string,
+  columnName: string,
+  alterStatement: string
+) {
+  if (await tableHasColumn(db, tableName, columnName)) {
+    return;
+  }
+
+  try {
+    await db.prepare(alterStatement).run();
+  } catch (error) {
+    if (await tableHasColumn(db, tableName, columnName)) {
+      return;
+    }
+
+    throw error;
+  }
+}
+
 async function ensureBaseSchema(db: D1Database) {
   await db.prepare("PRAGMA foreign_keys = ON").run();
 
@@ -1206,14 +1227,13 @@ async function ensureBaseSchema(db: D1Database) {
     )
     .run();
 
-  if (!(await tableHasColumn(db, "matters", "board_id"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN board_id TEXT NOT NULL DEFAULT 'probate'`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "board_id",
+    `ALTER TABLE matters
+     ADD COLUMN board_id TEXT NOT NULL DEFAULT 'probate'`
+  );
 
   await db
     .prepare(
@@ -1223,41 +1243,37 @@ async function ensureBaseSchema(db: D1Database) {
     )
     .run();
 
-  if (!(await tableHasColumn(db, "matters", "sort_order"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN sort_order REAL NOT NULL DEFAULT 0`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "sort_order",
+    `ALTER TABLE matters
+     ADD COLUMN sort_order REAL NOT NULL DEFAULT 0`
+  );
 
-  if (!(await tableHasColumn(db, "matters", "deadline_template_key"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN deadline_template_key TEXT NOT NULL DEFAULT 'custom_manual_only'`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "deadline_template_key",
+    `ALTER TABLE matters
+     ADD COLUMN deadline_template_key TEXT NOT NULL DEFAULT 'custom_manual_only'`
+  );
 
-  if (!(await tableHasColumn(db, "matters", "qualification_date"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN qualification_date TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "qualification_date",
+    `ALTER TABLE matters
+     ADD COLUMN qualification_date TEXT`
+  );
 
-  if (!(await tableHasColumn(db, "matters", "publication_date"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN publication_date TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "publication_date",
+    `ALTER TABLE matters
+     ADD COLUMN publication_date TEXT`
+  );
 
   await db
     .prepare(
@@ -1267,41 +1283,37 @@ async function ensureBaseSchema(db: D1Database) {
     )
     .run();
 
-  if (!(await tableHasColumn(db, "matters", "created_by_email"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN created_by_email TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "created_by_email",
+    `ALTER TABLE matters
+     ADD COLUMN created_by_email TEXT`
+  );
 
-  if (!(await tableHasColumn(db, "matters", "created_by_id"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN created_by_id TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "created_by_id",
+    `ALTER TABLE matters
+     ADD COLUMN created_by_id TEXT`
+  );
 
-  if (!(await tableHasColumn(db, "matters", "last_updated_by_email"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN last_updated_by_email TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "last_updated_by_email",
+    `ALTER TABLE matters
+     ADD COLUMN last_updated_by_email TEXT`
+  );
 
-  if (!(await tableHasColumn(db, "matters", "last_updated_by_id"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN last_updated_by_id TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "last_updated_by_id",
+    `ALTER TABLE matters
+     ADD COLUMN last_updated_by_id TEXT`
+  );
 
   await normalizeMatterSortOrder(db);
 
@@ -1320,23 +1332,21 @@ async function ensureBaseSchema(db: D1Database) {
     )
     .run();
 
-  if (!(await tableHasColumn(db, "matter_notes", "created_by_email"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matter_notes
-         ADD COLUMN created_by_email TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matter_notes",
+    "created_by_email",
+    `ALTER TABLE matter_notes
+     ADD COLUMN created_by_email TEXT`
+  );
 
-  if (!(await tableHasColumn(db, "matter_notes", "created_by_id"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matter_notes
-         ADD COLUMN created_by_id TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matter_notes",
+    "created_by_id",
+    `ALTER TABLE matter_notes
+     ADD COLUMN created_by_id TEXT`
+  );
 
   await db
     .prepare(
@@ -1425,41 +1435,37 @@ async function ensureBaseSchema(db: D1Database) {
     )
     .run();
 
-  if (!(await tableHasColumn(db, "audit_events", "matter_id"))) {
-    await db
-      .prepare(
-        `ALTER TABLE audit_events
-         ADD COLUMN matter_id TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "audit_events",
+    "matter_id",
+    `ALTER TABLE audit_events
+     ADD COLUMN matter_id TEXT`
+  );
 
-  if (!(await tableHasColumn(db, "audit_events", "actor_email"))) {
-    await db
-      .prepare(
-        `ALTER TABLE audit_events
-         ADD COLUMN actor_email TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "audit_events",
+    "actor_email",
+    `ALTER TABLE audit_events
+     ADD COLUMN actor_email TEXT`
+  );
 
-  if (!(await tableHasColumn(db, "audit_events", "actor_id"))) {
-    await db
-      .prepare(
-        `ALTER TABLE audit_events
-         ADD COLUMN actor_id TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "audit_events",
+    "actor_id",
+    `ALTER TABLE audit_events
+     ADD COLUMN actor_id TEXT`
+  );
 
-  if (!(await tableHasColumn(db, "audit_events", "actor_name"))) {
-    await db
-      .prepare(
-        `ALTER TABLE audit_events
-         ADD COLUMN actor_name TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "audit_events",
+    "actor_name",
+    `ALTER TABLE audit_events
+     ADD COLUMN actor_name TEXT`
+  );
 
   await db
     .prepare(
