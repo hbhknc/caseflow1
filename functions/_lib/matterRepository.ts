@@ -582,6 +582,27 @@ async function tableHasColumn(db: D1Database, tableName: string, columnName: str
   return results.some((column) => column.name === columnName);
 }
 
+async function ensureTableColumn(
+  db: D1Database,
+  tableName: string,
+  columnName: string,
+  alterStatement: string
+) {
+  if (await tableHasColumn(db, tableName, columnName)) {
+    return;
+  }
+
+  try {
+    await db.prepare(alterStatement).run();
+  } catch (error) {
+    if (await tableHasColumn(db, tableName, columnName)) {
+      return;
+    }
+
+    throw error;
+  }
+}
+
 async function ensureBaseSchema(db: D1Database) {
   await db.prepare("PRAGMA foreign_keys = ON").run();
 
@@ -644,23 +665,21 @@ async function ensureBaseSchema(db: D1Database) {
       .run();
   }
 
-  if (!(await tableHasColumn(db, "matters", "inventory_due_date"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN inventory_due_date TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "inventory_due_date",
+    `ALTER TABLE matters
+     ADD COLUMN inventory_due_date TEXT`
+  );
 
-  if (!(await tableHasColumn(db, "matters", "ntc_expiration_date"))) {
-    await db
-      .prepare(
-        `ALTER TABLE matters
-         ADD COLUMN ntc_expiration_date TEXT`
-      )
-      .run();
-  }
+  await ensureTableColumn(
+    db,
+    "matters",
+    "ntc_expiration_date",
+    `ALTER TABLE matters
+     ADD COLUMN ntc_expiration_date TEXT`
+  );
 
   if (!(await tableHasColumn(db, "matters", "created_by_email"))) {
     await db
