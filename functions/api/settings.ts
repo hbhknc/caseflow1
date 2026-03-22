@@ -1,11 +1,14 @@
 import { requireAuth } from "../_lib/auth";
 import { badRequest, json, parseJson, serverError } from "../_lib/http";
 import { getAppStatus, getBoardSettings, updateBoardSettings } from "../_lib/matterRepository";
-import type { Env, MatterStage } from "../_lib/types";
+import type { Env, MatterStage, RequestContextData } from "../_lib/types";
 
-export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestGet: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -21,9 +24,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   }
 };
 
-export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPut: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }

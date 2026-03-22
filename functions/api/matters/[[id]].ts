@@ -2,15 +2,25 @@ import { requireAuth } from "../../_lib/auth";
 import { badRequest, json, notFound, parseJson, serverError } from "../../_lib/http";
 import { deleteMatter, moveMatterStage, updateMatter } from "../../_lib/matterRepository";
 import { isMatterStage } from "../../_lib/stages";
-import type { Env, MatterInput, MatterMoveInput } from "../../_lib/types";
+import type {
+  Env,
+  MatterInput,
+  MatterMoveInput,
+  RequestContextData
+} from "../../_lib/types";
 
 function getMatterId(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export const onRequestPut: PagesFunction<Env> = async ({ request, env, params }) => {
+export const onRequestPut: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  params,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -21,7 +31,13 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     }
 
     const payload = await parseJson<Partial<MatterInput>>(request);
-    const matter = await updateMatter(env.DB, auth.session.accountId, matterId, payload);
+    const matter = await updateMatter(
+      env.DB,
+      auth.auth.accountId,
+      auth.auth.user,
+      matterId,
+      payload
+    );
     return matter ? json({ matter }) : notFound("Matter not found.");
   } catch (error) {
     if (error instanceof Error) {
@@ -32,9 +48,14 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
   }
 };
 
-export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params }) => {
+export const onRequestPatch: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  params,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -51,7 +72,8 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
 
     const matter = await moveMatterStage(
       env.DB,
-      auth.session.accountId,
+      auth.auth.accountId,
+      auth.auth.user,
       matterId,
       {
         stage: payload.stage,
@@ -68,9 +90,13 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
   }
 };
 
-export const onRequestDelete: PagesFunction<Env> = async ({ env, params, request }) => {
+export const onRequestDelete: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  params
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -80,7 +106,12 @@ export const onRequestDelete: PagesFunction<Env> = async ({ env, params, request
       return notFound("Matter id is required.");
     }
 
-    const deleted = await deleteMatter(env.DB, auth.session.accountId, matterId);
+    const deleted = await deleteMatter(
+      env.DB,
+      auth.auth.accountId,
+      auth.auth.user,
+      matterId
+    );
     return deleted ? json({ success: true }) : notFound("Matter not found.");
   } catch (error) {
     console.error(error);

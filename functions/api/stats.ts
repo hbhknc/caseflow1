@@ -1,11 +1,15 @@
 import { requireAuth } from "../_lib/auth";
 import { badRequest, json, serverError } from "../_lib/http";
 import { getMatterStats } from "../_lib/matterRepository";
-import type { Env } from "../_lib/types";
+import type { Env, RequestContextData } from "../_lib/types";
 
-export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestGet: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -16,7 +20,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
       return badRequest("Board id is required.");
     }
 
-    const stats = await getMatterStats(env.DB, auth.session.accountId, boardId);
+    const stats = await getMatterStats(env.DB, auth.auth.accountId, boardId);
     return json({ stats });
   } catch (error) {
     console.error(error);

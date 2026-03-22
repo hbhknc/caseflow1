@@ -4,7 +4,7 @@ import { Outlet } from "react-router-dom";
 import { useAuth } from "@/app/AuthContext";
 import { AppChromeContext } from "@/app/AppChrome";
 import { useTheme } from "@/app/ThemeContext";
-import { LoginScreen } from "@/features/auth/components/LoginScreen";
+import { AccessRequiredScreen } from "@/features/auth/components/AccessRequiredScreen";
 
 export function AppShell() {
   const auth = useAuth();
@@ -14,11 +14,17 @@ export function AppShell() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   if (auth.isLoading) {
-    return <div className="login-shell login-shell--loading">Loading session...</div>;
+    return <div className="login-shell login-shell--loading">Loading access identity...</div>;
   }
 
   if (!auth.isAuthenticated) {
-    return <LoginScreen />;
+    return (
+      <AccessRequiredScreen
+        error={auth.error}
+        isLoading={auth.isLoading}
+        onRetry={() => void auth.refresh()}
+      />
+    );
   }
 
   return (
@@ -62,7 +68,14 @@ export function AppShell() {
             {sidebarContent}
           </div>
           <div className="app-sidebar__footer">
-            <div className="app-sidebar__user">{auth.currentUser?.username}</div>
+            <div className="app-sidebar__user">
+              <div className="app-sidebar__user-name">
+                {auth.currentUser?.displayName ?? auth.currentUser?.email}
+              </div>
+              {auth.currentUser?.displayName ? (
+                <div className="app-sidebar__user-email">{auth.currentUser.email}</div>
+              ) : null}
+            </div>
           </div>
         </aside>
         <header className="app-header">
@@ -100,13 +113,6 @@ export function AppShell() {
                         </svg>
                       )}
                     </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="button button--ghost button--small app-header__logout"
-                    onClick={() => void auth.logout()}
-                  >
-                    Logout
                   </button>
                 </div>
               </div>

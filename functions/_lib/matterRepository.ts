@@ -1,6 +1,7 @@
 import { ARCHIVE_READY_STAGE, DEFAULT_STAGE_LABELS, STAGES, isMatterStage } from "./stages";
 import type {
   AccountRecord,
+  AuthenticatedUser,
   AppSettingRecord,
   BoardSettings,
   MatterImportIssue,
@@ -19,6 +20,19 @@ import type {
 function nowIso() {
   return new Date().toISOString();
 }
+
+function actorDisplayName(actor: AuthenticatedUser) {
+  return actor.displayName?.trim() || actor.email;
+}
+
+type AuditEventInput = {
+  action: string;
+  entityType: string;
+  entityId: string;
+  matterId?: string | null;
+  actor?: AuthenticatedUser | null;
+  metadata?: Record<string, unknown>;
+};
 
 const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   columnCount: 5,
@@ -254,6 +268,7 @@ async function insertMatterRecord(
     sortOrder: number;
     createdAt: string;
     lastActivityAt: string;
+    actor: AuthenticatedUser;
     auditAction: string;
     auditDetails: Record<string, unknown>;
   }
@@ -264,8 +279,23 @@ async function insertMatterRecord(
   await db
     .prepare(
       `INSERT INTO matters (
-        id, board_id, decedent_name, client_name, file_number, stage, sort_order, created_at, updated_at, last_activity_at, archived, archived_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, NULL)`
+        id,
+        board_id,
+        decedent_name,
+        client_name,
+        file_number,
+        stage,
+        sort_order,
+        created_at,
+        created_by_email,
+        created_by_id,
+        updated_at,
+        last_updated_by_email,
+        last_updated_by_id,
+        last_activity_at,
+        archived,
+        archived_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?9, ?10, ?12, 0, NULL)`
     )
     .bind(
       matterId,
@@ -276,6 +306,8 @@ async function insertMatterRecord(
       input.stage,
       input.sortOrder,
       input.createdAt,
+      input.actor.email,
+      input.actor.id,
       updatedAt,
       input.lastActivityAt
     )
@@ -286,16 +318,23 @@ async function insertMatterRecord(
       `INSERT INTO matter_stage_history (id, matter_id, from_stage, to_stage, changed_at, changed_by)
        VALUES (?1, ?2, NULL, ?3, ?4, ?5)`
     )
-    .bind(crypto.randomUUID(), matterId, input.stage, input.createdAt, "System")
+    .bind(
+      crypto.randomUUID(),
+      matterId,
+      input.stage,
+      input.createdAt,
+      actorDisplayName(input.actor)
+    )
     .run();
 
-  await insertAuditEvent(
-    db,
-    input.auditAction,
-    "matter",
+  await insertAuditEvent(db, {
+    action: input.auditAction,
+    entityType: "matter",
+    entityId: matterId,
     matterId,
-    JSON.stringify(input.auditDetails)
-  );
+    actor: input.actor,
+    metadata: input.auditDetails
+  });
 
   return matterId;
 }
@@ -340,19 +379,34 @@ async function getPracticeBoardRecord(
     .first<PracticeBoardRecord>();
 }
 
-async function insertAuditEvent(
-  db: D1Database,
-  action: string,
-  entityType: string,
-  entityId: string,
-  detailsJson: string
-) {
+async function insertAuditEvent(db: D1Database, input: AuditEventInput) {
   await db
     .prepare(
-      `INSERT INTO audit_events (id, entity_type, entity_id, action, details_json, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
+      `INSERT INTO audit_events (
+        id,
+        entity_type,
+        entity_id,
+        matter_id,
+        action,
+        actor_email,
+        actor_id,
+        actor_name,
+        details_json,
+        created_at
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
     )
-    .bind(crypto.randomUUID(), entityType, entityId, action, detailsJson, nowIso())
+    .bind(
+      crypto.randomUUID(),
+      input.entityType,
+      input.entityId,
+      input.matterId ?? null,
+      input.action,
+      input.actor?.email ?? null,
+      input.actor?.id ?? null,
+      input.actor ? actorDisplayName(input.actor) : null,
+      input.metadata ? JSON.stringify(input.metadata) : null,
+      nowIso()
+    )
     .run();
 }
 
@@ -465,7 +519,11 @@ async function ensureBaseSchema(db: D1Database) {
         ),
         sort_order REAL NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
+        created_by_email TEXT,
+        created_by_id TEXT,
         updated_at TEXT NOT NULL,
+        last_updated_by_email TEXT,
+        last_updated_by_id TEXT,
         last_activity_at TEXT NOT NULL,
         archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1)),
         archived_at TEXT
@@ -499,6 +557,42 @@ async function ensureBaseSchema(db: D1Database) {
       .run();
   }
 
+  if (!(await tableHasColumn(db, "matters", "created_by_email"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matters
+         ADD COLUMN created_by_email TEXT`
+      )
+      .run();
+  }
+
+  if (!(await tableHasColumn(db, "matters", "created_by_id"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matters
+         ADD COLUMN created_by_id TEXT`
+      )
+      .run();
+  }
+
+  if (!(await tableHasColumn(db, "matters", "last_updated_by_email"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matters
+         ADD COLUMN last_updated_by_email TEXT`
+      )
+      .run();
+  }
+
+  if (!(await tableHasColumn(db, "matters", "last_updated_by_id"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matters
+         ADD COLUMN last_updated_by_id TEXT`
+      )
+      .run();
+  }
+
   await normalizeMatterSortOrder(db);
 
   await db
@@ -509,10 +603,30 @@ async function ensureBaseSchema(db: D1Database) {
         body TEXT NOT NULL,
         created_at TEXT NOT NULL,
         created_by TEXT,
+        created_by_email TEXT,
+        created_by_id TEXT,
         FOREIGN KEY (matter_id) REFERENCES matters(id) ON DELETE CASCADE
       )`
     )
     .run();
+
+  if (!(await tableHasColumn(db, "matter_notes", "created_by_email"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matter_notes
+         ADD COLUMN created_by_email TEXT`
+      )
+      .run();
+  }
+
+  if (!(await tableHasColumn(db, "matter_notes", "created_by_id"))) {
+    await db
+      .prepare(
+        `ALTER TABLE matter_notes
+         ADD COLUMN created_by_id TEXT`
+      )
+      .run();
+  }
 
   await db
     .prepare(
@@ -559,12 +673,52 @@ async function ensureBaseSchema(db: D1Database) {
         id TEXT PRIMARY KEY,
         entity_type TEXT NOT NULL,
         entity_id TEXT NOT NULL,
+        matter_id TEXT,
         action TEXT NOT NULL,
+        actor_email TEXT,
+        actor_id TEXT,
+        actor_name TEXT,
         details_json TEXT,
         created_at TEXT NOT NULL
       )`
     )
     .run();
+
+  if (!(await tableHasColumn(db, "audit_events", "matter_id"))) {
+    await db
+      .prepare(
+        `ALTER TABLE audit_events
+         ADD COLUMN matter_id TEXT`
+      )
+      .run();
+  }
+
+  if (!(await tableHasColumn(db, "audit_events", "actor_email"))) {
+    await db
+      .prepare(
+        `ALTER TABLE audit_events
+         ADD COLUMN actor_email TEXT`
+      )
+      .run();
+  }
+
+  if (!(await tableHasColumn(db, "audit_events", "actor_id"))) {
+    await db
+      .prepare(
+        `ALTER TABLE audit_events
+         ADD COLUMN actor_id TEXT`
+      )
+      .run();
+  }
+
+  if (!(await tableHasColumn(db, "audit_events", "actor_name"))) {
+    await db
+      .prepare(
+        `ALTER TABLE audit_events
+         ADD COLUMN actor_name TEXT`
+      )
+      .run();
+  }
 
   await db
     .prepare(
@@ -612,6 +766,13 @@ async function ensureBaseSchema(db: D1Database) {
     .prepare(
       `CREATE INDEX IF NOT EXISTS idx_audit_events_entity
        ON audit_events(entity_type, entity_id, created_at DESC)`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE INDEX IF NOT EXISTS idx_audit_events_matter
+       ON audit_events(matter_id, created_at DESC)`
     )
     .run();
 }
@@ -1036,6 +1197,7 @@ export async function getMatterStats(db: D1Database, accountId: string, boardId:
 export async function createMatter(
   db: D1Database,
   accountId: string,
+  actor: AuthenticatedUser,
   payload: Partial<MatterInput>
 ) {
   const input = assertMatterInput(payload);
@@ -1054,6 +1216,7 @@ export async function createMatter(
     sortOrder,
     createdAt: timestamp,
     lastActivityAt: timestamp,
+    actor,
     auditAction: "matter.created",
     auditDetails: { stage: input.stage }
   });
@@ -1069,6 +1232,7 @@ export async function createMatter(
 export async function importMatters(
   db: D1Database,
   accountId: string,
+  actor: AuthenticatedUser,
   boardId: string,
   rows: MatterImportRowInput[]
 ): Promise<MatterImportSummary> {
@@ -1173,6 +1337,7 @@ export async function importMatters(
       sortOrder: nextSortOrder,
       createdAt,
       lastActivityAt,
+      actor,
       auditAction: "matter.imported",
       auditDetails: {
         stage: row.stage,
@@ -1197,6 +1362,7 @@ export async function importMatters(
 export async function updateMatter(
   db: D1Database,
   accountId: string,
+  actor: AuthenticatedUser,
   matterId: string,
   payload: Partial<MatterInput>
 ) {
@@ -1235,7 +1401,9 @@ export async function updateMatter(
            board_id = ?6,
            sort_order = ?7,
            updated_at = ?8,
-           last_activity_at = CASE WHEN ?9 = 1 THEN ?8 ELSE last_activity_at END
+           last_updated_by_email = ?9,
+           last_updated_by_id = ?10,
+           last_activity_at = CASE WHEN ?11 = 1 THEN ?8 ELSE last_activity_at END
        WHERE id = ?1`
     )
     .bind(
@@ -1247,6 +1415,8 @@ export async function updateMatter(
       input.boardId,
       nextSortOrder,
       timestamp,
+      actor.email,
+      actor.id,
       movedAcrossStageOrBoard ? 1 : 0
     )
     .run();
@@ -1263,7 +1433,7 @@ export async function updateMatter(
         existing.stage,
         input.stage,
         timestamp,
-        "System"
+        actorDisplayName(actor)
       )
       .run();
   }
@@ -1282,18 +1452,19 @@ export async function updateMatter(
     }
   }
 
-  await insertAuditEvent(
-    db,
-    "matter.updated",
-    "matter",
+  await insertAuditEvent(db, {
+    action: "matter.updated",
+    entityType: "matter",
+    entityId: matterId,
     matterId,
-    JSON.stringify({
+    actor,
+    metadata: {
       fromBoardId: existing.board_id,
       toBoardId: input.boardId,
       fromStage: existing.stage,
       toStage: input.stage
-    })
-  );
+    }
+  });
 
   const updated = await getMatterRecord(db, matterId);
   return updated ? mapMatter(updated) : null;
@@ -1302,6 +1473,7 @@ export async function updateMatter(
 export async function moveMatterStage(
   db: D1Database,
   accountId: string,
+  actor: AuthenticatedUser,
   matterId: string,
   input: { stage: MatterStage; beforeMatterId?: string | null }
 ) {
@@ -1335,10 +1507,12 @@ export async function moveMatterStage(
       `UPDATE matters
        SET stage = ?2,
            updated_at = ?3,
-           last_activity_at = CASE WHEN ?4 = 1 THEN ?3 ELSE last_activity_at END
+           last_updated_by_email = ?4,
+           last_updated_by_id = ?5,
+           last_activity_at = CASE WHEN ?6 = 1 THEN ?3 ELSE last_activity_at END
        WHERE id = ?1`
     )
-    .bind(matterId, input.stage, timestamp, stageChanged ? 1 : 0)
+    .bind(matterId, input.stage, timestamp, actor.email, actor.id, stageChanged ? 1 : 0)
     .run();
 
   if (stageChanged) {
@@ -1353,7 +1527,7 @@ export async function moveMatterStage(
         existing.stage,
         input.stage,
         timestamp,
-        "System"
+        actorDisplayName(actor)
       )
       .run();
 
@@ -1363,23 +1537,29 @@ export async function moveMatterStage(
 
   await renumberStageMatterOrder(db, destinationIds);
 
-  await insertAuditEvent(
-    db,
-    stageChanged ? "matter.moved" : "matter.reordered",
-    "matter",
+  await insertAuditEvent(db, {
+    action: stageChanged ? "matter.moved" : "matter.reordered",
+    entityType: "matter",
+    entityId: matterId,
     matterId,
-    JSON.stringify({
+    actor,
+    metadata: {
       fromStage: existing.stage,
       toStage: input.stage,
       beforeMatterId
-    })
-  );
+    }
+  });
 
   const updated = await getMatterRecord(db, matterId);
   return updated ? mapMatter(updated) : null;
 }
 
-export async function deleteMatter(db: D1Database, accountId: string, matterId: string) {
+export async function deleteMatter(
+  db: D1Database,
+  accountId: string,
+  actor: AuthenticatedUser,
+  matterId: string
+) {
   const existing = await getMatterRecord(db, matterId, accountId);
 
   if (!existing) {
@@ -1393,18 +1573,24 @@ export async function deleteMatter(db: D1Database, accountId: string, matterId: 
     .run();
   await db.prepare("DELETE FROM matters WHERE id = ?1").bind(matterId).run();
 
-  await insertAuditEvent(
-    db,
-    "matter.deleted",
-    "matter",
+  await insertAuditEvent(db, {
+    action: "matter.deleted",
+    entityType: "matter",
+    entityId: matterId,
     matterId,
-    JSON.stringify({ fileNumber: existing.file_number })
-  );
+    actor,
+    metadata: { fileNumber: existing.file_number }
+  });
 
   return true;
 }
 
-export async function archiveMatter(db: D1Database, accountId: string, matterId: string) {
+export async function archiveMatter(
+  db: D1Database,
+  accountId: string,
+  actor: AuthenticatedUser,
+  matterId: string
+) {
   const existing = await getMatterRecord(db, matterId, accountId);
 
   if (!existing) {
@@ -1423,19 +1609,22 @@ export async function archiveMatter(db: D1Database, accountId: string, matterId:
        SET archived = 1,
            archived_at = ?2,
            updated_at = ?2,
+           last_updated_by_email = ?3,
+           last_updated_by_id = ?4,
            last_activity_at = ?2
        WHERE id = ?1`
     )
-    .bind(matterId, timestamp)
+    .bind(matterId, timestamp, actor.email, actor.id)
     .run();
 
-  await insertAuditEvent(
-    db,
-    "matter.archived",
-    "matter",
+  await insertAuditEvent(db, {
+    action: "matter.archived",
+    entityType: "matter",
+    entityId: matterId,
     matterId,
-    JSON.stringify({ archivedAt: timestamp })
-  );
+    actor,
+    metadata: { archivedAt: timestamp }
+  });
 
   const archived = await getMatterRecord(db, matterId);
   return archived ? mapMatter(archived) : null;
@@ -1444,6 +1633,7 @@ export async function archiveMatter(db: D1Database, accountId: string, matterId:
 export async function unarchiveMatter(
   db: D1Database,
   accountId: string,
+  actor: AuthenticatedUser,
   matterId: string
 ) {
   const existing = await getMatterRecord(db, matterId, accountId);
@@ -1460,19 +1650,22 @@ export async function unarchiveMatter(
        SET archived = 0,
            archived_at = NULL,
            updated_at = ?2,
+           last_updated_by_email = ?3,
+           last_updated_by_id = ?4,
            last_activity_at = ?2
        WHERE id = ?1`
     )
-    .bind(matterId, timestamp)
+    .bind(matterId, timestamp, actor.email, actor.id)
     .run();
 
-  await insertAuditEvent(
-    db,
-    "matter.unarchived",
-    "matter",
+  await insertAuditEvent(db, {
+    action: "matter.unarchived",
+    entityType: "matter",
+    entityId: matterId,
     matterId,
-    JSON.stringify({ unarchivedAt: timestamp })
-  );
+    actor,
+    metadata: { unarchivedAt: timestamp }
+  });
 
   const matter = await getMatterRecord(db, matterId);
   return matter ? mapMatter(matter) : null;
@@ -1538,6 +1731,7 @@ export async function listTasks(db: D1Database, accountId: string, boardId: stri
 export async function completeTask(
   db: D1Database,
   accountId: string,
+  actor: AuthenticatedUser,
   taskId: string
 ) {
   const task = await db
@@ -1568,13 +1762,14 @@ export async function completeTask(
     .bind(taskId, completedAt)
     .run();
 
-  await insertAuditEvent(
-    db,
-    "task.completed",
-    "task_item",
-    taskId,
-    JSON.stringify({ matterId: task.matter_id, completedAt })
-  );
+  await insertAuditEvent(db, {
+    action: "task.completed",
+    entityType: "task_item",
+    entityId: taskId,
+    matterId: task.matter_id,
+    actor,
+    metadata: { matterId: task.matter_id, completedAt }
+  });
 
   return true;
 }
@@ -1582,6 +1777,7 @@ export async function completeTask(
 export async function createNote(
   db: D1Database,
   accountId: string,
+  actor: AuthenticatedUser,
   payload: Partial<MatterNoteInput>
 ) {
   if (!payload.matterId?.trim()) {
@@ -1603,10 +1799,25 @@ export async function createNote(
 
   await db
     .prepare(
-      `INSERT INTO matter_notes (id, matter_id, body, created_at, created_by)
-       VALUES (?1, ?2, ?3, ?4, ?5)`
+      `INSERT INTO matter_notes (
+        id,
+        matter_id,
+        body,
+        created_at,
+        created_by,
+        created_by_email,
+        created_by_id
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
     )
-    .bind(noteId, payload.matterId, payload.body.trim(), timestamp, "Firm staff")
+    .bind(
+      noteId,
+      payload.matterId,
+      payload.body.trim(),
+      timestamp,
+      actorDisplayName(actor),
+      actor.email,
+      actor.id
+    )
     .run();
 
   if (payload.addToTaskList) {
@@ -1623,19 +1834,22 @@ export async function createNote(
     .prepare(
       `UPDATE matters
        SET updated_at = ?2,
+           last_updated_by_email = ?3,
+           last_updated_by_id = ?4,
            last_activity_at = ?2
        WHERE id = ?1`
     )
-    .bind(payload.matterId, timestamp)
+    .bind(payload.matterId, timestamp, actor.email, actor.id)
     .run();
 
-  await insertAuditEvent(
-    db,
-    "note.created",
-    "matter_note",
-    noteId,
-    JSON.stringify({ matterId: payload.matterId })
-  );
+  await insertAuditEvent(db, {
+    action: "note.created",
+    entityType: "matter_note",
+    entityId: noteId,
+    matterId: payload.matterId,
+    actor,
+    metadata: { matterId: payload.matterId, addToTaskList: Boolean(payload.addToTaskList) }
+  });
 
   const note = await db
     .prepare(
@@ -1649,11 +1863,14 @@ export async function createNote(
   return note ? mapNote(note) : null;
 }
 
-export async function getAppStatus(env: { APP_NAME?: string }) {
+export async function getAppStatus(env: { APP_NAME?: string; ACCESS_DEV_BYPASS?: string }) {
   return {
     appName: env.APP_NAME ?? "CaseFlow v1.0",
     runtime: "Cloudflare Pages Functions",
     timestamp: nowIso(),
-    authMode: "Cloudflare Access planned"
+    authMode:
+      env.ACCESS_DEV_BYPASS?.trim().toLowerCase() === "true"
+        ? "Cloudflare Access with local dev bypass"
+        : "Cloudflare Access"
   };
 }

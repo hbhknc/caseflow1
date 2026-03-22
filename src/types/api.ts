@@ -7,13 +7,17 @@ export type AppStatus = {
   authMode: string;
 };
 
-export type AuthUser = {
-  username: string;
+export type CurrentUser = {
+  email: string;
+  displayName: string | null;
+  userId: string | null;
+  subject: string | null;
+  authSource: "cloudflare-access" | "local-dev-bypass";
 };
 
-export type AuthSession = {
+export type CurrentUserResponse = {
   authenticated: boolean;
-  user: AuthUser | null;
+  user: CurrentUser | null;
 };
 
 export type BoardSettings = {

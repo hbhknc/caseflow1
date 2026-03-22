@@ -1,11 +1,15 @@
 import { requireAuth } from "../_lib/auth";
 import { badRequest, json, notFound, parseJson, serverError } from "../_lib/http";
 import { completeTask, listTasks } from "../_lib/matterRepository";
-import type { Env } from "../_lib/types";
+import type { Env, RequestContextData } from "../_lib/types";
 
-export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestGet: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -16,7 +20,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
       return badRequest("Board id is required.");
     }
 
-    const tasks = await listTasks(env.DB, auth.session.accountId, boardId);
+    const tasks = await listTasks(env.DB, auth.auth.accountId, boardId);
     return json({ tasks });
   } catch (error) {
     console.error(error);
@@ -24,9 +28,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   }
 };
 
-export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestPost: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -36,7 +44,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       return badRequest("Task id is required.");
     }
 
-    const success = await completeTask(env.DB, auth.session.accountId, payload.taskId);
+    const success = await completeTask(
+      env.DB,
+      auth.auth.accountId,
+      auth.auth.user,
+      payload.taskId
+    );
     return success ? json({ success: true }) : notFound("Task not found.");
   } catch (error) {
     if (error instanceof Error) {

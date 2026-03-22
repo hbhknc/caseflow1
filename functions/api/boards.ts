@@ -1,16 +1,19 @@
 import { requireAuth } from "../_lib/auth";
 import { badRequest, json, notFound, parseJson, serverError } from "../_lib/http";
 import { createBoard, deleteBoard, listBoards, updateBoard } from "../_lib/matterRepository";
-import type { Env, PracticeBoard } from "../_lib/types";
+import type { Env, PracticeBoard, RequestContextData } from "../_lib/types";
 
-export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestGet: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
 
-    const boards = await listBoards(env.DB, auth.session.accountId);
+    const boards = await listBoards(env.DB, auth.auth.accountId);
     return json({ boards });
   } catch (error) {
     console.error(error);
@@ -18,9 +21,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   }
 };
 
-export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestPost: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -30,7 +37,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       return badRequest("Board name is required.");
     }
 
-    const board = await createBoard(env.DB, auth.session.accountId, payload.name);
+    const board = await createBoard(env.DB, auth.auth.accountId, payload.name);
     return json({ board }, { status: 201 });
   } catch (error) {
     if (error instanceof Error) {
@@ -41,9 +48,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   }
 };
 
-export const onRequestPut: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestPut: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -59,7 +70,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ env, request }) => {
       return badRequest("Board id is required.");
     }
 
-    const board = await updateBoard(env.DB, auth.session.accountId, payload.boardId, {
+    const board = await updateBoard(env.DB, auth.auth.accountId, payload.boardId, {
       name: payload.name,
       columnCount: payload.columnCount,
       stageLabels: payload.stageLabels
@@ -75,9 +86,13 @@ export const onRequestPut: PagesFunction<Env> = async ({ env, request }) => {
   }
 };
 
-export const onRequestDelete: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestDelete: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -88,7 +103,7 @@ export const onRequestDelete: PagesFunction<Env> = async ({ env, request }) => {
       return badRequest("Board id is required.");
     }
 
-    const boards = await deleteBoard(env.DB, auth.session.accountId, boardId);
+    const boards = await deleteBoard(env.DB, auth.auth.accountId, boardId);
     return json({ boards });
   } catch (error) {
     if (error instanceof Error) {

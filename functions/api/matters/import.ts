@@ -1,11 +1,15 @@
 import { requireAuth } from "../../_lib/auth";
 import { badRequest, json, parseJson, serverError } from "../../_lib/http";
 import { importMatters } from "../../_lib/matterRepository";
-import type { Env, MatterImportRowInput } from "../../_lib/types";
+import type { Env, MatterImportRowInput, RequestContextData } from "../../_lib/types";
 
-export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestPost: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -25,7 +29,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
 
     const summary = await importMatters(
       env.DB,
-      auth.session.accountId,
+      auth.auth.accountId,
+      auth.auth.user,
       payload.boardId,
       payload.rows
     );

@@ -101,8 +101,8 @@ export function SettingsPage() {
         <div className="section-heading">
           <h1>Settings</h1>
           <p>
-            Operational scaffolding for environment details, future admin controls, and
-            Cloudflare Access integration work.
+            Operational scaffolding for environment details, board configuration, and
+            Cloudflare Access identity wiring.
           </p>
         </div>
       </section>

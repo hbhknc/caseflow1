@@ -1,11 +1,15 @@
 import { requireAuth } from "../_lib/auth";
 import { badRequest, json, notFound, parseJson, serverError } from "../_lib/http";
 import { createNote, listNotes } from "../_lib/matterRepository";
-import type { Env, MatterNoteInput } from "../_lib/types";
+import type { Env, MatterNoteInput, RequestContextData } from "../_lib/types";
 
-export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestGet: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -15,7 +19,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       return badRequest("matterId is required.");
     }
 
-    const notes = await listNotes(env.DB, auth.session.accountId, matterId);
+    const notes = await listNotes(env.DB, auth.auth.accountId, matterId);
     return json({ notes });
   } catch (error) {
     console.error(error);
@@ -23,15 +27,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 };
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
 
     const payload = await parseJson<Partial<MatterNoteInput>>(request);
-    const note = await createNote(env.DB, auth.session.accountId, payload);
+    const note = await createNote(env.DB, auth.auth.accountId, auth.auth.user, payload);
     return note ? json({ note }, { status: 201 }) : notFound("Matter not found.");
   } catch (error) {
     if (error instanceof Error) {

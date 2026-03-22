@@ -1,11 +1,15 @@
 import { requireAuth } from "../_lib/auth";
 import { badRequest, json, parseJson, serverError } from "../_lib/http";
 import { createMatter, listArchivedMatters, listMatters } from "../_lib/matterRepository";
-import type { Env, MatterInput } from "../_lib/types";
+import type { Env, MatterInput, RequestContextData } from "../_lib/types";
 
-export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestGet: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
@@ -18,8 +22,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
 
     const matters =
       url.searchParams.get("archived") === "1"
-        ? await listArchivedMatters(env.DB, auth.session.accountId, boardId)
-        : await listMatters(env.DB, auth.session.accountId, boardId);
+        ? await listArchivedMatters(env.DB, auth.auth.accountId, boardId)
+        : await listMatters(env.DB, auth.auth.accountId, boardId);
     return json({ matters });
   } catch (error) {
     console.error(error);
@@ -27,15 +31,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   }
 };
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env, string, RequestContextData> = async ({
+  data,
+  env,
+  request
+}) => {
   try {
-    const auth = await requireAuth(request, env);
+    const auth = requireAuth(data);
     if ("response" in auth) {
       return auth.response;
     }
 
     const payload = await parseJson<Partial<MatterInput>>(request);
-    const matter = await createMatter(env.DB, auth.session.accountId, payload);
+    const matter = await createMatter(env.DB, auth.auth.accountId, auth.auth.user, payload);
     return json({ matter }, { status: 201 });
   } catch (error) {
     if (error instanceof Error) {

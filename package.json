@@ -19,6 +19,7 @@
     "db:seed:remote": "wrangler d1 execute caseflow --remote --file=./migrations/dev_seed.sql"
   },
   "dependencies": {
+    "@cloudflare/pages-plugin-cloudflare-access": "1.0.5",
     "@fontsource/inter": "5.2.8",
     "papaparse": "5.5.3",
     "react": "^19.1.0",

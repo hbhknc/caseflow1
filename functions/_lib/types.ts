@@ -1,15 +1,48 @@
+import type {
+  Identity as CloudflareAccessIdentity,
+  JWTPayload as CloudflareAccessJWTPayload,
+  PluginData as CloudflareAccessPluginData
+} from "@cloudflare/pages-plugin-cloudflare-access";
+
 export type Env = {
   DB: D1Database;
   APP_NAME?: string;
-  AUTH_USERNAME?: string;
-  AUTH_PASSWORD?: string;
-  SESSION_SECRET?: string;
+  CLOUDFLARE_ACCESS_DOMAIN?: string;
+  CLOUDFLARE_ACCESS_AUD?: string;
+  CASEFLOW_ACCOUNT_ID?: string;
+  ACCESS_DEV_BYPASS?: string;
+  ACCESS_DEV_USER_EMAIL?: string;
+  ACCESS_DEV_USER_NAME?: string;
+  ACCESS_DEV_USER_ID?: string;
 };
 
-export type AuthSession = {
+export type AuthSource = "cloudflare-access" | "local-dev-bypass";
+
+export type AuthenticatedUser = {
+  email: string;
+  displayName: string | null;
+  id: string | null;
+  subject: string | null;
+  authenticated: true;
+  authSource: AuthSource;
+};
+
+export type AccessIdentityState = {
+  getIdentity?: () => Promise<CloudflareAccessIdentity | undefined>;
+  jwtPayload: CloudflareAccessJWTPayload;
+  loaded: boolean;
+  value: CloudflareAccessIdentity | null;
+  pending?: Promise<CloudflareAccessIdentity | null>;
+};
+
+export type RequestAuthState = {
   accountId: string;
-  username: string;
-  expiresAt: number;
+  user: AuthenticatedUser;
+  accessIdentity?: AccessIdentityState;
+};
+
+export type RequestContextData = Partial<CloudflareAccessPluginData> & {
+  auth?: RequestAuthState;
 };
 
 export type AccountRecord = {
@@ -35,7 +68,11 @@ export type MatterRecord = {
   stage: MatterStage;
   sort_order: number;
   created_at: string;
+  created_by_email?: string | null;
+  created_by_id?: string | null;
   updated_at: string;
+  last_updated_by_email?: string | null;
+  last_updated_by_id?: string | null;
   last_activity_at: string;
   stage_entered_at?: string | null;
   interaction_count?: number | null;
@@ -49,6 +86,8 @@ export type MatterNoteRecord = {
   body: string;
   created_at: string;
   created_by: string | null;
+  created_by_email?: string | null;
+  created_by_id?: string | null;
 };
 
 export type AppSettingRecord = {
