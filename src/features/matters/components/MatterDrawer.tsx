@@ -30,6 +30,8 @@ function buildInitialState(matter: Matter | null, defaultBoardId: string): Matte
       decedentName: "",
       clientName: "",
       fileNumber: "",
+      inventoryDueDate: "",
+      ntcExpirationDate: "",
       stage: "intake"
     };
   }
@@ -39,6 +41,8 @@ function buildInitialState(matter: Matter | null, defaultBoardId: string): Matte
     decedentName: matter.decedentName,
     clientName: matter.clientName,
     fileNumber: matter.fileNumber,
+    inventoryDueDate: matter.inventoryDueDate ?? "",
+    ntcExpirationDate: matter.ntcExpirationDate ?? "",
     stage: matter.stage
   };
 }
@@ -143,6 +147,8 @@ export function MatterDrawer({
     matter?.clientName,
     matter?.decedentName,
     matter?.fileNumber,
+    matter?.inventoryDueDate,
+    matter?.ntcExpirationDate,
     matter?.stage
   ]);
 
@@ -406,15 +412,39 @@ export function MatterDrawer({
                     }
                   />
                 </label>
-                <label
-                  className={`field${!isCreateMode ? " matter-drawer__field--wide" : ""}`}
-                >
+                <label className="field matter-drawer__field--wide">
                   <span>File number</span>
                   <input
                     required
                     value={draft.fileNumber}
                     onChange={(event) =>
                       setDraft((current) => ({ ...current, fileNumber: event.target.value }))
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>Inventory Due Date</span>
+                  <input
+                    type="date"
+                    value={draft.inventoryDueDate}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        inventoryDueDate: event.target.value
+                      }))
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>NTC Expiration Date</span>
+                  <input
+                    type="date"
+                    value={draft.ntcExpirationDate}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        ntcExpirationDate: event.target.value
+                      }))
                     }
                   />
                 </label>

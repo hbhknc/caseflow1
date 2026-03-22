@@ -11,6 +11,8 @@ export const demoMatters: Matter[] = [
     decedentName: "Eleanor Whitfield",
     clientName: "Marcus Whitfield",
     fileNumber: "PR-2026-0014",
+    inventoryDueDate: "2026-06-03",
+    ntcExpirationDate: "2026-08-03",
     stage: "notice_admin",
     sortOrder: 1,
     createdAt: "2026-02-03T14:20:00.000Z",
@@ -26,6 +28,8 @@ export const demoMatters: Matter[] = [
     decedentName: "Harold McIntyre",
     clientName: "Olivia McIntyre",
     fileNumber: "PR-2026-0018",
+    inventoryDueDate: "2026-04-15",
+    ntcExpirationDate: "2026-08-10",
     stage: "inventory_collection",
     sortOrder: 1,
     createdAt: "2026-02-10T10:05:00.000Z",
@@ -41,6 +45,8 @@ export const demoMatters: Matter[] = [
     decedentName: "Lucille Carver",
     clientName: "Daniel Carver",
     fileNumber: "PR-2026-0021",
+    inventoryDueDate: null,
+    ntcExpirationDate: "2026-08-18",
     stage: "accounting_closing",
     sortOrder: 1,
     createdAt: "2026-02-18T08:30:00.000Z",
@@ -56,6 +62,8 @@ export const demoMatters: Matter[] = [
     decedentName: "John Doe",
     clientName: "Jane Doe",
     fileNumber: "26 E 000321-950",
+    inventoryDueDate: null,
+    ntcExpirationDate: null,
     stage: "intake",
     sortOrder: 1,
     createdAt: "2026-03-01T13:40:00.000Z",
@@ -71,6 +79,8 @@ export const demoMatters: Matter[] = [
     decedentName: "Florence Avery",
     clientName: "Jon Avery",
     fileNumber: "PR-2025-0119",
+    inventoryDueDate: "2026-01-12",
+    ntcExpirationDate: "2026-03-12",
     stage: "accounting_closing",
     sortOrder: 2,
     createdAt: "2025-11-12T11:00:00.000Z",
@@ -86,6 +96,8 @@ export const demoMatters: Matter[] = [
     decedentName: "Margaret Sloan",
     clientName: "Thomas Sloan",
     fileNumber: "PR-2025-0084",
+    inventoryDueDate: "2025-11-08",
+    ntcExpirationDate: "2026-01-08",
     stage: "accounting_closing",
     sortOrder: 3,
     createdAt: "2025-07-08T09:15:00.000Z",
@@ -202,6 +214,8 @@ export function createDemoMatter(input: {
   decedentName: string;
   clientName: string;
   fileNumber: string;
+  inventoryDueDate: string;
+  ntcExpirationDate: string;
   stage: MatterStage;
 }): Matter {
   return {
@@ -210,6 +224,8 @@ export function createDemoMatter(input: {
     decedentName: input.decedentName,
     clientName: input.clientName,
     fileNumber: input.fileNumber,
+    inventoryDueDate: input.inventoryDueDate || null,
+    ntcExpirationDate: input.ntcExpirationDate || null,
     stage: input.stage,
     sortOrder: 0,
     createdAt: new Date().toISOString(),

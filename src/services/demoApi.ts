@@ -191,6 +191,8 @@ export async function updateDemoMatterRecord(
   matter.decedentName = input.decedentName;
   matter.clientName = input.clientName;
   matter.fileNumber = input.fileNumber;
+  matter.inventoryDueDate = input.inventoryDueDate || null;
+  matter.ntcExpirationDate = input.ntcExpirationDate || null;
   const previousBoardId = matter.boardId;
   const previousStage = matter.stage;
   const stageChanged = previousStage !== input.stage;
