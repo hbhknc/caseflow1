@@ -167,6 +167,20 @@ export type BoardSettings = {
   stageLabels: Record<MatterStage, string>;
 };
 
+export type MatterStatsMonth = {
+  monthStart: string;
+  openedCount: number;
+};
+
+export type MatterStats = {
+  totalCasesOpened: number;
+  totalCasesArchived: number;
+  averageCasesOpenedPerYear: number;
+  averageCasesArchivedPerYear: number;
+  averageCaseLengthDays: number | null;
+  openedCasesByMonthLast12Months: MatterStatsMonth[];
+};
+
 export type PracticeBoard = {
   id: string;
   name: string;

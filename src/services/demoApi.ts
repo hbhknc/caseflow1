@@ -7,7 +7,7 @@ import {
   demoStatus,
   demoTasks
 } from "@/lib/demoData";
-import type { AppStatus, BoardSettings, MatterStats } from "@/types/api";
+import type { AppStatus, BoardSettings, MatterStats, MatterStatsMonth } from "@/types/api";
 import type {
   Matter,
   MatterFormInput,
@@ -357,6 +357,48 @@ function calculateAveragePerYear(timestamps: string[]) {
   return Number((timestamps.length / span).toFixed(1));
 }
 
+function formatUtcMonthKey(date: Date) {
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${date.getUTCFullYear()}-${month}`;
+}
+
+function buildOpenedCasesByMonthLast12Months(
+  timestamps: string[],
+  referenceDate = new Date()
+): MatterStatsMonth[] {
+  const currentMonth = new Date(
+    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1)
+  );
+  const months = Array.from({ length: 12 }, (_, index) => {
+    const offset = index - 11;
+    return new Date(
+      Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() + offset, 1)
+    );
+  });
+  const counts = new Map(months.map((month) => [formatUtcMonthKey(month), 0]));
+
+  for (const timestamp of timestamps) {
+    const parsed = new Date(timestamp);
+
+    if (Number.isNaN(parsed.getTime())) {
+      continue;
+    }
+
+    const monthKey = formatUtcMonthKey(
+      new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), 1))
+    );
+
+    if (counts.has(monthKey)) {
+      counts.set(monthKey, (counts.get(monthKey) ?? 0) + 1);
+    }
+  }
+
+  return months.map((month) => ({
+    monthStart: month.toISOString(),
+    openedCount: counts.get(formatUtcMonthKey(month)) ?? 0
+  }));
+}
+
 export async function getDemoMatterStats(boardId: string): Promise<MatterStats> {
   const boardMatters = matterStore.filter((matter) => matter.boardId === boardId);
   const archivedMatters = boardMatters.filter(
@@ -383,7 +425,10 @@ export async function getDemoMatterStats(boardId: string): Promise<MatterStats> 
     averageCasesArchivedPerYear: calculateAveragePerYear(
       archivedMatters.map((matter) => matter.archivedAt ?? matter.createdAt)
     ),
-    averageCaseLengthDays
+    averageCaseLengthDays,
+    openedCasesByMonthLast12Months: buildOpenedCasesByMonthLast12Months(
+      boardMatters.map((matter) => matter.createdAt)
+    )
   };
 }
 

@@ -3,6 +3,8 @@ import type {
   AuthenticatedUser,
   AppSettingRecord,
   BoardSettings,
+  MatterStats,
+  MatterStatsMonth,
   MatterImportIssue,
   MatterImportRowInput,
   MatterImportSummary,
@@ -421,6 +423,48 @@ function calculateAveragePerYear(timestamps: string[]) {
   const years = timestamps.map((timestamp) => new Date(timestamp).getUTCFullYear());
   const span = Math.max(...years) - Math.min(...years) + 1;
   return Number((timestamps.length / span).toFixed(1));
+}
+
+function formatUtcMonthKey(date: Date) {
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${date.getUTCFullYear()}-${month}`;
+}
+
+function buildOpenedCasesByMonthLast12Months(
+  timestamps: string[],
+  referenceDate = new Date()
+): MatterStatsMonth[] {
+  const currentMonth = new Date(
+    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1)
+  );
+  const months = Array.from({ length: 12 }, (_, index) => {
+    const offset = index - 11;
+    return new Date(
+      Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() + offset, 1)
+    );
+  });
+  const counts = new Map(months.map((month) => [formatUtcMonthKey(month), 0]));
+
+  for (const timestamp of timestamps) {
+    const parsed = new Date(timestamp);
+
+    if (Number.isNaN(parsed.getTime())) {
+      continue;
+    }
+
+    const monthKey = formatUtcMonthKey(
+      new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), 1))
+    );
+
+    if (counts.has(monthKey)) {
+      counts.set(monthKey, (counts.get(monthKey) ?? 0) + 1);
+    }
+  }
+
+  return months.map((month) => ({
+    monthStart: month.toISOString(),
+    openedCount: counts.get(formatUtcMonthKey(month)) ?? 0
+  }));
 }
 
 function clampColumnCount(value: unknown) {
@@ -1167,7 +1211,11 @@ export async function listArchivedMatters(
   return results.map(mapMatter);
 }
 
-export async function getMatterStats(db: D1Database, accountId: string, boardId: string) {
+export async function getMatterStats(
+  db: D1Database,
+  accountId: string,
+  boardId: string
+): Promise<MatterStats> {
   await ensureDefaultAccountData(db);
 
   const { results } = await db
@@ -1205,7 +1253,10 @@ export async function getMatterStats(db: D1Database, accountId: string, boardId:
     averageCasesArchivedPerYear: calculateAveragePerYear(
       archivedMatters.map((matter) => matter.archived_at ?? matter.created_at)
     ),
-    averageCaseLengthDays
+    averageCaseLengthDays,
+    openedCasesByMonthLast12Months: buildOpenedCasesByMonthLast12Months(
+      results.map((matter) => matter.created_at)
+    )
   };
 }
 

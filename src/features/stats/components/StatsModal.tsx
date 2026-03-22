@@ -12,6 +12,25 @@ function formatAverage(value: number) {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }
 
+const monthTickFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  timeZone: "UTC"
+});
+
+const monthRangeFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC"
+});
+
+function formatMonthTick(monthStart: string) {
+  return monthTickFormatter.format(new Date(monthStart));
+}
+
+function formatMonthRange(monthStart: string) {
+  return monthRangeFormatter.format(new Date(monthStart));
+}
+
 export function StatsModal({ stats, error, onClose }: StatsModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -30,6 +49,19 @@ export function StatsModal({ stats, error, onClose }: StatsModalProps) {
 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  const openedCasesByMonth = stats?.openedCasesByMonthLast12Months ?? [];
+  const maxOpenedCount = openedCasesByMonth.reduce(
+    (highest, point) => Math.max(highest, point.openedCount),
+    0
+  );
+  const chartCeiling = Math.max(maxOpenedCount, 1);
+  const firstMonth = openedCasesByMonth[0]?.monthStart ?? null;
+  const lastMonth = openedCasesByMonth[openedCasesByMonth.length - 1]?.monthStart ?? null;
+  const chartRangeLabel =
+    firstMonth && lastMonth
+      ? `${formatMonthRange(firstMonth)} through ${formatMonthRange(lastMonth)}`
+      : "the last 12 months";
 
   return (
     <div className="drawer-overlay" role="presentation" onClick={onClose}>
@@ -58,32 +90,74 @@ export function StatsModal({ stats, error, onClose }: StatsModalProps) {
           {!error && !stats ? <p className="stats-empty">Loading matter statistics.</p> : null}
 
           {stats ? (
-            <dl className="stats-list">
-              <div className="stats-row">
-                <dt>Total cases opened</dt>
-                <dd>{stats.totalCasesOpened}</dd>
-              </div>
-              <div className="stats-row">
-                <dt>Total cases closed / archived</dt>
-                <dd>{stats.totalCasesArchived}</dd>
-              </div>
-              <div className="stats-row">
-                <dt>Average cases opened per year</dt>
-                <dd>{formatAverage(stats.averageCasesOpenedPerYear)}</dd>
-              </div>
-              <div className="stats-row">
-                <dt>Average cases closed per year</dt>
-                <dd>{formatAverage(stats.averageCasesArchivedPerYear)}</dd>
-              </div>
-              <div className="stats-row">
-                <dt>Average case length</dt>
-                <dd>
-                  {stats.averageCaseLengthDays === null
-                    ? "N/A"
-                    : `${stats.averageCaseLengthDays} days`}
-                </dd>
-              </div>
-            </dl>
+            <div className="stats-panel">
+              <section className="stats-chart-panel" aria-labelledby="stats-opened-by-month">
+                <div className="section-heading">
+                  <h3 id="stats-opened-by-month">Cases Added by Month</h3>
+                  <p>Opened matters for {chartRangeLabel}.</p>
+                </div>
+
+                <div
+                  className="stats-chart"
+                  role="img"
+                  aria-label={`Bar chart showing cases added by month for ${chartRangeLabel}.`}
+                >
+                  {openedCasesByMonth.map((point) => {
+                    const barHeight =
+                      point.openedCount === 0
+                        ? 0
+                        : Math.max(8, Math.round((point.openedCount / chartCeiling) * 100));
+                    const monthLabel = formatMonthTick(point.monthStart);
+
+                    return (
+                      <div
+                        key={point.monthStart}
+                        className="stats-chart__column"
+                        title={`${monthLabel}: ${point.openedCount} case${
+                          point.openedCount === 1 ? "" : "s"
+                        } opened`}
+                      >
+                        <span className="stats-chart__value">{point.openedCount}</span>
+                        <div className="stats-chart__track" aria-hidden="true">
+                          <div
+                            className="stats-chart__bar"
+                            style={{ height: `${barHeight}%` }}
+                          />
+                        </div>
+                        <span className="stats-chart__label">{monthLabel}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <dl className="stats-list">
+                <div className="stats-row">
+                  <dt>Total cases opened</dt>
+                  <dd>{stats.totalCasesOpened}</dd>
+                </div>
+                <div className="stats-row">
+                  <dt>Total cases closed / archived</dt>
+                  <dd>{stats.totalCasesArchived}</dd>
+                </div>
+                <div className="stats-row">
+                  <dt>Average cases opened per year</dt>
+                  <dd>{formatAverage(stats.averageCasesOpenedPerYear)}</dd>
+                </div>
+                <div className="stats-row">
+                  <dt>Average cases closed per year</dt>
+                  <dd>{formatAverage(stats.averageCasesArchivedPerYear)}</dd>
+                </div>
+                <div className="stats-row">
+                  <dt>Average case length</dt>
+                  <dd>
+                    {stats.averageCaseLengthDays === null
+                      ? "N/A"
+                      : `${stats.averageCaseLengthDays} days`}
+                  </dd>
+                </div>
+              </dl>
+            </div>
           ) : null}
         </Drawer>
       </div>
