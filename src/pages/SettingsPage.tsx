@@ -9,8 +9,6 @@ export function SettingsPage() {
   const { setHeaderToolbar, setSidebarContent } = useAppChrome();
   const [status, setStatus] = useState<AppStatus | null>(null);
   const [boardSettings, setBoardSettings] = useState<BoardSettings | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     void getSettingsOverview()
@@ -82,17 +80,10 @@ export function SettingsPage() {
     return () => setSidebarContent(null);
   }, [setHeaderToolbar, setSidebarContent]);
 
-  async function handleSave(nextSettings: BoardSettings) {
-    setIsSaving(true);
-    setSaveMessage(null);
-
-    try {
-      const saved = await saveBoardSettings(nextSettings);
-      setBoardSettings(saved);
-      setSaveMessage("Settings saved");
-    } finally {
-      setIsSaving(false);
-    }
+  async function handleSave(nextSettings: BoardSettings): Promise<BoardSettings> {
+    const saved = await saveBoardSettings(nextSettings);
+    setBoardSettings(saved);
+    return saved;
   }
 
   return (
@@ -109,8 +100,6 @@ export function SettingsPage() {
       <SettingsPanel
         status={status}
         boardSettings={boardSettings}
-        isSaving={isSaving}
-        saveMessage={saveMessage}
         onOpenImport={() => undefined}
         onSave={handleSave}
       />

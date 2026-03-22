@@ -54,7 +54,7 @@ type UseMattersBoardResult = {
   openStats: () => Promise<void>;
   closeStats: () => void;
   createMatter: (input: MatterFormInput) => Promise<void>;
-  updateMatter: (matterId: string, input: MatterFormInput) => Promise<void>;
+  updateMatter: (matterId: string, input: MatterFormInput) => Promise<Matter>;
   moveMatter: (
     matterId: string,
     stage: MatterStage,
@@ -283,9 +283,15 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
   }
 
   async function handleUpdateMatter(matterId: string, input: MatterFormInput) {
-    await saveMatter(matterId, input);
-    await hydrateBoard();
-    setSelectedMatterId(matterId);
+    const savedMatter = await saveMatter(matterId, input);
+
+    setMatters((current) =>
+      sortMatters(current.map((matter) => (matter.id === savedMatter.id ? savedMatter : matter)))
+    );
+    setSelectedMatterId(savedMatter.id);
+    setError(null);
+
+    return savedMatter;
   }
 
   async function handleMoveMatter(

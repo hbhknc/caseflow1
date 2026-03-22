@@ -7,7 +7,7 @@ import type { AppStatus, BoardSettings } from "@/types/api";
 type SettingsModalProps = {
   boardSettings: BoardSettings;
   onOpenImport: () => void;
-  onSave: (settings: BoardSettings) => Promise<void>;
+  onSave: (settings: BoardSettings) => Promise<BoardSettings>;
   onClose: () => void;
 };
 
@@ -19,8 +19,6 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [status, setStatus] = useState<AppStatus | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     closeButtonRef.current?.focus();
@@ -41,18 +39,6 @@ export function SettingsModal({
 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-
-  async function handleSave(nextSettings: BoardSettings) {
-    setIsSaving(true);
-    setSaveMessage(null);
-
-    try {
-      await onSave(nextSettings);
-      setSaveMessage("Settings saved");
-    } finally {
-      setIsSaving(false);
-    }
-  }
 
   return (
     <div className="drawer-overlay" role="presentation" onClick={onClose}>
@@ -80,10 +66,8 @@ export function SettingsModal({
           <SettingsPanel
             status={status}
             boardSettings={boardSettings}
-            isSaving={isSaving}
-            saveMessage={saveMessage}
             onOpenImport={onOpenImport}
-            onSave={handleSave}
+            onSave={onSave}
           />
         </Drawer>
       </div>

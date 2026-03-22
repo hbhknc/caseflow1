@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTheme } from "@/app/ThemeContext";
 import { StatusPill } from "@/components/StatusPill";
 import type { AppStatus, BoardSettings } from "@/types/api";
@@ -8,48 +8,148 @@ import { STAGES, getStageLabel } from "@/utils/stages";
 type SettingsPanelProps = {
   status: AppStatus | null;
   boardSettings: BoardSettings | null;
-  isSaving: boolean;
-  saveMessage: string | null;
   onOpenImport: () => void;
-  onSave: (settings: BoardSettings) => Promise<void>;
+  onSave: (settings: BoardSettings) => Promise<BoardSettings>;
 };
+
+const AUTO_SAVE_DELAY_MS = 500;
+
+function cloneBoardSettings(boardSettings: BoardSettings): BoardSettings {
+  return {
+    columnCount: boardSettings.columnCount,
+    stageLabels: { ...boardSettings.stageLabels }
+  };
+}
+
+function serializeBoardSettings(boardSettings: BoardSettings | null): string | null {
+  return boardSettings ? JSON.stringify(boardSettings) : null;
+}
 
 export function SettingsPanel({
   status,
   boardSettings,
-  isSaving,
-  saveMessage,
   onOpenImport,
   onSave
 }: SettingsPanelProps) {
   const { theme, setTheme } = useTheme();
   const [draft, setDraft] = useState<BoardSettings | null>(() =>
-    boardSettings
-      ? {
-          columnCount: boardSettings.columnCount,
-          stageLabels: { ...boardSettings.stageLabels }
-        }
-      : null
+    boardSettings ? cloneBoardSettings(boardSettings) : null
   );
+  const [saveTone, setSaveTone] = useState<"neutral" | "success" | "warn">("neutral");
+  const [saveMessage, setSaveMessage] = useState("Changes save automatically.");
+  const draftRef = useRef(draft);
+  const saveTimerRef = useRef<number | null>(null);
+  const isSavingRef = useRef(false);
+  const shouldSaveAgainRef = useRef(false);
+  const lastSavedSnapshotRef = useRef<string | null>(serializeBoardSettings(boardSettings));
 
   useEffect(() => {
-    if (!draft && boardSettings) {
-      setDraft({
-        columnCount: boardSettings.columnCount,
-        stageLabels: { ...boardSettings.stageLabels }
-      });
+    draftRef.current = draft;
+  }, [draft]);
+
+  useEffect(() => {
+    if (!boardSettings) {
+      setDraft(null);
+      draftRef.current = null;
+      lastSavedSnapshotRef.current = null;
+      setSaveTone("neutral");
+      setSaveMessage("Changes save automatically.");
+      return;
     }
-  }, [boardSettings, draft]);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+    const nextDraft = cloneBoardSettings(boardSettings);
+    const incomingSerialized = serializeBoardSettings(nextDraft);
+    const currentSerialized = serializeBoardSettings(draftRef.current);
+    const shouldSyncDraft =
+      currentSerialized === null || currentSerialized === lastSavedSnapshotRef.current;
 
+    lastSavedSnapshotRef.current = incomingSerialized;
+
+    if (shouldSyncDraft && currentSerialized !== incomingSerialized) {
+      setDraft(nextDraft);
+      draftRef.current = nextDraft;
+    }
+  }, [boardSettings]);
+
+  const runAutoSave = useEffectEvent(async () => {
+    const nextDraft = draftRef.current;
+    const serializedDraft = serializeBoardSettings(nextDraft);
+
+    if (!nextDraft || !serializedDraft || serializedDraft === lastSavedSnapshotRef.current) {
+      return;
+    }
+
+    if (isSavingRef.current) {
+      shouldSaveAgainRef.current = true;
+      return;
+    }
+
+    isSavingRef.current = true;
+    setSaveTone("neutral");
+    setSaveMessage("Saving changes...");
+
+    try {
+      const savedSettings = await onSave(nextDraft);
+      const syncedDraft = cloneBoardSettings(savedSettings);
+      const savedSerialized = serializeBoardSettings(syncedDraft);
+      const currentSerialized = serializeBoardSettings(draftRef.current);
+
+      lastSavedSnapshotRef.current = savedSerialized;
+
+      if (currentSerialized === serializedDraft) {
+        setDraft(syncedDraft);
+        draftRef.current = syncedDraft;
+        setSaveTone("success");
+        setSaveMessage("All changes saved.");
+      } else {
+        shouldSaveAgainRef.current = true;
+        setSaveTone("neutral");
+        setSaveMessage("Saving changes...");
+      }
+    } catch {
+      setSaveTone("warn");
+      setSaveMessage("Unable to save settings.");
+    } finally {
+      isSavingRef.current = false;
+
+      if (shouldSaveAgainRef.current) {
+        shouldSaveAgainRef.current = false;
+        void runAutoSave();
+      }
+    }
+  });
+
+  useEffect(() => {
     if (!draft) {
       return;
     }
 
-    await onSave(draft);
-  }
+    const serializedDraft = serializeBoardSettings(draft);
+
+    if (!serializedDraft || serializedDraft === lastSavedSnapshotRef.current) {
+      return;
+    }
+
+    saveTimerRef.current = window.setTimeout(() => {
+      void runAutoSave();
+    }, AUTO_SAVE_DELAY_MS);
+
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
+  }, [draft]);
+
+  useEffect(
+    () => () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    },
+    []
+  );
 
   function handleLabelChange(stage: MatterStage, value: string) {
     setDraft((current) =>
@@ -67,7 +167,7 @@ export function SettingsPanel({
 
   return (
     <section className="settings-panel">
-      <form className="stack" onSubmit={handleSubmit}>
+      <div className="stack">
         <div className="section-heading">
           <h2>Board Settings</h2>
           <p>Adjust the board layout and rename the visible stage columns.</p>
@@ -92,6 +192,7 @@ export function SettingsPanel({
               <span>Columns per row</span>
               <select
                 value={draft?.columnCount ?? 5}
+                disabled={!draft}
                 onChange={(event) =>
                   setDraft((current) =>
                     current
@@ -121,6 +222,7 @@ export function SettingsPanel({
                 <span>{getStageLabel(stage)}</span>
                 <input
                   value={draft?.stageLabels[stage] ?? ""}
+                  disabled={!draft}
                   onChange={(event) => handleLabelChange(stage, event.target.value)}
                 />
               </label>
@@ -140,13 +242,12 @@ export function SettingsPanel({
           </div>
         </div>
 
-        <div className="button-row">
-          <button type="submit" className="button" disabled={!draft || isSaving}>
-            {isSaving ? "Saving..." : "Save Settings"}
-          </button>
-          {saveMessage ? <StatusPill tone="success">{saveMessage}</StatusPill> : null}
-        </div>
-      </form>
+        {draft ? (
+          <div className="button-row" aria-live="polite">
+            <StatusPill tone={saveTone}>{saveMessage}</StatusPill>
+          </div>
+        ) : null}
+      </div>
 
       <div className="section-heading">
         <h2>Environment</h2>

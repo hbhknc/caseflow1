@@ -682,6 +682,10 @@ export function BoardPage() {
             setBoards((current) =>
               current.map((board) => (board.id === savedBoard.id ? savedBoard : board))
             );
+            return {
+              columnCount: savedBoard.columnCount,
+              stageLabels: savedBoard.stageLabels
+            };
           }}
           onClose={() => {
             setIsSettingsOpen(false);

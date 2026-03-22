@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { Drawer } from "@/components/Drawer";
 import { EmptyState } from "@/components/EmptyState";
+import { StatusPill } from "@/components/StatusPill";
 import { NotesTimeline } from "@/features/notes/components/NotesTimeline";
 import { formatDateTime } from "@/lib/dates";
 import { ARCHIVE_READY_STAGE, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
@@ -14,11 +15,13 @@ type MatterDrawerProps = {
   stageLabels?: Partial<Record<MatterStage, string>>;
   onClose: () => void;
   onCreateMatter: (input: MatterFormInput) => Promise<void>;
-  onUpdateMatter: (matterId: string, input: MatterFormInput) => Promise<void>;
+  onUpdateMatter: (matterId: string, input: MatterFormInput) => Promise<Matter>;
   onDeleteMatter: (matterId: string) => Promise<void>;
   onArchiveMatter: (matterId: string) => Promise<void>;
   onAddNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
 };
+
+const AUTO_SAVE_DELAY_MS = 500;
 
 function buildInitialState(matter: Matter | null, defaultBoardId: string): MatterFormInput {
   if (!matter) {
@@ -40,6 +43,16 @@ function buildInitialState(matter: Matter | null, defaultBoardId: string): Matte
   };
 }
 
+function serializeMatterInput(input: MatterFormInput): string {
+  return JSON.stringify(input);
+}
+
+function isMatterInputComplete(input: MatterFormInput): boolean {
+  return Boolean(
+    input.decedentName.trim() && input.clientName.trim() && input.fileNumber.trim()
+  );
+}
+
 export function MatterDrawer({
   matter,
   notes,
@@ -58,18 +71,42 @@ export function MatterDrawer({
   );
   const [noteBody, setNoteBody] = useState("");
   const [addNoteToTaskList, setAddNoteToTaskList] = useState(false);
+  const [saveTone, setSaveTone] = useState<"neutral" | "success" | "warn">("neutral");
+  const [saveMessage, setSaveMessage] = useState(
+    isCreateMode ? "Create the matter to save it." : "Changes save automatically."
+  );
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const draftRef = useRef(draft);
+  const saveTimerRef = useRef<number | null>(null);
+  const isSavingRef = useRef(false);
+  const shouldSaveAgainRef = useRef(false);
+  const lastSavedSnapshotRef = useRef(
+    serializeMatterInput(buildInitialState(matter, defaultBoardId))
+  );
   const resolvedStageLabels = createStageLabelMap(stageLabels);
+  const matterId = matter?.id ?? null;
 
   useEffect(() => {
-    setDraft(buildInitialState(matter, defaultBoardId));
+    draftRef.current = draft;
+  }, [draft]);
+
+  useEffect(() => {
+    const nextDraft = buildInitialState(matter, defaultBoardId);
+    setDraft(nextDraft);
+    draftRef.current = nextDraft;
+    lastSavedSnapshotRef.current = serializeMatterInput(nextDraft);
+    setSaveTone("neutral");
+    setSaveMessage(isCreateMode ? "Create the matter to save it." : "Changes save automatically.");
+  }, [matterId, isCreateMode, defaultBoardId]);
+
+  useEffect(() => {
     setNoteBody("");
     setAddNoteToTaskList(false);
-  }, [matter, isCreateMode, defaultBoardId]);
+  }, [matterId, isCreateMode]);
 
   useEffect(() => {
     closeButtonRef.current?.focus();
-  }, [matter, isCreateMode]);
+  }, [matterId, isCreateMode]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -82,6 +119,32 @@ export function MatterDrawer({
 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    if (!matter || isCreateMode) {
+      return;
+    }
+
+    const nextDraft = buildInitialState(matter, defaultBoardId);
+    const incomingSerialized = serializeMatterInput(nextDraft);
+    const currentSerialized = serializeMatterInput(draftRef.current);
+    const shouldSyncDraft = currentSerialized === lastSavedSnapshotRef.current;
+
+    lastSavedSnapshotRef.current = incomingSerialized;
+
+    if (shouldSyncDraft && currentSerialized !== incomingSerialized) {
+      setDraft(nextDraft);
+      draftRef.current = nextDraft;
+    }
+  }, [
+    defaultBoardId,
+    isCreateMode,
+    matter?.boardId,
+    matter?.clientName,
+    matter?.decedentName,
+    matter?.fileNumber,
+    matter?.stage
+  ]);
 
   const panelTitle = useMemo(() => {
     if (isCreateMode) {
@@ -128,21 +191,14 @@ export function MatterDrawer({
     );
   }
 
-  const submitLabel = isCreateMode ? "Create matter" : "Save changes";
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (isCreateMode) {
-      await onCreateMatter(draft);
+    if (!isCreateMode) {
       return;
     }
 
-    if (!matter) {
-      return;
-    }
-
-    await onUpdateMatter(matter.id, draft);
+    await onCreateMatter(draft);
   }
 
   async function handleDelete() {
@@ -180,6 +236,105 @@ export function MatterDrawer({
     setNoteBody("");
     setAddNoteToTaskList(false);
   }
+
+  const runAutoSave = useEffectEvent(async () => {
+    if (isCreateMode || !matter) {
+      return;
+    }
+
+    const nextDraft = draftRef.current;
+    const serializedDraft = serializeMatterInput(nextDraft);
+
+    if (serializedDraft === lastSavedSnapshotRef.current) {
+      return;
+    }
+
+    if (!isMatterInputComplete(nextDraft)) {
+      setSaveTone("warn");
+      setSaveMessage("Complete all case fields to save.");
+      return;
+    }
+
+    if (isSavingRef.current) {
+      shouldSaveAgainRef.current = true;
+      return;
+    }
+
+    isSavingRef.current = true;
+    setSaveTone("neutral");
+    setSaveMessage("Saving changes...");
+
+    try {
+      const savedMatter = await onUpdateMatter(matter.id, nextDraft);
+      const syncedDraft = buildInitialState(savedMatter, savedMatter.boardId);
+      const savedSerialized = serializeMatterInput(syncedDraft);
+      const currentSerialized = serializeMatterInput(draftRef.current);
+
+      lastSavedSnapshotRef.current = savedSerialized;
+
+      if (currentSerialized === serializedDraft) {
+        setDraft(syncedDraft);
+        draftRef.current = syncedDraft;
+        setSaveTone("success");
+        setSaveMessage("All changes saved.");
+      } else if (!isMatterInputComplete(draftRef.current)) {
+        setSaveTone("warn");
+        setSaveMessage("Complete all case fields to save.");
+      } else {
+        shouldSaveAgainRef.current = true;
+        setSaveTone("neutral");
+        setSaveMessage("Saving changes...");
+      }
+    } catch {
+      setSaveTone("warn");
+      setSaveMessage("Unable to save changes.");
+    } finally {
+      isSavingRef.current = false;
+
+      if (shouldSaveAgainRef.current) {
+        shouldSaveAgainRef.current = false;
+        void runAutoSave();
+      }
+    }
+  });
+
+  useEffect(() => {
+    if (isCreateMode || !matter) {
+      return;
+    }
+
+    const serializedDraft = serializeMatterInput(draft);
+
+    if (serializedDraft === lastSavedSnapshotRef.current) {
+      return;
+    }
+
+    if (!isMatterInputComplete(draft)) {
+      setSaveTone("warn");
+      setSaveMessage("Complete all case fields to save.");
+      return;
+    }
+
+    saveTimerRef.current = window.setTimeout(() => {
+      void runAutoSave();
+    }, AUTO_SAVE_DELAY_MS);
+
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
+  }, [draft, isCreateMode, matterId]);
+
+  useEffect(
+    () => () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    },
+    []
+  );
 
   return (
     <div className="drawer-overlay" role="presentation" onClick={onClose}>
@@ -307,9 +462,15 @@ export function MatterDrawer({
                   ) : null}
                 </div>
                 <div className="button-row matter-drawer__action-group matter-drawer__action-group--primary">
-                  <button type="submit" className="button">
-                    {submitLabel}
-                  </button>
+                  {isCreateMode ? (
+                    <button type="submit" className="button">
+                      Create matter
+                    </button>
+                  ) : (
+                    <div aria-live="polite">
+                      <StatusPill tone={saveTone}>{saveMessage}</StatusPill>
+                    </div>
+                  )}
                 </div>
               </div>
             </form>
