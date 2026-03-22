@@ -94,7 +94,7 @@ export function StatsModal({ stats, error, onClose }: StatsModalProps) {
       >
         <Drawer
           title="Stats"
-          subtitle="Simple matter volume and lifecycle summary for the current dataset."
+          subtitle="Annual and monthly matter summary for the current dataset."
           actions={
             <button
               ref={closeButtonRef}
@@ -117,43 +117,36 @@ export function StatsModal({ stats, error, onClose }: StatsModalProps) {
                   <p>Overall case volume, closure pace, and annual averages.</p>
                 </div>
 
-                <div className="stats-kpi-grid">
+                <div className="stats-kpi-grid stats-kpi-grid--annual">
                   <article className="stats-kpi-card">
-                    <span>Total Cases Opened</span>
+                    <span>Total Opened</span>
                     <strong>{stats.totalCasesOpened}</strong>
-                    <small>All matters currently recorded in this board.</small>
                   </article>
                   <article className="stats-kpi-card">
-                    <span>Total Cases Archived</span>
+                    <span>Total Archived</span>
                     <strong>{stats.totalCasesArchived}</strong>
-                    <small>Completed matters moved off the active board.</small>
                   </article>
                   <article className="stats-kpi-card">
-                    <span>Average Opened Per Year</span>
+                    <span>Opened / Year</span>
                     <strong>{formatAverage(stats.averageCasesOpenedPerYear)}</strong>
-                    <small>Based on the full case history in this dataset.</small>
                   </article>
                   <article className="stats-kpi-card">
-                    <span>Average Archived Per Year</span>
+                    <span>Archived / Year</span>
                     <strong>{formatAverage(stats.averageCasesArchivedPerYear)}</strong>
-                    <small>Annualized closure pace across recorded matters.</small>
                   </article>
-                </div>
-
-                <dl className="stats-list">
-                  <div className="stats-row">
-                    <dt>Archive rate</dt>
-                    <dd>{archiveRate === null ? "N/A" : `${archiveRate}%`}</dd>
-                  </div>
-                  <div className="stats-row">
-                    <dt>Average case length</dt>
-                    <dd>
+                  <article className="stats-kpi-card">
+                    <span>Archive Rate</span>
+                    <strong>{archiveRate === null ? "N/A" : `${archiveRate}%`}</strong>
+                  </article>
+                  <article className="stats-kpi-card">
+                    <span>Avg Case Length</span>
+                    <strong>
                       {stats.averageCaseLengthDays === null
                         ? "N/A"
-                        : `${stats.averageCaseLengthDays} days`}
-                    </dd>
-                  </div>
-                </dl>
+                        : `${stats.averageCaseLengthDays}d`}
+                    </strong>
+                  </article>
+                </div>
               </section>
 
               <section className="stats-section stats-chart-panel" aria-labelledby="stats-opened-by-month">
@@ -162,26 +155,26 @@ export function StatsModal({ stats, error, onClose }: StatsModalProps) {
                   <p>Opened matters for {chartRangeLabel}.</p>
                 </div>
 
-                <div className="stats-kpi-grid">
+                <div className="stats-kpi-grid stats-kpi-grid--monthly">
                   <article className="stats-kpi-card">
                     <span>This Month</span>
                     <strong>{currentMonthStat?.openedCount ?? 0}</strong>
                     <small>
-                      {currentMonthStat ? formatMonthRange(currentMonthStat.monthStart) : "Current month"}
+                      {currentMonthStat
+                        ? formatMonthRange(currentMonthStat.monthStart)
+                        : "Current month"}
                     </small>
                   </article>
                   <article className="stats-kpi-card">
-                    <span>Opened Last 12 Months</span>
+                    <span>Last 12 Months</span>
                     <strong>{openedCasesLast12Months}</strong>
-                    <small>Total matters added across the visible monthly range.</small>
                   </article>
                   <article className="stats-kpi-card">
-                    <span>Average Opened Per Month</span>
+                    <span>Avg / Month</span>
                     <strong>{formatAverage(averageOpenedPerMonth)}</strong>
-                    <small>Monthly average across the last 12 months.</small>
                   </article>
                   <article className="stats-kpi-card">
-                    <span>Busiest Intake Month</span>
+                    <span>Busiest Month</span>
                     <strong>{busiestMonthStat?.openedCount ?? 0}</strong>
                     <small>
                       {busiestMonthStat
