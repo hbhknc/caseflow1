@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS practice_boards (
 );
 
 INSERT OR IGNORE INTO accounts (id, username, created_at, updated_at)
-VALUES ('account_hbhklaw', 'hbhklaw', '2026-03-18T12:00:00.000Z', '2026-03-18T12:00:00.000Z');
+VALUES ('account_default', 'caseflow', '2026-03-18T12:00:00.000Z', '2026-03-18T12:00:00.000Z');
 
 INSERT OR IGNORE INTO practice_boards (
   id,
@@ -30,7 +30,7 @@ INSERT OR IGNORE INTO practice_boards (
 )
 VALUES (
   'probate',
-  'account_hbhklaw',
+  'account_default',
   'Probate',
   COALESCE((SELECT CAST(value AS INTEGER) FROM app_settings WHERE key = 'board.column_count'), 5),
   json_object(

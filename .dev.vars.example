@@ -1,7 +1,7 @@
 APP_NAME=CaseFlow
 CLOUDFLARE_ACCESS_DOMAIN=https://your-team.cloudflareaccess.com
 CLOUDFLARE_ACCESS_AUD=replace-with-your-access-application-aud
-CASEFLOW_ACCOUNT_ID=account_hbhklaw
+CASEFLOW_ACCOUNT_ID=account_default
 ACCESS_DEV_BYPASS=true
 ACCESS_DEV_USER_EMAIL=developer@caseflow.local
 ACCESS_DEV_USER_NAME=CaseFlow Developer

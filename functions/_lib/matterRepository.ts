@@ -1,6 +1,5 @@
 import { ARCHIVE_READY_STAGE, DEFAULT_STAGE_LABELS, STAGES, isMatterStage } from "./stages";
 import type {
-  AccountRecord,
   AuthenticatedUser,
   AppSettingRecord,
   BoardSettings,
@@ -47,6 +46,10 @@ const DEFAULT_BOARDS: PracticeBoard[] = [
     stageLabels: { ...DEFAULT_BOARD_SETTINGS.stageLabels }
   }
 ];
+
+const DEFAULT_SHARED_ACCOUNT_ID = "account_default";
+const DEFAULT_SHARED_ACCOUNT_USERNAME = "caseflow";
+const LEGACY_SHARED_ACCOUNT_ID = "account_hbhklaw";
 
 function buildDefaultBoards(settings: BoardSettings = DEFAULT_BOARD_SETTINGS): PracticeBoard[] {
   return [
@@ -844,7 +847,31 @@ async function ensureDefaultAccountData(db: D1Database) {
       `INSERT OR IGNORE INTO accounts (id, username, created_at, updated_at)
        VALUES (?1, ?2, ?3, ?3)`
     )
-    .bind("account_hbhklaw", "hbhklaw", timestamp)
+    .bind(DEFAULT_SHARED_ACCOUNT_ID, DEFAULT_SHARED_ACCOUNT_USERNAME, timestamp)
+    .run();
+
+  await db
+    .prepare(
+      `UPDATE practice_boards
+       SET account_id = ?1
+       WHERE account_id = ?2`
+    )
+    .bind(DEFAULT_SHARED_ACCOUNT_ID, LEGACY_SHARED_ACCOUNT_ID)
+    .run();
+
+  await db
+    .prepare(
+      `UPDATE accounts
+       SET username = ?2,
+           updated_at = ?3
+       WHERE id = ?1`
+    )
+    .bind(DEFAULT_SHARED_ACCOUNT_ID, DEFAULT_SHARED_ACCOUNT_USERNAME, timestamp)
+    .run();
+
+  await db
+    .prepare("DELETE FROM accounts WHERE id = ?1")
+    .bind(LEGACY_SHARED_ACCOUNT_ID)
     .run();
 
   const defaultBoardSettings = await getBoardSettings(db);
@@ -856,7 +883,7 @@ async function ensureDefaultAccountData(db: D1Database) {
     )
     .bind(
       "probate",
-      "account_hbhklaw",
+      DEFAULT_SHARED_ACCOUNT_ID,
       "Probate",
       defaultBoardSettings.columnCount,
       JSON.stringify(defaultBoardSettings.stageLabels),
@@ -881,18 +908,6 @@ export async function getBoardSettings(db: D1Database): Promise<BoardSettings> {
     columnCount: clampColumnCount(settings.get("board.column_count")),
     stageLabels
   };
-}
-
-export async function getAccountByUsername(db: D1Database, username: string) {
-  await ensureDefaultAccountData(db);
-  return await db
-    .prepare(
-      `SELECT id, username, created_at, updated_at
-       FROM accounts
-       WHERE username = ?1`
-    )
-    .bind(username)
-    .first<AccountRecord>();
 }
 
 export async function listBoards(db: D1Database, accountId: string): Promise<PracticeBoard[]> {

@@ -133,7 +133,7 @@ This repository already scopes data through an `accounts` table. The Cloudflare 
 
 By default, the shared scope is:
 
-- `CASEFLOW_ACCOUNT_ID=account_hbhklaw`
+- `CASEFLOW_ACCOUNT_ID=account_default`
 
 If you need multi-account or per-user tenancy later, add a mapping from Access identity to `accounts.id`.
 
@@ -258,7 +258,7 @@ Also configure:
 - `APP_NAME=CaseFlow`
 - `CLOUDFLARE_ACCESS_DOMAIN=https://your-team.cloudflareaccess.com`
 - `CLOUDFLARE_ACCESS_AUD=<your-access-application-audience>`
-- `CASEFLOW_ACCOUNT_ID=account_hbhklaw`
+- `CASEFLOW_ACCOUNT_ID=account_default`
 
 Production and preview environments should leave `ACCESS_DEV_BYPASS` disabled.
 

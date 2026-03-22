@@ -1,7 +1,7 @@
 import { unauthorized } from "./http";
 import type { Env, RequestAuthState, RequestContextData } from "./types";
 
-const DEFAULT_ACCOUNT_ID = "account_hbhklaw";
+const DEFAULT_ACCOUNT_ID = "account_default";
 const DEFAULT_DEV_USER_EMAIL = "developer@caseflow.local";
 const DEFAULT_DEV_USER_NAME = "CaseFlow Developer";
 
