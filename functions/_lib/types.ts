@@ -65,8 +65,6 @@ export type MatterRecord = {
   decedent_name: string;
   client_name: string;
   file_number: string;
-  inventory_due_date: string | null;
-  ntc_expiration_date: string | null;
   stage: MatterStage;
   sort_order: number;
   created_at: string;
@@ -125,8 +123,6 @@ export type MatterInput = {
   decedentName: string;
   clientName: string;
   fileNumber: string;
-  inventoryDueDate: string | null;
-  ntcExpirationDate: string | null;
   stage: MatterStage;
 };
 

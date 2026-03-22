@@ -71,8 +71,6 @@ function mapMatter(row: MatterRecord) {
     decedentName: row.decedent_name,
     clientName: row.client_name,
     fileNumber: row.file_number,
-    inventoryDueDate: row.inventory_due_date,
-    ntcExpirationDate: row.ntc_expiration_date,
     stage: row.stage,
     sortOrder: Number(row.sort_order ?? 0),
     createdAt: row.created_at,
@@ -82,28 +80,6 @@ function mapMatter(row: MatterRecord) {
     archived: Boolean(row.archived),
     archivedAt: row.archived_at
   };
-}
-
-const MATTER_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-function normalizeOptionalMatterDate(value: string | null | undefined, label: string) {
-  const trimmed = value?.trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
-  if (!MATTER_DATE_PATTERN.test(trimmed)) {
-    throw new Error(`${label} must be a valid date.`);
-  }
-
-  const parsed = new Date(`${trimmed}T00:00:00.000Z`);
-
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== trimmed) {
-    throw new Error(`${label} must be a valid date.`);
-  }
-
-  return trimmed;
 }
 
 function mapPracticeBoard(row: PracticeBoardRecord): PracticeBoard {
@@ -161,14 +137,6 @@ function assertMatterInput(input: Partial<MatterInput>): MatterInput {
     decedentName: input.decedentName.trim(),
     clientName: input.clientName.trim(),
     fileNumber: input.fileNumber.trim(),
-    inventoryDueDate: normalizeOptionalMatterDate(
-      input.inventoryDueDate,
-      "Inventory due date"
-    ),
-    ntcExpirationDate: normalizeOptionalMatterDate(
-      input.ntcExpirationDate,
-      "NTC expiration date"
-    ),
     stage: input.stage
   };
 }
@@ -301,8 +269,6 @@ async function insertMatterRecord(
     decedentName: string;
     clientName: string;
     fileNumber: string;
-    inventoryDueDate: string | null;
-    ntcExpirationDate: string | null;
     stage: MatterStage;
     sortOrder: number;
     createdAt: string;
@@ -323,8 +289,6 @@ async function insertMatterRecord(
         decedent_name,
         client_name,
         file_number,
-        inventory_due_date,
-        ntc_expiration_date,
         stage,
         sort_order,
         created_at,
@@ -336,7 +300,7 @@ async function insertMatterRecord(
         last_activity_at,
         archived,
         archived_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?11, ?12, ?14, 0, NULL)`
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?9, ?10, ?12, 0, NULL)`
     )
     .bind(
       matterId,
@@ -344,8 +308,6 @@ async function insertMatterRecord(
       input.decedentName,
       input.clientName,
       input.fileNumber,
-      input.inventoryDueDate,
-      input.ntcExpirationDate,
       input.stage,
       input.sortOrder,
       input.createdAt,
@@ -582,27 +544,6 @@ async function tableHasColumn(db: D1Database, tableName: string, columnName: str
   return results.some((column) => column.name === columnName);
 }
 
-async function ensureTableColumn(
-  db: D1Database,
-  tableName: string,
-  columnName: string,
-  alterStatement: string
-) {
-  if (await tableHasColumn(db, tableName, columnName)) {
-    return;
-  }
-
-  try {
-    await db.prepare(alterStatement).run();
-  } catch (error) {
-    if (await tableHasColumn(db, tableName, columnName)) {
-      return;
-    }
-
-    throw error;
-  }
-}
-
 async function ensureBaseSchema(db: D1Database) {
   await db.prepare("PRAGMA foreign_keys = ON").run();
 
@@ -614,8 +555,6 @@ async function ensureBaseSchema(db: D1Database) {
         decedent_name TEXT NOT NULL,
         client_name TEXT NOT NULL,
         file_number TEXT NOT NULL UNIQUE,
-        inventory_due_date TEXT,
-        ntc_expiration_date TEXT,
         stage TEXT NOT NULL CHECK (
           stage IN (
             'intake',
@@ -664,22 +603,6 @@ async function ensureBaseSchema(db: D1Database) {
       )
       .run();
   }
-
-  await ensureTableColumn(
-    db,
-    "matters",
-    "inventory_due_date",
-    `ALTER TABLE matters
-     ADD COLUMN inventory_due_date TEXT`
-  );
-
-  await ensureTableColumn(
-    db,
-    "matters",
-    "ntc_expiration_date",
-    `ALTER TABLE matters
-     ADD COLUMN ntc_expiration_date TEXT`
-  );
 
   if (!(await tableHasColumn(db, "matters", "created_by_email"))) {
     await db
@@ -1355,8 +1278,6 @@ export async function createMatter(
     decedentName: input.decedentName,
     clientName: input.clientName,
     fileNumber: input.fileNumber,
-    inventoryDueDate: input.inventoryDueDate,
-    ntcExpirationDate: input.ntcExpirationDate,
     stage: input.stage,
     sortOrder,
     createdAt: timestamp,
@@ -1482,8 +1403,6 @@ export async function importMatters(
       sortOrder: nextSortOrder,
       createdAt,
       lastActivityAt,
-      inventoryDueDate: null,
-      ntcExpirationDate: null,
       actor,
       auditAction: "matter.imported",
       auditDetails: {
@@ -1524,8 +1443,6 @@ export async function updateMatter(
     decedentName: payload.decedentName ?? existing.decedent_name,
     clientName: payload.clientName ?? existing.client_name,
     fileNumber: payload.fileNumber ?? existing.file_number,
-    inventoryDueDate: payload.inventoryDueDate ?? existing.inventory_due_date,
-    ntcExpirationDate: payload.ntcExpirationDate ?? existing.ntc_expiration_date,
     stage: payload.stage ?? existing.stage
   });
   const board = await getPracticeBoardRecord(db, input.boardId, accountId);
@@ -1546,15 +1463,13 @@ export async function updateMatter(
        SET decedent_name = ?2,
            client_name = ?3,
            file_number = ?4,
-           inventory_due_date = ?5,
-           ntc_expiration_date = ?6,
-           stage = ?7,
-           board_id = ?8,
-           sort_order = ?9,
-           updated_at = ?10,
-           last_updated_by_email = ?11,
-           last_updated_by_id = ?12,
-           last_activity_at = CASE WHEN ?13 = 1 THEN ?10 ELSE last_activity_at END
+           stage = ?5,
+           board_id = ?6,
+           sort_order = ?7,
+           updated_at = ?8,
+           last_updated_by_email = ?9,
+           last_updated_by_id = ?10,
+           last_activity_at = CASE WHEN ?11 = 1 THEN ?8 ELSE last_activity_at END
        WHERE id = ?1`
     )
     .bind(
@@ -1562,8 +1477,6 @@ export async function updateMatter(
       input.decedentName,
       input.clientName,
       input.fileNumber,
-      input.inventoryDueDate,
-      input.ntcExpirationDate,
       input.stage,
       input.boardId,
       nextSortOrder,

@@ -11,8 +11,6 @@ export type Matter = {
   decedentName: string;
   clientName: string;
   fileNumber: string;
-  inventoryDueDate: string | null;
-  ntcExpirationDate: string | null;
   stage: MatterStage;
   sortOrder: number;
   createdAt: string;
@@ -56,8 +54,6 @@ export type MatterFormInput = {
   decedentName: string;
   clientName: string;
   fileNumber: string;
-  inventoryDueDate: string;
-  ntcExpirationDate: string;
   stage: MatterStage;
 };
 
