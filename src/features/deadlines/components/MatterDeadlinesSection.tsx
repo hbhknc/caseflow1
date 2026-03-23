@@ -247,9 +247,11 @@ export function MatterDeadlinesSection({
       lastSavedSnapshotRef.current = serializeSettingsDraft(draftRef.current);
       setSaveTone("success");
       setSaveMessage("Deadline settings saved.");
-    } catch {
+    } catch (error) {
       setSaveTone("warn");
-      setSaveMessage("Unable to save deadline settings.");
+      setSaveMessage(
+        error instanceof Error ? error.message : "Unable to save deadline settings."
+      );
     } finally {
       isSavingRef.current = false;
 

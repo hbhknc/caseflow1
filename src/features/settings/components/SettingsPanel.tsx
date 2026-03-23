@@ -9,7 +9,7 @@ import type {
   DeadlineTemplateSettings
 } from "@/types/deadlines";
 import type { MatterStage } from "@/types/matter";
-import { STAGES, getStageLabel } from "@/utils/stages";
+import { STAGES } from "@/utils/stages";
 
 type SettingsPanelProps = {
   status: AppStatus | null;
@@ -61,6 +61,10 @@ function buildDraft(
 
 function serializeDraft(draft: SettingsDraft | null) {
   return draft ? JSON.stringify(draft) : null;
+}
+
+function getStageFieldLabel(index: number) {
+  return `Stage ${index + 1}`;
 }
 
 export function SettingsPanel({
@@ -300,9 +304,9 @@ export function SettingsPanel({
           </div>
 
           <div className="settings-stage-grid">
-            {STAGES.map((stage) => (
+            {STAGES.map((stage, index) => (
               <label key={stage} className="field">
-                <span>{getStageLabel(stage)}</span>
+                <span>{getStageFieldLabel(index)}</span>
                 <input
                   value={draft?.boardSettings?.stageLabels[stage] ?? ""}
                   disabled={!draft?.boardSettings}

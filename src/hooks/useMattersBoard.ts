@@ -486,16 +486,25 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     matterId: string,
     input: MatterDeadlineSettingsInput
   ) {
-    const response = await saveMatterDeadlineSettingsApi(matterId, input);
-    applyMatterUpdate(response.matter);
-    setSelectedMatterId(response.matter.id);
-    setSelectedMatterDeadlineSettings(response.settings);
-    setSelectedMatterDeadlines(response.deadlines);
-    setSelectedMatterDeadlineAnchorIssues(response.anchorIssues);
-    setDeadlineError(null);
+    try {
+      const response = await saveMatterDeadlineSettingsApi(matterId, input);
+      applyMatterUpdate(response.matter);
+      setSelectedMatterId(response.matter.id);
+      setSelectedMatterDeadlineSettings(response.settings);
+      setSelectedMatterDeadlines(response.deadlines);
+      setSelectedMatterDeadlineAnchorIssues(response.anchorIssues);
+      setDeadlineError(null);
 
-    if (isDeadlinesOpen) {
-      await hydrateDeadlineDashboard();
+      if (isDeadlinesOpen) {
+        await hydrateDeadlineDashboard();
+      }
+    } catch (caughtError) {
+      setDeadlineError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to save deadline settings."
+      );
+      throw caughtError;
     }
   }
 
