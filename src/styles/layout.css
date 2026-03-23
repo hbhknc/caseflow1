@@ -1373,7 +1373,26 @@
   }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1200px) {
+  .app-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .app-shell--sidebar-collapsed {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+
+  .board-header-toolbar {
+    gap: var(--space-12);
+  }
+
+  .board-header-toolbar__center .search-field {
+    width: min(30rem, 100%);
+    min-width: min(22rem, 100%);
+  }
+}
+
+@media (max-width: 900px) {
   body {
     min-width: 0;
   }
