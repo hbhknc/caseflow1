@@ -35,6 +35,7 @@ export type SettingsOverview = {
 export type MatterStatsMonth = {
   monthStart: string;
   openedCount: number;
+  archivedCount: number;
 };
 
 export type MatterStats = {

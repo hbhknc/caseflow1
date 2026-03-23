@@ -906,21 +906,7 @@ function formatUtcMonthKey(date: Date) {
   return `${date.getUTCFullYear()}-${month}`;
 }
 
-function buildOpenedCasesByMonthLast12Months(
-  timestamps: string[],
-  referenceDate = new Date()
-): MatterStatsMonth[] {
-  const currentMonth = new Date(
-    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1)
-  );
-  const months = Array.from({ length: 12 }, (_, index) => {
-    const offset = index - 11;
-    return new Date(
-      Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() + offset, 1)
-    );
-  });
-  const counts = new Map(months.map((month) => [formatUtcMonthKey(month), 0]));
-
+function incrementMonthlyCounts(timestamps: string[], counts: Map<string, number>) {
   for (const timestamp of timestamps) {
     const parsed = new Date(timestamp);
 
@@ -936,10 +922,34 @@ function buildOpenedCasesByMonthLast12Months(
       counts.set(monthKey, (counts.get(monthKey) ?? 0) + 1);
     }
   }
+}
+
+function buildMatterActivityByMonthLast12Months(
+  input: {
+    openedTimestamps: string[];
+    archivedTimestamps: string[];
+  },
+  referenceDate = new Date()
+): MatterStatsMonth[] {
+  const currentMonth = new Date(
+    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1)
+  );
+  const months = Array.from({ length: 12 }, (_, index) => {
+    const offset = index - 11;
+    return new Date(
+      Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() + offset, 1)
+    );
+  });
+  const openedCounts = new Map(months.map((month) => [formatUtcMonthKey(month), 0]));
+  const archivedCounts = new Map(months.map((month) => [formatUtcMonthKey(month), 0]));
+
+  incrementMonthlyCounts(input.openedTimestamps, openedCounts);
+  incrementMonthlyCounts(input.archivedTimestamps, archivedCounts);
 
   return months.map((month) => ({
     monthStart: month.toISOString(),
-    openedCount: counts.get(formatUtcMonthKey(month)) ?? 0
+    openedCount: openedCounts.get(formatUtcMonthKey(month)) ?? 0,
+    archivedCount: archivedCounts.get(formatUtcMonthKey(month)) ?? 0
   }));
 }
 
@@ -968,9 +978,10 @@ export async function getDemoMatterStats(boardId: string): Promise<MatterStats> 
       archivedMatters.map((matter) => matter.archivedAt ?? matter.createdAt)
     ),
     averageCaseLengthDays,
-    openedCasesByMonthLast12Months: buildOpenedCasesByMonthLast12Months(
-      boardMatters.map((matter) => matter.createdAt)
-    )
+    openedCasesByMonthLast12Months: buildMatterActivityByMonthLast12Months({
+      openedTimestamps: boardMatters.map((matter) => matter.createdAt),
+      archivedTimestamps: archivedMatters.map((matter) => matter.archivedAt ?? matter.createdAt)
+    })
   };
 }
 
