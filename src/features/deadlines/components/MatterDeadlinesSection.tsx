@@ -7,6 +7,7 @@ import {
   type DeadlineEditorValue
 } from "@/features/deadlines/components/DeadlineEditor";
 import { formatDateOnly } from "@/lib/dates";
+import { applyAnchorDateChangeToDeadlineSettingsDraft } from "@/lib/matterDeadlineSettings";
 import type {
   Deadline,
   DeadlineInput,
@@ -347,6 +348,22 @@ export function MatterDeadlinesSection({
     setEditingDeadlineId(null);
   }
 
+  function handleQualificationDateChange(value: string | null) {
+    setSettingsDraft((current) =>
+      applyAnchorDateChangeToDeadlineSettingsDraft(current, {
+        qualificationDate: value
+      })
+    );
+  }
+
+  function handlePublicationDateChange(value: string | null) {
+    setSettingsDraft((current) =>
+      applyAnchorDateChangeToDeadlineSettingsDraft(current, {
+        publicationDate: value
+      })
+    );
+  }
+
   function renderGroup(title: string, items: Deadline[]) {
     if (items.length === 0) {
       return null;
@@ -491,12 +508,7 @@ export function MatterDeadlinesSection({
           <input
             type="date"
             value={settingsDraft.qualificationDate ?? ""}
-            onChange={(event) =>
-              setSettingsDraft((current) => ({
-                ...current,
-                qualificationDate: event.target.value || null
-              }))
-            }
+            onChange={(event) => handleQualificationDateChange(event.target.value || null)}
           />
           {qualificationWarning ? (
             <small className="matter-deadlines__field-hint matter-deadlines__field-hint--warning">
@@ -509,12 +521,7 @@ export function MatterDeadlinesSection({
           <input
             type="date"
             value={settingsDraft.publicationDate ?? ""}
-            onChange={(event) =>
-              setSettingsDraft((current) => ({
-                ...current,
-                publicationDate: event.target.value || null
-              }))
-            }
+            onChange={(event) => handlePublicationDateChange(event.target.value || null)}
           />
           {publicationWarning ? (
             <small className="matter-deadlines__field-hint matter-deadlines__field-hint--warning">

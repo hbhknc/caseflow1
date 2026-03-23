@@ -8,6 +8,7 @@ import {
   normalizeOptionalDateOnly,
   reconcileGeneratedDeadlines
 } from "../../src/lib/deadlineRules";
+import { DEFAULT_NEW_MATTER_DEADLINE_TEMPLATE_KEY } from "../../src/lib/matterDeadlineSettings";
 import type {
   Deadline,
   DeadlineDashboardData,
@@ -716,6 +717,7 @@ async function insertMatterRecord(
         decedent_name,
         client_name,
         file_number,
+        deadline_template_key,
         stage,
         sort_order,
         created_at,
@@ -727,7 +729,7 @@ async function insertMatterRecord(
         last_activity_at,
         archived,
         archived_at
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?9, ?10, ?12, 0, NULL)`
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?10, ?11, ?13, 0, NULL)`
     )
     .bind(
       matterId,
@@ -735,6 +737,7 @@ async function insertMatterRecord(
       input.decedentName,
       input.clientName,
       input.fileNumber,
+      DEFAULT_NEW_MATTER_DEADLINE_TEMPLATE_KEY,
       input.stage,
       input.sortOrder,
       input.createdAt,

@@ -1,4 +1,5 @@
 import { DEFAULT_DEADLINE_TEMPLATE_SETTINGS } from "@/lib/deadlineRules";
+import { DEFAULT_NEW_MATTER_DEADLINE_TEMPLATE_KEY } from "@/lib/matterDeadlineSettings";
 import type { AppStatus, BoardSettings } from "@/types/api";
 import type {
   Deadline,
@@ -482,7 +483,7 @@ export function createDemoMatter(input: {
     decedentName: input.decedentName,
     clientName: input.clientName,
     fileNumber: input.fileNumber,
-    deadlineTemplateKey: "custom_manual_only",
+    deadlineTemplateKey: DEFAULT_NEW_MATTER_DEADLINE_TEMPLATE_KEY,
     qualificationDate: null,
     publicationDate: null,
     deadlineSummary: { ...emptyDeadlineSummary },
