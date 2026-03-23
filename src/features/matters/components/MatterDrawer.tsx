@@ -9,6 +9,7 @@ import { ARCHIVE_READY_STAGE, STAGES, createStageLabelMap, getStageLabel } from 
 import type {
   Deadline,
   DeadlineInput,
+  MatterAnchorAlert,
   DeadlineUpdateInput,
   MatterDeadlineSettings,
   MatterDeadlineSettingsInput
@@ -20,6 +21,7 @@ type MatterDrawerProps = {
   notes: MatterNote[];
   deadlines: Deadline[];
   deadlineSettings: MatterDeadlineSettings | null;
+  deadlineAnchorIssues: MatterAnchorAlert[];
   deadlineError: string | null;
   isCreateMode: boolean;
   defaultBoardId?: string;
@@ -77,6 +79,7 @@ export function MatterDrawer({
   notes,
   deadlines,
   deadlineSettings,
+  deadlineAnchorIssues,
   deadlineError,
   isCreateMode,
   defaultBoardId = "probate",
@@ -505,6 +508,7 @@ export function MatterDrawer({
                 matter={matter}
                 settings={deadlineSettings}
                 deadlines={deadlines}
+                anchorIssues={deadlineAnchorIssues}
                 error={deadlineError}
                 onSaveSettings={onSaveDeadlineSettings}
                 onCreateDeadline={onCreateDeadline}

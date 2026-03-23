@@ -1,5 +1,7 @@
 import {
+  buildMatterAnchorAlerts,
   buildMatterDeadlineSummary,
+  calculateDeadlineReminderState,
   calculateDeadlineStatus,
   DEFAULT_DEADLINE_TEMPLATE_SETTINGS,
   normalizeOptionalDateOnly,
@@ -20,6 +22,7 @@ import type { AppStatus, BoardSettings, MatterStats, MatterStatsMonth } from "@/
 import type {
   Deadline,
   DeadlineDashboardData,
+  MatterAnchorAlert,
   DeadlinePriority,
   DeadlineTemplateSettings,
   MatterDeadlineSettings
@@ -120,8 +123,26 @@ function hydrateDeadline(deadline: Deadline) {
 
   deadline.boardName = board?.name ?? deadline.boardName;
   deadline.status = calculateDeadlineStatus(deadline);
+  deadline.reminderState = calculateDeadlineReminderState(deadline);
 
   return deadline;
+}
+
+function buildMatterAnchorIssuesForMatter(matter: Matter): MatterAnchorAlert[] {
+  return buildMatterAnchorAlerts(
+    {
+      matterId: matter.id,
+      boardId: matter.boardId,
+      boardName: getBoardById(matter.boardId)?.name ?? null,
+      matterName: matter.decedentName,
+      clientName: matter.clientName,
+      fileNumber: matter.fileNumber,
+      templateKey: matter.deadlineTemplateKey,
+      qualificationDate: matter.qualificationDate,
+      publicationDate: matter.publicationDate
+    },
+    deadlineTemplateSettingsStore
+  );
 }
 
 function syncDeadlineMetadataForMatter(matter: Matter) {
@@ -156,7 +177,11 @@ function refreshMatterDeadlineSummary(matterId: string) {
     return;
   }
 
-  matter.deadlineSummary = buildMatterDeadlineSummary(listMatterDeadlinesInternal(matterId));
+  matter.deadlineSummary = buildMatterDeadlineSummary(
+    listMatterDeadlinesInternal(matterId),
+    new Date(),
+    buildMatterAnchorIssuesForMatter(matter)
+  );
 }
 
 function refreshAllMatterDeadlineSummaries() {
@@ -240,6 +265,7 @@ function syncGeneratedDeadlinesForMatter(matter: Matter, timestamp = new Date().
         dueDate: draft.dueDate,
         assignee: null,
         status: "upcoming",
+        reminderState: "none",
         priority: draft.priority,
         sourceType: "template",
         notes: null,
@@ -584,7 +610,8 @@ export async function getDemoMatterDeadlines(matterId: string) {
   return {
     matter: structuredClone(matter),
     settings: structuredClone(buildMatterDeadlineSettings(matter)),
-    deadlines: structuredClone(listMatterDeadlinesInternal(matterId))
+    deadlines: structuredClone(listMatterDeadlinesInternal(matterId)),
+    anchorIssues: structuredClone(buildMatterAnchorIssuesForMatter(matter))
   };
 }
 
@@ -617,6 +644,7 @@ export async function createDemoDeadlineRecord(input: {
     dueDate: input.dueDate,
     assignee: normalizeOptionalText(input.assignee),
     status: "upcoming",
+    reminderState: "none",
     priority: input.priority,
     sourceType: "manual",
     notes: normalizeOptionalText(input.notes),
@@ -793,7 +821,8 @@ export async function saveDemoMatterDeadlineSettings(
   return {
     matter: structuredClone(matter),
     settings: structuredClone(buildMatterDeadlineSettings(matter)),
-    deadlines: structuredClone(listMatterDeadlinesInternal(matter.id))
+    deadlines: structuredClone(listMatterDeadlinesInternal(matter.id)),
+    anchorIssues: structuredClone(buildMatterAnchorIssuesForMatter(matter))
   };
 }
 
@@ -803,6 +832,7 @@ export async function getDemoDeadlineDashboard(filters?: {
   status?: Deadline["status"] | "all";
 }): Promise<DeadlineDashboardData> {
   const allDeadlines = sortDeadlines(deadlineStore.map((deadline) => hydrateDeadline(deadline)));
+  const activeMatters = matterStore.filter((matter) => !matter.archived);
   const assigneeFilter = normalizeOptionalText(filters?.assignee);
   const matterIdFilter = filters?.matterId?.trim() || null;
   const statusFilter = filters?.status && filters.status !== "all" ? filters.status : "all";
@@ -830,6 +860,14 @@ export async function getDemoDeadlineDashboard(filters?: {
         return true;
       })
     ),
+    anchorIssues:
+      statusFilter === "all" || statusFilter === "upcoming"
+        ? structuredClone(
+            activeMatters
+              .flatMap((matter) => buildMatterAnchorIssuesForMatter(matter))
+              .filter((issue) => !matterIdFilter || issue.matterId === matterIdFilter)
+          )
+        : [],
     assignees: Array.from(
       new Set(
         allDeadlines
@@ -839,13 +877,13 @@ export async function getDemoDeadlineDashboard(filters?: {
     ).sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" })),
     matters: Array.from(
       new Map(
-        allDeadlines.map((deadline) => [
-          deadline.matterId,
+        activeMatters.map((matter) => [
+          matter.id,
           {
-            matterId: deadline.matterId,
-            boardId: deadline.boardId,
-            boardName: deadline.boardName,
-            label: `${deadline.matterName} | ${deadline.fileNumber}`
+            matterId: matter.id,
+            boardId: matter.boardId,
+            boardName: getBoardById(matter.boardId)?.name ?? null,
+            label: `${matter.decedentName} | ${matter.fileNumber}`
           }
         ])
       ).values()

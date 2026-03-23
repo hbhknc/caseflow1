@@ -1,5 +1,7 @@
 import {
   DEFAULT_DEADLINE_TEMPLATE_SETTINGS,
+  buildMatterAnchorAlerts,
+  calculateDeadlineReminderState,
   calculateDeadlineStatus,
   getTodayDateOnly,
   isValidDateOnly,
@@ -10,10 +12,12 @@ import type {
   Deadline,
   DeadlineDashboardData,
   DeadlinePriority,
+  DeadlineReminderState,
   DeadlineStatus,
   DeadlineTemplateItemConfig,
   DeadlineTemplateKey,
   DeadlineTemplateSettings,
+  MatterAnchorAlert,
   MatterDeadlineSettings,
   MatterDeadlineSummary
 } from "../../src/types/deadlines";
@@ -84,9 +88,12 @@ const EMPTY_DEADLINE_SUMMARY: MatterDeadlineSummary = {
   overdueCount: 0,
   dueTodayCount: 0,
   activeCount: 0,
+  urgentReminderCount: 0,
+  anchorAlertCount: 0,
   nextDeadlineTitle: null,
   nextDeadlineDueDate: null,
-  nextDeadlineStatus: null
+  nextDeadlineStatus: null,
+  nextReminderState: null
 };
 
 function buildDefaultBoards(settings: BoardSettings = DEFAULT_BOARD_SETTINGS): PracticeBoard[] {
@@ -165,13 +172,76 @@ function normalizeDeadlineTemplateSettings(
   };
 }
 
-function getMatterDeadlineSummary(row: MatterRecord): MatterDeadlineSummary {
+function buildMatterAnchorAlertContext(
+  row: Pick<
+    MatterRecord,
+    | "id"
+    | "board_id"
+    | "board_name"
+    | "decedent_name"
+    | "client_name"
+    | "file_number"
+    | "deadline_template_key"
+    | "qualification_date"
+    | "publication_date"
+  >
+) {
+  return {
+    matterId: row.id,
+    boardId: row.board_id,
+    boardName: row.board_name ?? null,
+    matterName: row.decedent_name,
+    clientName: row.client_name,
+    fileNumber: row.file_number,
+    templateKey: isDeadlineTemplateKey(row.deadline_template_key)
+      ? row.deadline_template_key
+      : "custom_manual_only",
+    qualificationDate: row.qualification_date ?? null,
+    publicationDate: row.publication_date ?? null
+  };
+}
+
+function getMatterAnchorIssues(
+  row: Pick<
+    MatterRecord,
+    | "id"
+    | "board_id"
+    | "board_name"
+    | "decedent_name"
+    | "client_name"
+    | "file_number"
+    | "deadline_template_key"
+    | "qualification_date"
+    | "publication_date"
+  >,
+  templateSettings: DeadlineTemplateSettings
+) {
+  return buildMatterAnchorAlerts(buildMatterAnchorAlertContext(row), templateSettings);
+}
+
+function getMatterDeadlineSummary(
+  row: MatterRecord,
+  templateSettings: DeadlineTemplateSettings = DEFAULT_DEADLINE_TEMPLATE_SETTINGS
+): MatterDeadlineSummary {
   const nextDeadlineDueDate = row.next_deadline_due_date ?? null;
+  const nextReminderState = nextDeadlineDueDate
+    ? calculateDeadlineReminderState({
+        dueDate: nextDeadlineDueDate,
+        completedAt: null,
+        dismissedAt: null
+      })
+    : "none";
+  const anchorIssues = getMatterAnchorIssues(row, templateSettings);
 
   return {
     overdueCount: Number(row.deadline_overdue_count ?? 0),
     dueTodayCount: Number(row.deadline_due_today_count ?? 0),
     activeCount: Number(row.deadline_active_count ?? 0),
+    urgentReminderCount:
+      Number(row.deadline_overdue_count ?? 0) +
+      Number(row.deadline_due_today_count ?? 0) +
+      Number(row.deadline_due_tomorrow_count ?? 0),
+    anchorAlertCount: anchorIssues.length,
     nextDeadlineTitle: row.next_deadline_title ?? null,
     nextDeadlineDueDate,
     nextDeadlineStatus: nextDeadlineDueDate
@@ -180,7 +250,11 @@ function getMatterDeadlineSummary(row: MatterRecord): MatterDeadlineSummary {
           completedAt: null,
           dismissedAt: null
         }) as "upcoming" | "due_today" | "overdue")
-      : null
+      : null,
+    nextReminderState:
+      nextReminderState !== "none"
+        ? (nextReminderState as Exclude<DeadlineReminderState, "none">)
+        : null
   };
 }
 
@@ -195,7 +269,10 @@ function mapMatterDeadlineSettings(row: MatterRecord): MatterDeadlineSettings {
   };
 }
 
-function mapMatter(row: MatterRecord) {
+function mapMatter(
+  row: MatterRecord,
+  templateSettings: DeadlineTemplateSettings = DEFAULT_DEADLINE_TEMPLATE_SETTINGS
+) {
   return {
     id: row.id,
     boardId: row.board_id,
@@ -207,7 +284,7 @@ function mapMatter(row: MatterRecord) {
       : "custom_manual_only",
     qualificationDate: row.qualification_date ?? null,
     publicationDate: row.publication_date ?? null,
-    deadlineSummary: getMatterDeadlineSummary(row),
+    deadlineSummary: getMatterDeadlineSummary(row, templateSettings),
     stage: row.stage,
     sortOrder: Number(row.sort_order ?? 0),
     createdAt: row.created_at,
@@ -217,6 +294,18 @@ function mapMatter(row: MatterRecord) {
     archived: Boolean(row.archived),
     archivedAt: row.archived_at
   };
+}
+
+async function mapMatterRecordWithTemplateSettings(db: D1Database, row: MatterRecord) {
+  return mapMatter(row, await getDeadlineTemplateSettings(db));
+}
+
+async function mapMatterRecordsWithTemplateSettings(
+  db: D1Database,
+  rows: MatterRecord[]
+) {
+  const templateSettings = await getDeadlineTemplateSettings(db);
+  return rows.map((row) => mapMatter(row, templateSettings));
 }
 
 function mapPracticeBoard(row: PracticeBoardRecord): PracticeBoard {
@@ -262,6 +351,11 @@ function mapDeadline(row: MatterDeadlineRecord): Deadline {
     dueDate: row.due_date,
     assignee: row.assignee,
     status: calculateDeadlineStatus({
+      dueDate: row.due_date,
+      completedAt: row.completed_at,
+      dismissedAt: row.dismissed_at
+    }),
+    reminderState: calculateDeadlineReminderState({
       dueDate: row.due_date,
       completedAt: row.completed_at,
       dismissedAt: row.dismissed_at
@@ -460,6 +554,14 @@ function getMatterDeadlineSummarySelect(currentDatePlaceholder: string) {
         AND matter_deadlines.dismissed_at IS NULL
         AND matter_deadlines.due_date = ${currentDatePlaceholder}
     ) AS deadline_due_today_count,
+    (
+      SELECT COUNT(*)
+      FROM matter_deadlines
+      WHERE matter_deadlines.matter_id = matters.id
+        AND matter_deadlines.completed_at IS NULL
+        AND matter_deadlines.dismissed_at IS NULL
+        AND matter_deadlines.due_date = DATE(${currentDatePlaceholder}, '+1 day')
+    ) AS deadline_due_tomorrow_count,
     (
       SELECT COUNT(*)
       FROM matter_deadlines
@@ -696,7 +798,7 @@ async function getMatterRecord(db: D1Database, matterId: string, accountId?: str
   if (!accountId) {
     return await db
       .prepare(
-        `SELECT matters.*, ${getMatterDeadlineSummarySelect("?2")}
+        `SELECT matters.*, NULL AS board_name, ${getMatterDeadlineSummarySelect("?2")}
          FROM matters
          WHERE matters.id = ?1`
       )
@@ -706,7 +808,7 @@ async function getMatterRecord(db: D1Database, matterId: string, accountId?: str
 
   return await db
     .prepare(
-      `SELECT matters.*, ${getMatterDeadlineSummarySelect("?3")}
+      `SELECT matters.*, practice_boards.name AS board_name, ${getMatterDeadlineSummarySelect("?3")}
        FROM matters
        INNER JOIN practice_boards ON practice_boards.id = matters.board_id
        WHERE matters.id = ?1
@@ -797,6 +899,26 @@ async function listAccountDeadlineRecords(db: D1Database, accountId: string) {
     )
     .bind(accountId)
     .all<MatterDeadlineRecord>();
+
+  return results;
+}
+
+async function listAccountMatterRecords(db: D1Database, accountId: string) {
+  await ensureDefaultAccountData(db);
+
+  const { results } = await db
+    .prepare(
+      `SELECT
+         matters.*,
+         practice_boards.name AS board_name,
+         ${getMatterDeadlineSummarySelect("?2")}
+       FROM matters
+       INNER JOIN practice_boards ON practice_boards.id = matters.board_id
+       WHERE practice_boards.account_id = ?1
+         AND matters.archived = 0`
+    )
+    .bind(accountId, getTodayDateOnly())
+    .all<MatterRecord>();
 
   return results;
 }
@@ -1926,6 +2048,7 @@ export async function listMatters(db: D1Database, accountId: string, boardId: st
     .prepare(
       `SELECT
          matters.*,
+         practice_boards.name AS board_name,
          COALESCE(
            (
              SELECT matter_stage_history.changed_at
@@ -1963,7 +2086,7 @@ export async function listMatters(db: D1Database, accountId: string, boardId: st
     .bind(boardId, accountId, today)
     .all<MatterRecord>();
 
-  return results.map(mapMatter);
+  return await mapMatterRecordsWithTemplateSettings(db, results);
 }
 
 export async function listArchivedMatters(
@@ -1978,6 +2101,7 @@ export async function listArchivedMatters(
     .prepare(
       `SELECT
          matters.*,
+         practice_boards.name AS board_name,
          COALESCE(
            (
              SELECT matter_stage_history.changed_at
@@ -2005,7 +2129,7 @@ export async function listArchivedMatters(
     .bind(boardId, accountId, today)
     .all<MatterRecord>();
 
-  return results.map(mapMatter);
+  return await mapMatterRecordsWithTemplateSettings(db, results);
 }
 
 export async function getMatterStats(
@@ -2089,7 +2213,7 @@ export async function createMatter(
     throw new Error("Matter was created but could not be reloaded.");
   }
 
-  return mapMatter(record);
+  return await mapMatterRecordWithTemplateSettings(db, record);
 }
 
 export async function importMatters(
@@ -2330,7 +2454,7 @@ export async function updateMatter(
   });
 
   const updated = await getMatterRecord(db, matterId);
-  return updated ? mapMatter(updated) : null;
+  return updated ? await mapMatterRecordWithTemplateSettings(db, updated) : null;
 }
 
 export async function moveMatterStage(
@@ -2414,7 +2538,7 @@ export async function moveMatterStage(
   });
 
   const updated = await getMatterRecord(db, matterId);
-  return updated ? mapMatter(updated) : null;
+  return updated ? await mapMatterRecordWithTemplateSettings(db, updated) : null;
 }
 
 export async function deleteMatter(
@@ -2490,7 +2614,7 @@ export async function archiveMatter(
   });
 
   const archived = await getMatterRecord(db, matterId);
-  return archived ? mapMatter(archived) : null;
+  return archived ? await mapMatterRecordWithTemplateSettings(db, archived) : null;
 }
 
 export async function unarchiveMatter(
@@ -2531,7 +2655,7 @@ export async function unarchiveMatter(
   });
 
   const matter = await getMatterRecord(db, matterId);
-  return matter ? mapMatter(matter) : null;
+  return matter ? await mapMatterRecordWithTemplateSettings(db, matter) : null;
 }
 
 export async function listNotes(db: D1Database, accountId: string, matterId: string) {
@@ -2737,12 +2861,17 @@ export async function getMatterDeadlines(
     return null;
   }
 
-  const deadlines = await listMatterDeadlineRecords(db, accountId, matterId);
+  const [deadlines, templateSettings] = await Promise.all([
+    listMatterDeadlineRecords(db, accountId, matterId),
+    getDeadlineTemplateSettings(db)
+  ]);
+  const anchorIssues = getMatterAnchorIssues(matter, templateSettings);
 
   return {
-    matter: mapMatter(matter),
+    matter: mapMatter(matter, templateSettings),
     settings: mapMatterDeadlineSettings(matter),
-    deadlines: deadlines.map(mapDeadline)
+    deadlines: deadlines.map(mapDeadline),
+    anchorIssues
   };
 }
 
@@ -2751,7 +2880,11 @@ export async function listDeadlineDashboard(
   accountId: string,
   query: MatterDeadlineDashboardQuery = {}
 ): Promise<DeadlineDashboardOverview> {
-  const records = await listAccountDeadlineRecords(db, accountId);
+  const [records, matterRecords, templateSettings] = await Promise.all([
+    listAccountDeadlineRecords(db, accountId),
+    listAccountMatterRecords(db, accountId),
+    getDeadlineTemplateSettings(db)
+  ]);
   const mappedDeadlines = records.map(mapDeadline);
   const assigneeFilter = normalizeOptionalText(query.assignee);
   const matterIdFilter = query.matterId?.trim() || null;
@@ -2783,20 +2916,28 @@ export async function listDeadlineDashboard(
 
   const matters = Array.from(
     new Map(
-      records.map((record) => [
-        record.matter_id,
+      matterRecords.map((record) => [
+        record.id,
         {
-          matterId: record.matter_id,
+          matterId: record.id,
           boardId: record.board_id,
-          boardName: record.board_name,
+          boardName: record.board_name ?? null,
           label: `${record.decedent_name} | ${record.file_number}`
         }
       ])
     ).values()
   ).sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
 
+  const anchorIssues =
+    statusFilter === "all" || statusFilter === "upcoming"
+      ? matterRecords
+          .flatMap((record) => getMatterAnchorIssues(record, templateSettings))
+          .filter((issue) => !matterIdFilter || issue.matterId === matterIdFilter)
+      : [];
+
   return {
     deadlines,
+    anchorIssues,
     assignees,
     matters
   };
@@ -2853,7 +2994,7 @@ export async function createDeadline(
   }
 
   return {
-    matter: mapMatter(updatedMatter),
+    matter: await mapMatterRecordWithTemplateSettings(db, updatedMatter),
     deadline: mapDeadline(deadline)
   };
 }
@@ -2935,7 +3076,7 @@ export async function updateDeadline(
   }
 
   return {
-    matter: mapMatter(updatedMatter),
+    matter: await mapMatterRecordWithTemplateSettings(db, updatedMatter),
     deadline: mapDeadline(deadline)
   };
 }
@@ -2968,7 +3109,7 @@ export async function completeDeadline(
     }
 
     return {
-      matter: mapMatter(matter),
+      matter: await mapMatterRecordWithTemplateSettings(db, matter),
       deadline: mapDeadline(existing)
     };
   }
@@ -3023,7 +3164,7 @@ export async function completeDeadline(
   }
 
   return {
-    matter: mapMatter(updatedMatter),
+    matter: await mapMatterRecordWithTemplateSettings(db, updatedMatter),
     deadline: mapDeadline(deadline)
   };
 }
@@ -3056,7 +3197,7 @@ export async function dismissDeadline(
     }
 
     return {
-      matter: mapMatter(matter),
+      matter: await mapMatterRecordWithTemplateSettings(db, matter),
       deadline: mapDeadline(existing)
     };
   }
@@ -3101,7 +3242,7 @@ export async function dismissDeadline(
   }
 
   return {
-    matter: mapMatter(updatedMatter),
+    matter: await mapMatterRecordWithTemplateSettings(db, updatedMatter),
     deadline: mapDeadline(deadline)
   };
 }
@@ -3186,9 +3327,10 @@ export async function saveMatterDeadlineSettings(
   }
 
   return {
-    matter: mapMatter(finalMatter),
+    matter: mapMatter(finalMatter, templateSettings),
     settings: mapMatterDeadlineSettings(finalMatter),
-    deadlines: deadlineRecords.map(mapDeadline)
+    deadlines: deadlineRecords.map(mapDeadline),
+    anchorIssues: getMatterAnchorIssues(finalMatter, templateSettings)
   };
 }
 

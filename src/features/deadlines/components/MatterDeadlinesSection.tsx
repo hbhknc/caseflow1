@@ -6,9 +6,11 @@ import {
   DeadlineEditor,
   type DeadlineEditorValue
 } from "@/features/deadlines/components/DeadlineEditor";
+import { formatDateOnly } from "@/lib/dates";
 import type {
   Deadline,
   DeadlineInput,
+  MatterAnchorAlert,
   DeadlineUpdateInput,
   MatterDeadlineSettings,
   MatterDeadlineSettingsInput
@@ -19,6 +21,7 @@ type MatterDeadlinesSectionProps = {
   matter: Matter;
   settings: MatterDeadlineSettings | null;
   deadlines: Deadline[];
+  anchorIssues: MatterAnchorAlert[];
   error: string | null;
   onSaveSettings: (matterId: string, input: MatterDeadlineSettingsInput) => Promise<void>;
   onCreateDeadline: (input: DeadlineInput) => Promise<void>;
@@ -79,10 +82,100 @@ function buildDeadlineEditorValue(deadline: Deadline): DeadlineEditorValue {
   };
 }
 
+function getReminderLabel(
+  reminderState: Matter["deadlineSummary"]["nextReminderState"] | Deadline["reminderState"]
+) {
+  switch (reminderState) {
+    case "overdue":
+      return "Overdue";
+    case "due_today":
+      return "Due today";
+    case "due_tomorrow":
+      return "Due tomorrow";
+    case "due_in_7_days":
+      return "Due within 7 days";
+    case "due_in_14_days":
+      return "Due within 14 days";
+    default:
+      return "No active reminder";
+  }
+}
+
+function buildDraftAnchorIssues(
+  matter: Matter,
+  draft: MatterDeadlineSettingsInput
+): MatterAnchorAlert[] {
+  if (draft.templateKey !== "standard_estate_administration") {
+    return [];
+  }
+
+  if (!draft.qualificationDate) {
+    return [
+      {
+        id: `${matter.id}:qualification_missing:draft`,
+        matterId: matter.id,
+        boardId: matter.boardId,
+        boardName: null,
+        matterName: matter.decedentName,
+        clientName: matter.clientName,
+        fileNumber: matter.fileNumber,
+        type: "qualification_missing",
+        severity: "warning",
+        message: "Add a qualification date to generate probate deadlines tied to appointment."
+      },
+      {
+        id: `${matter.id}:generated_deadlines_blocked:qualification:draft`,
+        matterId: matter.id,
+        boardId: matter.boardId,
+        boardName: null,
+        matterName: matter.decedentName,
+        clientName: matter.clientName,
+        fileNumber: matter.fileNumber,
+        type: "generated_deadlines_blocked",
+        severity: "critical",
+        message: "Generated probate deadlines are blocked until a qualification date is entered."
+      }
+    ];
+  }
+
+  if (!draft.publicationDate) {
+    return [
+      {
+        id: `${matter.id}:publication_missing:draft`,
+        matterId: matter.id,
+        boardId: matter.boardId,
+        boardName: null,
+        matterName: matter.decedentName,
+        clientName: matter.clientName,
+        fileNumber: matter.fileNumber,
+        type: "publication_missing",
+        severity: "warning",
+        message:
+          "Add a publication date to generate notice-to-creditors follow-up deadlines."
+      },
+      {
+        id: `${matter.id}:generated_deadlines_blocked:publication:draft`,
+        matterId: matter.id,
+        boardId: matter.boardId,
+        boardName: null,
+        matterName: matter.decedentName,
+        clientName: matter.clientName,
+        fileNumber: matter.fileNumber,
+        type: "generated_deadlines_blocked",
+        severity: "critical",
+        message: "Generated probate deadlines are blocked until a publication date is entered."
+      }
+    ];
+  }
+
+  return [];
+}
+
 export function MatterDeadlinesSection({
   matter,
   settings,
   deadlines,
+  anchorIssues,
   error,
   onSaveSettings,
   onCreateDeadline,
@@ -204,6 +297,19 @@ export function MatterDeadlinesSection({
     }),
     [deadlines]
   );
+  const draftAnchorIssues = useMemo(
+    () => buildDraftAnchorIssues(matter, settingsDraft),
+    [matter, settingsDraft]
+  );
+  const hasUnsavedSettingsChanges =
+    serializeSettingsDraft(settingsDraft) !== lastSavedSnapshotRef.current;
+  const effectiveAnchorIssues = hasUnsavedSettingsChanges ? draftAnchorIssues : anchorIssues;
+  const qualificationWarning = effectiveAnchorIssues.find(
+    (issue) => issue.type === "qualification_missing"
+  );
+  const publicationWarning = effectiveAnchorIssues.find(
+    (issue) => issue.type === "publication_missing"
+  );
 
   async function handleCompleteDeadline(deadlineId: string) {
     const completionNote = window.prompt("Optional completion note", "");
@@ -315,6 +421,52 @@ export function MatterDeadlinesSection({
 
       {error ? <p className="stats-empty">{error}</p> : null}
 
+      <div className="matter-deadlines__summary-strip" aria-label="Anchor health and reminders">
+        <article className="matter-deadlines__summary-card">
+          <span>Urgent reminders</span>
+          <strong>{matter.deadlineSummary.urgentReminderCount}</strong>
+          <small>Overdue, due today, or due tomorrow.</small>
+        </article>
+        <article className="matter-deadlines__summary-card">
+          <span>Next reminder</span>
+          <strong>{getReminderLabel(matter.deadlineSummary.nextReminderState)}</strong>
+          <small>
+            {matter.deadlineSummary.nextDeadlineDueDate
+              ? `Next due ${formatDateOnly(matter.deadlineSummary.nextDeadlineDueDate)}`
+              : "No active deadlines require attention yet."}
+          </small>
+        </article>
+        <article className="matter-deadlines__summary-card">
+          <span>Anchor issues</span>
+          <strong>{effectiveAnchorIssues.length}</strong>
+          <small>
+            {effectiveAnchorIssues.length > 0
+              ? "Missing anchor dates are blocking generated deadlines."
+              : "Qualification and publication anchors are ready."}
+          </small>
+        </article>
+      </div>
+
+      {effectiveAnchorIssues.length > 0 ? (
+        <div className="matter-deadlines__alert-list">
+          {effectiveAnchorIssues.map((issue) => (
+            <article
+              key={issue.id}
+              className={`matter-deadlines__alert matter-deadlines__alert--${issue.severity}`}
+            >
+              <strong>
+                {issue.type === "generated_deadlines_blocked"
+                  ? "Generated deadlines blocked"
+                  : issue.type === "qualification_missing"
+                    ? "Qualification date needed"
+                    : "Publication date needed"}
+              </strong>
+              <p>{issue.message}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
       <div className="drawer-form-grid matter-deadlines__settings-grid">
         <label className="field">
           <span>Template</span>
@@ -346,6 +498,11 @@ export function MatterDeadlinesSection({
               }))
             }
           />
+          {qualificationWarning ? (
+            <small className="matter-deadlines__field-hint matter-deadlines__field-hint--warning">
+              {qualificationWarning.message}
+            </small>
+          ) : null}
         </label>
         <label className="field">
           <span>Publication date</span>
@@ -359,6 +516,11 @@ export function MatterDeadlinesSection({
               }))
             }
           />
+          {publicationWarning ? (
+            <small className="matter-deadlines__field-hint matter-deadlines__field-hint--warning">
+              {publicationWarning.message}
+            </small>
+          ) : null}
         </label>
       </div>
 

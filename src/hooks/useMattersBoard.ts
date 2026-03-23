@@ -27,6 +27,7 @@ import { getMatterStats } from "@/services/stats";
 import type { MatterImportRowInput, MatterImportSummary, MatterStats } from "@/types/api";
 import type {
   Deadline,
+  MatterAnchorAlert,
   DeadlineDashboardData,
   DeadlineDashboardFilters,
   DeadlineInput,
@@ -50,6 +51,7 @@ type UseMattersBoardResult = {
   selectedMatterNotes: MatterNote[];
   selectedMatterDeadlines: Deadline[];
   selectedMatterDeadlineSettings: MatterDeadlineSettings | null;
+  selectedMatterDeadlineAnchorIssues: MatterAnchorAlert[];
   archivedMatters: Matter[];
   filteredArchivedMatters: Matter[];
   tasks: MatterTask[];
@@ -118,6 +120,9 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
   const [selectedMatterDeadlines, setSelectedMatterDeadlines] = useState<Deadline[]>([]);
   const [selectedMatterDeadlineSettings, setSelectedMatterDeadlineSettings] =
     useState<MatterDeadlineSettings | null>(null);
+  const [selectedMatterDeadlineAnchorIssues, setSelectedMatterDeadlineAnchorIssues] = useState<
+    MatterAnchorAlert[]
+  >([]);
   const [archivedMatters, setArchivedMatters] = useState<Matter[]>([]);
   const [tasks, setTasks] = useState<MatterTask[]>([]);
   const [stats, setStats] = useState<MatterStats | null>(null);
@@ -154,6 +159,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     if (!selectedMatterId) {
       setSelectedMatterDeadlines([]);
       setSelectedMatterDeadlineSettings(null);
+      setSelectedMatterDeadlineAnchorIssues([]);
       setDeadlineError(null);
       return;
     }
@@ -315,10 +321,12 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
       applyMatterUpdate(response.matter);
       setSelectedMatterDeadlines(response.deadlines);
       setSelectedMatterDeadlineSettings(response.settings);
+      setSelectedMatterDeadlineAnchorIssues(response.anchorIssues);
       setDeadlineError(null);
     } catch (caughtError) {
       setSelectedMatterDeadlines([]);
       setSelectedMatterDeadlineSettings(null);
+      setSelectedMatterDeadlineAnchorIssues([]);
       setDeadlineError(
         caughtError instanceof Error ? caughtError.message : "Unable to load deadlines."
       );
@@ -430,6 +438,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     setSelectedMatterNotes([]);
     setSelectedMatterDeadlines([]);
     setSelectedMatterDeadlineSettings(null);
+    setSelectedMatterDeadlineAnchorIssues([]);
     await Promise.all([hydrateBoard(), isDeadlinesOpen ? hydrateDeadlineDashboard() : Promise.resolve()]);
   }
 
@@ -439,6 +448,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     setSelectedMatterNotes([]);
     setSelectedMatterDeadlines([]);
     setSelectedMatterDeadlineSettings(null);
+    setSelectedMatterDeadlineAnchorIssues([]);
     await Promise.all([
       hydrateBoard(),
       hydrateStats(),
@@ -481,6 +491,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     setSelectedMatterId(response.matter.id);
     setSelectedMatterDeadlineSettings(response.settings);
     setSelectedMatterDeadlines(response.deadlines);
+    setSelectedMatterDeadlineAnchorIssues(response.anchorIssues);
     setDeadlineError(null);
 
     if (isDeadlinesOpen) {
@@ -548,6 +559,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     selectedMatterNotes,
     selectedMatterDeadlines,
     selectedMatterDeadlineSettings,
+    selectedMatterDeadlineAnchorIssues,
     archivedMatters,
     filteredArchivedMatters,
     tasks,
@@ -577,6 +589,7 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
       setSelectedMatterNotes([]);
       setSelectedMatterDeadlines([]);
       setSelectedMatterDeadlineSettings(null);
+      setSelectedMatterDeadlineAnchorIssues([]);
     },
     closeCreateMatter: () => setIsCreateMode(false),
     openArchive: async () => {

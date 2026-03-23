@@ -28,6 +28,19 @@ function getPriorityLabel(deadline: Deadline) {
   return `${deadline.priority.charAt(0).toUpperCase()}${deadline.priority.slice(1)} priority`;
 }
 
+function getReminderLabel(deadline: Deadline) {
+  switch (deadline.reminderState) {
+    case "due_tomorrow":
+      return "Due tomorrow";
+    case "due_in_7_days":
+      return "Due within 7 days";
+    case "due_in_14_days":
+      return "Due within 14 days";
+    default:
+      return null;
+  }
+}
+
 export function DeadlineCard({
   deadline,
   onOpenMatter,
@@ -35,6 +48,8 @@ export function DeadlineCard({
   onComplete,
   onDismiss
 }: DeadlineCardProps) {
+  const reminderLabel = getReminderLabel(deadline);
+
   return (
     <article className="task-card deadline-card">
       <div className="task-card__header">
@@ -51,6 +66,11 @@ export function DeadlineCard({
           <span className={`deadline-pill deadline-pill--priority-${deadline.priority}`}>
             {getPriorityLabel(deadline)}
           </span>
+          {reminderLabel ? (
+            <span className={`deadline-pill deadline-pill--reminder-${deadline.reminderState}`}>
+              {reminderLabel}
+            </span>
+          ) : null}
           <span className="deadline-pill deadline-pill--source">
             {deadline.sourceType === "template" ? "Template" : "Manual"}
           </span>

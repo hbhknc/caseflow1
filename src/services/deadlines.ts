@@ -10,6 +10,7 @@ import {
 } from "@/services/demoApi";
 import type {
   Deadline,
+  MatterAnchorAlert,
   DeadlineCompletionInput,
   DeadlineDashboardData,
   DeadlineDashboardFilters,
@@ -24,6 +25,7 @@ type MatterDeadlinesResponse = {
   matter: Matter;
   settings: MatterDeadlineSettings;
   deadlines: Deadline[];
+  anchorIssues: MatterAnchorAlert[];
 };
 
 type DeadlineMutationResponse = {

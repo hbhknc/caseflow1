@@ -2,16 +2,30 @@ import type {
   Deadline,
   DeadlineDashboardBucket,
   DeadlinePriority,
+  DeadlineReminderState,
   DeadlineStatus,
+  DeadlineTemplateDefinition,
   DeadlineTemplateItemConfig,
   DeadlineTemplateItemKey,
   DeadlineTemplateKey,
   DeadlineTemplateSettings,
+  MatterAnchorAlert,
   MatterDeadlineSettings,
   MatterDeadlineSummary
 } from "@/types/deadlines";
 
 type DeadlineLike = Pick<Deadline, "dueDate" | "completedAt" | "dismissedAt">;
+
+type MatterAnchorAlertContext = Pick<
+  MatterDeadlineSettings,
+  "matterId" | "templateKey" | "qualificationDate" | "publicationDate"
+> & {
+  boardId: string;
+  boardName: string | null;
+  matterName: string;
+  clientName: string;
+  fileNumber: string;
+};
 
 export type GeneratedDeadlineDraft = {
   templateKey: DeadlineTemplateKey;
@@ -43,6 +57,13 @@ export type GeneratedDeadlineReconciliation = {
 };
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const REMINDER_PRIORITY: Array<Exclude<DeadlineReminderState, "none">> = [
+  "overdue",
+  "due_today",
+  "due_tomorrow",
+  "due_in_7_days",
+  "due_in_14_days"
+];
 
 export const DEFAULT_DEADLINE_TEMPLATE_SETTINGS: DeadlineTemplateSettings = {
   templates: [
@@ -163,6 +184,57 @@ export function calculateDeadlineStatus(
   return "upcoming";
 }
 
+export function calculateDeadlineReminderState(
+  deadline: DeadlineLike,
+  referenceDate = new Date()
+): DeadlineReminderState {
+  const status = calculateDeadlineStatus(deadline, referenceDate);
+
+  if (status === "completed" || status === "dismissed") {
+    return "none";
+  }
+
+  if (status === "overdue") {
+    return "overdue";
+  }
+
+  if (status === "due_today") {
+    return "due_today";
+  }
+
+  const daysUntilDue = differenceInDays(getTodayDateOnly(referenceDate), deadline.dueDate);
+
+  if (daysUntilDue <= 1) {
+    return "due_tomorrow";
+  }
+
+  if (daysUntilDue <= 7) {
+    return "due_in_7_days";
+  }
+
+  if (daysUntilDue <= 14) {
+    return "due_in_14_days";
+  }
+
+  return "none";
+}
+
+export function getMostUrgentReminderState(
+  deadlines: DeadlineLike[],
+  referenceDate = new Date()
+): Exclude<DeadlineReminderState, "none"> | null {
+  const reminderState = deadlines
+    .map((deadline) => calculateDeadlineReminderState(deadline, referenceDate))
+    .filter((state): state is Exclude<DeadlineReminderState, "none"> => state !== "none")
+    .sort((left, right) => REMINDER_PRIORITY.indexOf(left) - REMINDER_PRIORITY.indexOf(right))[0];
+
+  if (!reminderState) {
+    return null;
+  }
+
+  return reminderState;
+}
+
 export function getDeadlineDashboardBucket(
   deadline: DeadlineLike,
   referenceDate = new Date()
@@ -203,6 +275,17 @@ export function getDeadlineTemplate(
   templateKey: DeadlineTemplateKey
 ) {
   return templateSettings.templates.find((template) => template.key === templateKey) ?? null;
+}
+
+function getEnabledItemsByAnchor(
+  template: DeadlineTemplateDefinition | null,
+  anchorType: DeadlineTemplateItemConfig["anchorType"]
+) {
+  if (!template) {
+    return [];
+  }
+
+  return template.items.filter((item) => item.enabled && item.anchorType === anchorType);
 }
 
 function getAnchorDate(
@@ -305,9 +388,95 @@ export function reconcileGeneratedDeadlines(input: {
   return { toCreate, toUpdate, toDismiss };
 }
 
+function buildAnchorAlert(
+  context: MatterAnchorAlertContext,
+  type: MatterAnchorAlert["type"],
+  severity: MatterAnchorAlert["severity"],
+  message: string,
+  suffix: string
+): MatterAnchorAlert {
+  return {
+    id: `${context.matterId}:${type}:${suffix}`,
+    matterId: context.matterId,
+    boardId: context.boardId,
+    boardName: context.boardName,
+    matterName: context.matterName,
+    clientName: context.clientName,
+    fileNumber: context.fileNumber,
+    type,
+    severity,
+    message
+  };
+}
+
+function pluralizeDeadlineCount(count: number) {
+  return `${count} generated deadline${count === 1 ? "" : "s"}`;
+}
+
+export function buildMatterAnchorAlerts(
+  context: MatterAnchorAlertContext,
+  templateSettings: DeadlineTemplateSettings
+): MatterAnchorAlert[] {
+  if (context.templateKey !== "standard_estate_administration") {
+    return [];
+  }
+
+  const template = getDeadlineTemplate(templateSettings, context.templateKey);
+  const qualificationItems = getEnabledItemsByAnchor(template, "qualification_date");
+  const publicationItems = getEnabledItemsByAnchor(template, "publication_date");
+  const qualificationDate = normalizeOptionalDateOnly(context.qualificationDate);
+  const publicationDate = normalizeOptionalDateOnly(context.publicationDate);
+  const alerts: MatterAnchorAlert[] = [];
+
+  if (!qualificationDate && qualificationItems.length > 0) {
+    alerts.push(
+      buildAnchorAlert(
+        context,
+        "qualification_missing",
+        "warning",
+        "Add a qualification date to generate probate deadlines tied to appointment.",
+        "qualification"
+      )
+    );
+    alerts.push(
+      buildAnchorAlert(
+        context,
+        "generated_deadlines_blocked",
+        "critical",
+        `${pluralizeDeadlineCount(qualificationItems.length)} blocked until a qualification date is entered.`,
+        "qualification"
+      )
+    );
+  }
+
+  if (qualificationDate && !publicationDate && publicationItems.length > 0) {
+    alerts.push(
+      buildAnchorAlert(
+        context,
+        "publication_missing",
+        "warning",
+        "Add a publication date to generate notice-to-creditors follow-up deadlines.",
+        "publication"
+      )
+    );
+    alerts.push(
+      buildAnchorAlert(
+        context,
+        "generated_deadlines_blocked",
+        "critical",
+        `${pluralizeDeadlineCount(publicationItems.length)} blocked until a publication date is entered.`,
+        "publication"
+      )
+    );
+  }
+
+  return alerts;
+}
+
 export function buildMatterDeadlineSummary(
   deadlines: Deadline[],
-  referenceDate = new Date()
+  referenceDate = new Date(),
+  anchorIssues: MatterAnchorAlert[] = []
 ): MatterDeadlineSummary {
   const activeDeadlines = deadlines.filter((deadline) => {
     const status = calculateDeadlineStatus(deadline, referenceDate);
@@ -319,6 +488,14 @@ export function buildMatterDeadlineSummary(
   const dueTodayCount = activeDeadlines.filter(
     (deadline) => calculateDeadlineStatus(deadline, referenceDate) === "due_today"
   ).length;
+  const urgentReminderCount = activeDeadlines.filter((deadline) => {
+    const reminderState = calculateDeadlineReminderState(deadline, referenceDate);
+    return (
+      reminderState === "overdue" ||
+      reminderState === "due_today" ||
+      reminderState === "due_tomorrow"
+    );
+  }).length;
   const nextDeadline = [...activeDeadlines].sort((left, right) => {
     if (left.dueDate !== right.dueDate) {
       return left.dueDate.localeCompare(right.dueDate);
@@ -326,11 +503,14 @@ export function buildMatterDeadlineSummary(
 
     return left.title.localeCompare(right.title, undefined, { sensitivity: "base" });
   })[0] ?? null;
+  const nextReminderState = getMostUrgentReminderState(activeDeadlines, referenceDate);
 
   return {
     overdueCount,
     dueTodayCount,
     activeCount: activeDeadlines.length,
+    urgentReminderCount,
+    anchorAlertCount: anchorIssues.length,
     nextDeadlineTitle: nextDeadline?.title ?? null,
     nextDeadlineDueDate: nextDeadline?.dueDate ?? null,
     nextDeadlineStatus: nextDeadline
@@ -338,6 +518,7 @@ export function buildMatterDeadlineSummary(
           | "upcoming"
           | "due_today"
           | "overdue")
-      : null
+      : null,
+    nextReminderState
   };
 }

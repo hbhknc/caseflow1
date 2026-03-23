@@ -6,11 +6,13 @@ import type {
 import type {
   DeadlineDashboardData,
   DeadlineInput,
+  DeadlineReminderState,
   DeadlineStatus,
   DeadlineTemplateKey,
   DeadlineTemplateItemKey,
   DeadlineTemplateSettings,
   DeadlineUpdateInput,
+  MatterAnchorAlert,
   MatterDeadlineSettings
 } from "../../src/types/deadlines";
 
@@ -72,6 +74,7 @@ export type MatterStage =
 export type MatterRecord = {
   id: string;
   board_id: string;
+  board_name?: string | null;
   decedent_name: string;
   client_name: string;
   file_number: string;
@@ -91,6 +94,7 @@ export type MatterRecord = {
   interaction_count?: number | null;
   deadline_overdue_count?: number | null;
   deadline_due_today_count?: number | null;
+  deadline_due_tomorrow_count?: number | null;
   deadline_active_count?: number | null;
   next_deadline_title?: string | null;
   next_deadline_due_date?: string | null;
@@ -233,6 +237,10 @@ export type MatterDeadlineDashboardQuery = {
   matterId?: string;
   status?: DeadlineStatus | "all";
 };
+
+export type MatterDeadlineReminderState = DeadlineReminderState;
+
+export type MatterAnchorAlertRecord = MatterAnchorAlert;
 
 export type BoardSettings = {
   columnCount: number;

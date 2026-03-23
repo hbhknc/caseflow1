@@ -15,6 +15,21 @@ export type DeadlineTemplateKey =
 
 export type DeadlineAnchorType = "qualification_date" | "publication_date";
 
+export type DeadlineReminderState =
+  | "none"
+  | "due_in_14_days"
+  | "due_in_7_days"
+  | "due_tomorrow"
+  | "due_today"
+  | "overdue";
+
+export type MatterAnchorAlertType =
+  | "qualification_missing"
+  | "publication_missing"
+  | "generated_deadlines_blocked";
+
+export type MatterAnchorAlertSeverity = "warning" | "critical";
+
 export type DeadlineTemplateItemKey =
   | "inventory_due"
   | "accounting_due"
@@ -64,9 +79,25 @@ export type MatterDeadlineSummary = {
   overdueCount: number;
   dueTodayCount: number;
   activeCount: number;
+  urgentReminderCount: number;
+  anchorAlertCount: number;
   nextDeadlineTitle: string | null;
   nextDeadlineDueDate: string | null;
   nextDeadlineStatus: Extract<DeadlineStatus, "upcoming" | "due_today" | "overdue"> | null;
+  nextReminderState: Exclude<DeadlineReminderState, "none"> | null;
+};
+
+export type MatterAnchorAlert = {
+  id: string;
+  matterId: string;
+  boardId: string;
+  boardName: string | null;
+  matterName: string;
+  clientName: string;
+  fileNumber: string;
+  type: MatterAnchorAlertType;
+  severity: MatterAnchorAlertSeverity;
+  message: string;
 };
 
 export type Deadline = {
@@ -82,6 +113,7 @@ export type Deadline = {
   dueDate: string;
   assignee: string | null;
   status: DeadlineStatus;
+  reminderState: DeadlineReminderState;
   priority: DeadlinePriority;
   sourceType: DeadlineSourceType;
   notes: string | null;
@@ -128,6 +160,7 @@ export type DeadlineDashboardMatterOption = {
 
 export type DeadlineDashboardData = {
   deadlines: Deadline[];
+  anchorIssues: MatterAnchorAlert[];
   assignees: string[];
   matters: DeadlineDashboardMatterOption[];
 };

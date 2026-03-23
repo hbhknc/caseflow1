@@ -2,15 +2,19 @@ import { useEffect, useMemo, useRef } from "react";
 import { Drawer } from "@/components/Drawer";
 import { EmptyState } from "@/components/EmptyState";
 import { DeadlineCard } from "@/features/deadlines/components/DeadlineCard";
-import { getDeadlineDashboardBucket } from "@/lib/deadlineRules";
-import type { Deadline, DeadlineDashboardData, DeadlineDashboardFilters } from "@/types/deadlines";
+import type {
+  Deadline,
+  DeadlineDashboardData,
+  DeadlineDashboardFilters,
+  MatterAnchorAlert
+} from "@/types/deadlines";
 
 type DeadlinesModalProps = {
   dashboard: DeadlineDashboardData | null;
   filters: DeadlineDashboardFilters;
   error: string | null;
   onChangeFilters: (filters: DeadlineDashboardFilters) => Promise<void>;
-  onOpenMatter: (deadline: Deadline) => void;
+  onOpenMatter: (target: { matterId: string; boardId: string }) => void;
   onClose: () => void;
 };
 
@@ -42,24 +46,21 @@ export function DeadlinesModal({
 
   const groups = useMemo(
     () => ({
-      overdue: dashboard?.deadlines.filter(
-        (deadline) => getDeadlineDashboardBucket(deadline) === "overdue"
-      ) ?? [],
-      dueToday: dashboard?.deadlines.filter(
-        (deadline) => getDeadlineDashboardBucket(deadline) === "due_today"
-      ) ?? [],
-      next7Days: dashboard?.deadlines.filter(
-        (deadline) => getDeadlineDashboardBucket(deadline) === "next_7_days"
-      ) ?? [],
-      next30Days: dashboard?.deadlines.filter(
-        (deadline) => getDeadlineDashboardBucket(deadline) === "next_30_days"
-      ) ?? [],
-      completed: dashboard?.deadlines.filter(
-        (deadline) => getDeadlineDashboardBucket(deadline) === "completed"
-      ) ?? [],
-      dismissed: dashboard?.deadlines.filter(
-        (deadline) => getDeadlineDashboardBucket(deadline) === "dismissed"
-      ) ?? []
+      overdue: dashboard?.deadlines.filter((deadline) => deadline.reminderState === "overdue") ?? [],
+      dueToday:
+        dashboard?.deadlines.filter((deadline) => deadline.reminderState === "due_today") ?? [],
+      dueTomorrow:
+        dashboard?.deadlines.filter((deadline) => deadline.reminderState === "due_tomorrow") ?? [],
+      dueIn7Days:
+        dashboard?.deadlines.filter((deadline) => deadline.reminderState === "due_in_7_days") ?? [],
+      dueIn14Days:
+        dashboard?.deadlines.filter((deadline) => deadline.reminderState === "due_in_14_days") ?? [],
+      laterUpcoming:
+        dashboard?.deadlines.filter(
+          (deadline) => deadline.status === "upcoming" && deadline.reminderState === "none"
+        ) ?? [],
+      completed: dashboard?.deadlines.filter((deadline) => deadline.status === "completed") ?? [],
+      dismissed: dashboard?.deadlines.filter((deadline) => deadline.status === "dismissed") ?? []
     }),
     [dashboard]
   );
@@ -82,8 +83,77 @@ export function DeadlinesModal({
             <DeadlineCard
               key={deadline.id}
               deadline={deadline}
-              onOpenMatter={() => onOpenMatter(deadline)}
+              onOpenMatter={() =>
+                onOpenMatter({ matterId: deadline.matterId, boardId: deadline.boardId })
+              }
             />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  function renderAnchorIssues(items: MatterAnchorAlert[]) {
+    if (items.length === 0) {
+      return null;
+    }
+
+    const groupedItems = Array.from(
+      new Map(
+        items.map((issue) => [
+          issue.matterId,
+          {
+            matterId: issue.matterId,
+            boardId: issue.boardId,
+            matterName: issue.matterName,
+            fileNumber: issue.fileNumber,
+            severity: items.some(
+              (entry) => entry.matterId === issue.matterId && entry.severity === "critical"
+            )
+              ? "critical"
+              : "warning",
+            messages: items
+              .filter((entry) => entry.matterId === issue.matterId)
+              .map((entry) => entry.message)
+          }
+        ])
+      ).values()
+    );
+
+    return (
+      <section className="deadline-group">
+        <div className="section-heading section-heading--split">
+          <h3>Anchor Issues</h3>
+          <span className="matter-drawer__activity-count">
+            {groupedItems.length} {groupedItems.length === 1 ? "matter" : "matters"}
+          </span>
+        </div>
+        <div className="matter-deadlines__alert-list">
+          {groupedItems.map((issue) => (
+            <article
+              key={issue.matterId}
+              className={`matter-deadlines__alert matter-deadlines__alert--${issue.severity}`}
+            >
+              <div className="section-heading section-heading--split">
+                <div>
+                  <strong>
+                    {issue.matterName} | {issue.fileNumber}
+                  </strong>
+                  <div className="matter-deadlines__alert-copy">
+                    {issue.messages.map((message) => (
+                      <p key={message}>{message}</p>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="button button--ghost button--small"
+                  onClick={() => onOpenMatter({ matterId: issue.matterId, boardId: issue.boardId })}
+                >
+                  Open matter
+                </button>
+              </div>
+            </article>
           ))}
         </div>
       </section>
@@ -177,7 +247,9 @@ export function DeadlinesModal({
 
           {error ? <p className="stats-empty">{error}</p> : null}
 
-          {!error && (!dashboard || dashboard.deadlines.length === 0) ? (
+          {!error &&
+          (!dashboard ||
+            (dashboard.deadlines.length === 0 && dashboard.anchorIssues.length === 0)) ? (
             <EmptyState
               title="No deadlines found"
               message="Adjust the filters or add deadlines from a matter to populate the dashboard."
@@ -186,8 +258,11 @@ export function DeadlinesModal({
             <div className="stats-panel">
               {renderGroup("Overdue", groups.overdue)}
               {renderGroup("Due Today", groups.dueToday)}
-              {renderGroup("Next 7 Days", groups.next7Days)}
-              {renderGroup("Next 30 Days", groups.next30Days)}
+              {renderGroup("Due Tomorrow", groups.dueTomorrow)}
+              {renderGroup("Due Within 7 Days", groups.dueIn7Days)}
+              {renderGroup("Due Within 14 Days", groups.dueIn14Days)}
+              {renderAnchorIssues(dashboard?.anchorIssues ?? [])}
+              {renderGroup("Later Upcoming", groups.laterUpcoming)}
               {renderGroup("Completed", groups.completed)}
               {renderGroup("Dismissed", groups.dismissed)}
             </div>

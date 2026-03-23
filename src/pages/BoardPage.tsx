@@ -609,6 +609,7 @@ export function BoardPage() {
           notes={board.selectedMatterNotes}
           deadlines={board.selectedMatterDeadlines}
           deadlineSettings={board.selectedMatterDeadlineSettings}
+          deadlineAnchorIssues={board.selectedMatterDeadlineAnchorIssues}
           deadlineError={board.deadlineError}
           isCreateMode={board.isCreateMode}
           defaultBoardId={currentBoard.id}
@@ -691,19 +692,19 @@ export function BoardPage() {
           filters={board.deadlineDashboardFilters}
           error={board.deadlineDashboardError}
           onChangeFilters={board.setDeadlineDashboardFilters}
-          onOpenMatter={(deadline) => {
+          onOpenMatter={(target) => {
             board.closeDeadlines();
 
-            if (deadline.boardId !== currentBoard.id) {
+            if (target.boardId !== currentBoard.id) {
               setPendingMatterOpen({
-                boardId: deadline.boardId,
-                matterId: deadline.matterId
+                boardId: target.boardId,
+                matterId: target.matterId
               });
-              setCurrentBoardId(deadline.boardId);
+              setCurrentBoardId(target.boardId);
               return;
             }
 
-            board.selectMatter(deadline.matterId);
+            board.selectMatter(target.matterId);
           }}
           onClose={() => {
             board.closeDeadlines();

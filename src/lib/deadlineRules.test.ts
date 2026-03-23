@@ -5,9 +5,11 @@ import type {
   MatterDeadlineSettings
 } from "@/types/deadlines";
 import {
+  buildMatterAnchorAlerts,
   DEFAULT_DEADLINE_TEMPLATE_SETTINGS,
   buildGeneratedDeadlineDrafts,
   buildMatterDeadlineSummary,
+  calculateDeadlineReminderState,
   calculateDeadlineStatus,
   getDeadlineDashboardBucket,
   reconcileGeneratedDeadlines
@@ -27,6 +29,7 @@ function createDeadline(overrides: Partial<Deadline> = {}): Deadline {
     dueDate: "2026-03-25",
     assignee: "Case Manager",
     status: "upcoming",
+    reminderState: "none",
     priority: "high",
     sourceType: "manual",
     notes: null,
@@ -84,6 +87,46 @@ describe("calculateDeadlineStatus", () => {
         referenceDate
       )
     ).toBe("dismissed");
+  });
+});
+
+describe("calculateDeadlineReminderState", () => {
+  const referenceDate = new Date("2026-03-22T12:00:00.000Z");
+
+  it("derives reminder windows for overdue, today, tomorrow, 7 days, and 14 days", () => {
+    expect(
+      calculateDeadlineReminderState(createDeadline({ dueDate: "2026-03-21" }), referenceDate)
+    ).toBe("overdue");
+    expect(
+      calculateDeadlineReminderState(createDeadline({ dueDate: "2026-03-22" }), referenceDate)
+    ).toBe("due_today");
+    expect(
+      calculateDeadlineReminderState(createDeadline({ dueDate: "2026-03-23" }), referenceDate)
+    ).toBe("due_tomorrow");
+    expect(
+      calculateDeadlineReminderState(createDeadline({ dueDate: "2026-03-29" }), referenceDate)
+    ).toBe("due_in_7_days");
+    expect(
+      calculateDeadlineReminderState(createDeadline({ dueDate: "2026-04-05" }), referenceDate)
+    ).toBe("due_in_14_days");
+    expect(
+      calculateDeadlineReminderState(createDeadline({ dueDate: "2026-04-10" }), referenceDate)
+    ).toBe("none");
+  });
+
+  it("does not emit reminder states for completed or dismissed deadlines", () => {
+    expect(
+      calculateDeadlineReminderState(
+        createDeadline({ completedAt: "2026-03-22T10:00:00.000Z" }),
+        referenceDate
+      )
+    ).toBe("none");
+    expect(
+      calculateDeadlineReminderState(
+        createDeadline({ dismissedAt: "2026-03-22T10:00:00.000Z" }),
+        referenceDate
+      )
+    ).toBe("none");
   });
 });
 
@@ -249,6 +292,8 @@ describe("deadline dashboard helpers", () => {
     const summary = buildMatterDeadlineSummary(
       [
         createDeadline({ title: "Overdue", dueDate: "2026-03-15" }),
+        createDeadline({ id: "deadline_today", title: "Today", dueDate: "2026-03-22" }),
+        createDeadline({ id: "deadline_tomorrow", title: "Tomorrow", dueDate: "2026-03-23" }),
         createDeadline({
           id: "deadline_completed",
           title: "Completed",
@@ -257,12 +302,122 @@ describe("deadline dashboard helpers", () => {
         }),
         createDeadline({ id: "deadline_next", title: "Next", dueDate: "2026-03-24" })
       ],
-      referenceDate
+      referenceDate,
+      [
+        {
+          id: "matter_001:qualification_missing",
+          matterId: "matter_001",
+          boardId: "probate",
+          boardName: "Probate",
+          matterName: "Estate of Jane Doe",
+          clientName: "John Doe",
+          fileNumber: "PR-2026-0001",
+          type: "qualification_missing",
+          severity: "warning",
+          message: "Qualification date missing."
+        },
+        {
+          id: "matter_001:generated_deadlines_blocked",
+          matterId: "matter_001",
+          boardId: "probate",
+          boardName: "Probate",
+          matterName: "Estate of Jane Doe",
+          clientName: "John Doe",
+          fileNumber: "PR-2026-0001",
+          type: "generated_deadlines_blocked",
+          severity: "critical",
+          message: "Generated deadlines blocked."
+        }
+      ]
     );
 
     expect(summary.overdueCount).toBe(1);
-    expect(summary.activeCount).toBe(2);
+    expect(summary.activeCount).toBe(4);
+    expect(summary.urgentReminderCount).toBe(3);
+    expect(summary.anchorAlertCount).toBe(2);
     expect(summary.nextDeadlineTitle).toBe("Overdue");
     expect(summary.nextDeadlineDueDate).toBe("2026-03-15");
+    expect(summary.nextReminderState).toBe("overdue");
+  });
+});
+
+describe("buildMatterAnchorAlerts", () => {
+  it("flags missing qualification dates for probate template matters", () => {
+    const alerts = buildMatterAnchorAlerts(
+      {
+        matterId: "matter_001",
+        boardId: "probate",
+        boardName: "Probate",
+        matterName: "Estate of Jane Doe",
+        clientName: "John Doe",
+        fileNumber: "PR-2026-0001",
+        templateKey: "standard_estate_administration",
+        qualificationDate: null,
+        publicationDate: null
+      },
+      DEFAULT_DEADLINE_TEMPLATE_SETTINGS
+    );
+
+    expect(alerts.map((alert) => alert.type)).toEqual([
+      "qualification_missing",
+      "generated_deadlines_blocked"
+    ]);
+  });
+
+  it("flags missing publication dates once qualification is present", () => {
+    const alerts = buildMatterAnchorAlerts(
+      {
+        matterId: "matter_001",
+        boardId: "probate",
+        boardName: "Probate",
+        matterName: "Estate of Jane Doe",
+        clientName: "John Doe",
+        fileNumber: "PR-2026-0001",
+        templateKey: "standard_estate_administration",
+        qualificationDate: "2026-03-01",
+        publicationDate: null
+      },
+      DEFAULT_DEADLINE_TEMPLATE_SETTINGS
+    );
+
+    expect(alerts.map((alert) => alert.type)).toEqual([
+      "publication_missing",
+      "generated_deadlines_blocked"
+    ]);
+  });
+
+  it("clears anchor alerts once required dates are present or the matter is manual only", () => {
+    expect(
+      buildMatterAnchorAlerts(
+        {
+          matterId: "matter_001",
+          boardId: "probate",
+          boardName: "Probate",
+          matterName: "Estate of Jane Doe",
+          clientName: "John Doe",
+          fileNumber: "PR-2026-0001",
+          templateKey: "standard_estate_administration",
+          qualificationDate: "2026-03-01",
+          publicationDate: "2026-03-10"
+        },
+        DEFAULT_DEADLINE_TEMPLATE_SETTINGS
+      )
+    ).toEqual([]);
+    expect(
+      buildMatterAnchorAlerts(
+        {
+          matterId: "matter_001",
+          boardId: "probate",
+          boardName: "Probate",
+          matterName: "Estate of Jane Doe",
+          clientName: "John Doe",
+          fileNumber: "PR-2026-0001",
+          templateKey: "custom_manual_only",
+          qualificationDate: null,
+          publicationDate: null
+        },
+        DEFAULT_DEADLINE_TEMPLATE_SETTINGS
+      )
+    ).toEqual([]);
   });
 });

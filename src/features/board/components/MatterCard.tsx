@@ -21,13 +21,17 @@ export function MatterCard({
   onDragStart,
   onDragEnd
 }: MatterCardProps) {
-  const deadlineSummary =
-    matter.deadlineSummary.overdueCount > 0
-      ? `${matter.deadlineSummary.overdueCount} overdue deadline${
-          matter.deadlineSummary.overdueCount === 1 ? "" : "s"
-        }`
-      : matter.deadlineSummary.dueTodayCount > 0
-        ? `${matter.deadlineSummary.dueTodayCount} due today`
+  const hasOverdueDeadlines = matter.deadlineSummary.overdueCount > 0;
+  const hasDueTodayDeadlines = matter.deadlineSummary.dueTodayCount > 0;
+  const hasAnchorIssues = matter.deadlineSummary.anchorAlertCount > 0;
+  const deadlineSummary = hasOverdueDeadlines
+    ? `${matter.deadlineSummary.overdueCount} overdue deadline${
+        matter.deadlineSummary.overdueCount === 1 ? "" : "s"
+      }`
+    : hasDueTodayDeadlines
+      ? `${matter.deadlineSummary.dueTodayCount} due today`
+      : hasAnchorIssues
+        ? "Generated deadlines blocked by missing anchor dates"
         : matter.deadlineSummary.nextDeadlineDueDate
           ? `Next deadline ${formatDateOnly(matter.deadlineSummary.nextDeadlineDueDate)}`
           : "No active deadlines";
@@ -57,8 +61,10 @@ export function MatterCard({
           </p>
           <p
             className={
-              matter.deadlineSummary.overdueCount > 0
+              hasOverdueDeadlines
                 ? "matter-card__deadline-line matter-card__deadline-line--overdue"
+                : hasDueTodayDeadlines || hasAnchorIssues
+                  ? "matter-card__deadline-line matter-card__deadline-line--attention"
                 : "matter-card__deadline-line"
             }
           >
