@@ -1,21 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { buildAccountingPeriodSummary } from "@/lib/accountingRules";
-import {
-  createAccountingEntry as createAccountingEntryApi,
-  createAccountingHeldAsset as createAccountingHeldAssetApi,
-  createAccountingPeriod as createAccountingPeriodApi,
-  createAccountingProofLink as createAccountingProofLinkApi,
-  deleteAccountingEntry as deleteAccountingEntryApi,
-  deleteAccountingHeldAsset as deleteAccountingHeldAssetApi,
-  deleteAccountingProofLink as deleteAccountingProofLinkApi,
-  finalizeAccountingPeriod as finalizeAccountingPeriodApi,
-  getAccountingPeriod as getAccountingPeriodApi,
-  listAccountingPeriods as listAccountingPeriodsApi,
-  updateAccountingEntry as updateAccountingEntryApi,
-  updateAccountingHeldAsset as updateAccountingHeldAssetApi,
-  updateAccountingPeriod as updateAccountingPeriodApi,
-  updateAccountingProofLink as updateAccountingProofLinkApi
-} from "@/services/accounting";
 import {
   archiveMatter,
   completeTask as completeTaskApi,
@@ -41,18 +24,6 @@ import {
   updateDeadline as updateDeadlineApi
 } from "@/services/deadlines";
 import { getMatterStats } from "@/services/stats";
-import type {
-  AccountingPeriodDetail,
-  AccountingPeriodInput,
-  AccountingPeriodSummary,
-  AccountingPeriodUpdateInput,
-  HeldAssetInput,
-  HeldAssetUpdateInput,
-  LedgerEntryInput,
-  LedgerEntryUpdateInput,
-  ProofLinkInput,
-  ProofLinkUpdateInput
-} from "@/types/accounting";
 import type { MatterImportRowInput, MatterImportSummary, MatterStats } from "@/types/api";
 import type {
   Deadline,
@@ -78,8 +49,6 @@ type UseMattersBoardResult = {
   filteredMatters: Matter[];
   selectedMatter: Matter | null;
   selectedMatterNotes: MatterNote[];
-  selectedMatterAccountingPeriods: AccountingPeriodSummary[];
-  selectedMatterAccountingPeriod: AccountingPeriodDetail | null;
   selectedMatterDeadlines: Deadline[];
   selectedMatterDeadlineSettings: MatterDeadlineSettings | null;
   selectedMatterDeadlineAnchorIssues: MatterAnchorAlert[];
@@ -99,8 +68,6 @@ type UseMattersBoardResult = {
   error: string | null;
   archiveError: string | null;
   statsError: string | null;
-  accountingError: string | null;
-  isAccountingLoading: boolean;
   deadlineError: string | null;
   deadlineDashboardError: string | null;
   setSearchTerm: (value: string) => void;
@@ -125,31 +92,6 @@ type UseMattersBoardResult = {
   ) => Promise<void>;
   addNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
   quickAddNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
-  selectAccountingPeriod: (accountingPeriodId: string | null) => Promise<void>;
-  createAccountingPeriod: (input: AccountingPeriodInput) => Promise<void>;
-  updateAccountingPeriod: (
-    accountingPeriodId: string,
-    input: AccountingPeriodUpdateInput
-  ) => Promise<void>;
-  finalizeAccountingPeriod: (accountingPeriodId: string) => Promise<void>;
-  createAccountingEntry: (input: LedgerEntryInput) => Promise<void>;
-  updateAccountingEntry: (
-    entryId: string,
-    input: LedgerEntryUpdateInput
-  ) => Promise<void>;
-  deleteAccountingEntry: (entryId: string) => Promise<void>;
-  createAccountingHeldAsset: (input: HeldAssetInput) => Promise<void>;
-  updateAccountingHeldAsset: (
-    assetId: string,
-    input: HeldAssetUpdateInput
-  ) => Promise<void>;
-  deleteAccountingHeldAsset: (assetId: string) => Promise<void>;
-  createAccountingProofLink: (input: ProofLinkInput) => Promise<void>;
-  updateAccountingProofLink: (
-    proofLinkId: string,
-    input: ProofLinkUpdateInput
-  ) => Promise<void>;
-  deleteAccountingProofLink: (proofLinkId: string) => Promise<void>;
   deleteMatter: (matterId: string) => Promise<void>;
   archiveMatter: (matterId: string) => Promise<void>;
   unarchiveMatter: (matterId: string) => Promise<void>;
@@ -175,14 +117,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
   const [matters, setMatters] = useState<Matter[]>([]);
   const [selectedMatterId, setSelectedMatterId] = useState<string | null>(null);
   const [selectedMatterNotes, setSelectedMatterNotes] = useState<MatterNote[]>([]);
-  const [selectedMatterAccountingPeriods, setSelectedMatterAccountingPeriods] = useState<
-    AccountingPeriodSummary[]
-  >([]);
-  const [selectedMatterAccountingPeriodId, setSelectedMatterAccountingPeriodId] = useState<
-    string | null
-  >(null);
-  const [selectedMatterAccountingPeriod, setSelectedMatterAccountingPeriod] =
-    useState<AccountingPeriodDetail | null>(null);
   const [selectedMatterDeadlines, setSelectedMatterDeadlines] = useState<Deadline[]>([]);
   const [selectedMatterDeadlineSettings, setSelectedMatterDeadlineSettings] =
     useState<MatterDeadlineSettings | null>(null);
@@ -205,8 +139,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
   const [error, setError] = useState<string | null>(null);
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
-  const [isAccountingLoading, setIsAccountingLoading] = useState(false);
-  const [accountingError, setAccountingError] = useState<string | null>(null);
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const [deadlineDashboardError, setDeadlineDashboardError] = useState<string | null>(null);
 
@@ -222,27 +154,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
 
     void hydrateNotes(selectedMatterId);
   }, [selectedMatterId]);
-
-  useEffect(() => {
-    if (!selectedMatterId) {
-      setSelectedMatterAccountingPeriods([]);
-      setSelectedMatterAccountingPeriodId(null);
-      setSelectedMatterAccountingPeriod(null);
-      setAccountingError(null);
-      return;
-    }
-
-    void hydrateAccountingPeriods(selectedMatterId);
-  }, [selectedMatterId]);
-
-  useEffect(() => {
-    if (!selectedMatterAccountingPeriodId) {
-      setSelectedMatterAccountingPeriod(null);
-      return;
-    }
-
-    void hydrateAccountingPeriod(selectedMatterAccountingPeriodId);
-  }, [selectedMatterAccountingPeriodId]);
 
   useEffect(() => {
     if (!selectedMatterId) {
@@ -373,28 +284,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     });
   }
 
-  function updateAccountingPeriodSummary(detail: AccountingPeriodDetail) {
-    const summary = buildAccountingPeriodSummary(detail);
-
-    setSelectedMatterAccountingPeriods((current) => {
-      const remaining = current.filter((period) => period.id !== summary.id);
-      return [summary, ...remaining].sort((left, right) => {
-        if (left.isLocked !== right.isLocked) {
-          return left.isLocked ? 1 : -1;
-        }
-
-        return right.updatedAt.localeCompare(left.updatedAt);
-      });
-    });
-  }
-
-  function applyAccountingPeriodDetail(detail: AccountingPeriodDetail) {
-    setSelectedMatterAccountingPeriod(detail);
-    setSelectedMatterAccountingPeriodId(detail.period.id);
-    updateAccountingPeriodSummary(detail);
-    setAccountingError(null);
-  }
-
   async function hydrateBoard() {
     try {
       setIsLoading(true);
@@ -423,50 +312,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
       setError(null);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to load notes.");
-    }
-  }
-
-  async function hydrateAccountingPeriods(matterId: string) {
-    try {
-      setIsAccountingLoading(true);
-      const periods = await listAccountingPeriodsApi(matterId);
-      setSelectedMatterAccountingPeriods(periods);
-      setSelectedMatterAccountingPeriodId((current) =>
-        current && periods.some((period) => period.id === current)
-          ? current
-          : (periods[0]?.id ?? null)
-      );
-      setAccountingError(null);
-    } catch (caughtError) {
-      setSelectedMatterAccountingPeriods([]);
-      setSelectedMatterAccountingPeriodId(null);
-      setSelectedMatterAccountingPeriod(null);
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to load accounting periods."
-      );
-    } finally {
-      setIsAccountingLoading(false);
-    }
-  }
-
-  async function hydrateAccountingPeriod(accountingPeriodId: string) {
-    try {
-      setIsAccountingLoading(true);
-      const detail = await getAccountingPeriodApi(accountingPeriodId);
-      setSelectedMatterAccountingPeriod(detail);
-      updateAccountingPeriodSummary(detail);
-      setAccountingError(null);
-    } catch (caughtError) {
-      setSelectedMatterAccountingPeriod(null);
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to load accounting period."
-      );
-    } finally {
-      setIsAccountingLoading(false);
     }
   }
 
@@ -587,203 +432,10 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     await Promise.all([hydrateBoard(), hydrateTasks()]);
   }
 
-  async function handleSelectAccountingPeriod(accountingPeriodId: string | null) {
-    setSelectedMatterAccountingPeriodId(accountingPeriodId);
-    setAccountingError(null);
-
-    if (!accountingPeriodId) {
-      setSelectedMatterAccountingPeriod(null);
-      return;
-    }
-  }
-
-  async function handleCreateAccountingPeriod(input: AccountingPeriodInput) {
-    try {
-      const detail = await createAccountingPeriodApi(input);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to create accounting period."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleUpdateAccountingPeriod(
-    accountingPeriodId: string,
-    input: AccountingPeriodUpdateInput
-  ) {
-    try {
-      const detail = await updateAccountingPeriodApi(accountingPeriodId, input);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to update accounting period."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleFinalizeAccountingPeriod(accountingPeriodId: string) {
-    try {
-      const detail = await finalizeAccountingPeriodApi(accountingPeriodId);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to finalize accounting period."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleCreateAccountingEntry(input: LedgerEntryInput) {
-    try {
-      const detail = await createAccountingEntryApi(input);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to create accounting entry."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleUpdateAccountingEntry(
-    entryId: string,
-    input: LedgerEntryUpdateInput
-  ) {
-    try {
-      const detail = await updateAccountingEntryApi(entryId, input);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to update accounting entry."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleDeleteAccountingEntry(entryId: string) {
-    try {
-      const detail = await deleteAccountingEntryApi(entryId);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to delete accounting entry."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleCreateAccountingHeldAsset(input: HeldAssetInput) {
-    try {
-      const detail = await createAccountingHeldAssetApi(input);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to create held asset."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleUpdateAccountingHeldAsset(
-    assetId: string,
-    input: HeldAssetUpdateInput
-  ) {
-    try {
-      const detail = await updateAccountingHeldAssetApi(assetId, input);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to update held asset."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleDeleteAccountingHeldAsset(assetId: string) {
-    try {
-      const detail = await deleteAccountingHeldAssetApi(assetId);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to delete held asset."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleCreateAccountingProofLink(input: ProofLinkInput) {
-    try {
-      const detail = await createAccountingProofLinkApi(input);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to create proof link."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleUpdateAccountingProofLink(
-    proofLinkId: string,
-    input: ProofLinkUpdateInput
-  ) {
-    try {
-      const detail = await updateAccountingProofLinkApi(proofLinkId, input);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to update proof link."
-      );
-      throw caughtError;
-    }
-  }
-
-  async function handleDeleteAccountingProofLink(proofLinkId: string) {
-    try {
-      const detail = await deleteAccountingProofLinkApi(proofLinkId);
-      applyAccountingPeriodDetail(detail);
-    } catch (caughtError) {
-      setAccountingError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Unable to delete proof link."
-      );
-      throw caughtError;
-    }
-  }
-
   async function handleDeleteMatter(matterId: string) {
     await deleteMatter(matterId);
     setSelectedMatterId(null);
     setSelectedMatterNotes([]);
-    setSelectedMatterAccountingPeriods([]);
-    setSelectedMatterAccountingPeriodId(null);
-    setSelectedMatterAccountingPeriod(null);
     setSelectedMatterDeadlines([]);
     setSelectedMatterDeadlineSettings(null);
     setSelectedMatterDeadlineAnchorIssues([]);
@@ -794,9 +446,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     await archiveMatter(matterId);
     setSelectedMatterId(null);
     setSelectedMatterNotes([]);
-    setSelectedMatterAccountingPeriods([]);
-    setSelectedMatterAccountingPeriodId(null);
-    setSelectedMatterAccountingPeriod(null);
     setSelectedMatterDeadlines([]);
     setSelectedMatterDeadlineSettings(null);
     setSelectedMatterDeadlineAnchorIssues([]);
@@ -917,8 +566,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     filteredMatters,
     selectedMatter,
     selectedMatterNotes,
-    selectedMatterAccountingPeriods,
-    selectedMatterAccountingPeriod,
     selectedMatterDeadlines,
     selectedMatterDeadlineSettings,
     selectedMatterDeadlineAnchorIssues,
@@ -938,8 +585,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     error,
     archiveError,
     statsError,
-    accountingError,
-    isAccountingLoading,
     deadlineError,
     deadlineDashboardError,
     setSearchTerm,
@@ -951,9 +596,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
       setIsCreateMode(true);
       setSelectedMatterId(null);
       setSelectedMatterNotes([]);
-      setSelectedMatterAccountingPeriods([]);
-      setSelectedMatterAccountingPeriodId(null);
-      setSelectedMatterAccountingPeriod(null);
       setSelectedMatterDeadlines([]);
       setSelectedMatterDeadlineSettings(null);
       setSelectedMatterDeadlineAnchorIssues([]);
@@ -985,19 +627,6 @@ export function useMattersBoard(boardId: string): UseMattersBoardResult {
     moveMatter: handleMoveMatter,
     addNote: handleAddNote,
     quickAddNote: handleQuickAddNote,
-    selectAccountingPeriod: handleSelectAccountingPeriod,
-    createAccountingPeriod: handleCreateAccountingPeriod,
-    updateAccountingPeriod: handleUpdateAccountingPeriod,
-    finalizeAccountingPeriod: handleFinalizeAccountingPeriod,
-    createAccountingEntry: handleCreateAccountingEntry,
-    updateAccountingEntry: handleUpdateAccountingEntry,
-    deleteAccountingEntry: handleDeleteAccountingEntry,
-    createAccountingHeldAsset: handleCreateAccountingHeldAsset,
-    updateAccountingHeldAsset: handleUpdateAccountingHeldAsset,
-    deleteAccountingHeldAsset: handleDeleteAccountingHeldAsset,
-    createAccountingProofLink: handleCreateAccountingProofLink,
-    updateAccountingProofLink: handleUpdateAccountingProofLink,
-    deleteAccountingProofLink: handleDeleteAccountingProofLink,
     deleteMatter: handleDeleteMatter,
     archiveMatter: handleArchiveMatter,
     unarchiveMatter: handleUnarchiveMatter,

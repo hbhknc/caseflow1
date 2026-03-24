@@ -13,8 +13,7 @@ const PROTECTED_PREFIXES = [
   "/tasks",
   "/stats",
   "/settings",
-  "/deadlines",
-  "/accounting"
+  "/deadlines"
 ];
 
 export class ApiError extends Error {

@@ -2,23 +2,10 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { Drawer } from "@/components/Drawer";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusPill } from "@/components/StatusPill";
-import { MatterAccountingSection } from "@/features/accounting/components/MatterAccountingSection";
 import { MatterDeadlinesSection } from "@/features/deadlines/components/MatterDeadlinesSection";
 import { NotesTimeline } from "@/features/notes/components/NotesTimeline";
 import { formatDateTime } from "@/lib/dates";
 import { ARCHIVE_READY_STAGE, STAGES, createStageLabelMap, getStageLabel } from "@/utils/stages";
-import type {
-  AccountingPeriodDetail,
-  AccountingPeriodInput,
-  AccountingPeriodSummary,
-  AccountingPeriodUpdateInput,
-  HeldAssetInput,
-  HeldAssetUpdateInput,
-  LedgerEntryInput,
-  LedgerEntryUpdateInput,
-  ProofLinkInput,
-  ProofLinkUpdateInput
-} from "@/types/accounting";
 import type {
   Deadline,
   DeadlineInput,
@@ -32,13 +19,9 @@ import type { Matter, MatterFormInput, MatterNote, MatterStage } from "@/types/m
 type MatterDrawerProps = {
   matter: Matter | null;
   notes: MatterNote[];
-  accountingPeriods: AccountingPeriodSummary[];
-  accountingPeriod: AccountingPeriodDetail | null;
   deadlines: Deadline[];
   deadlineSettings: MatterDeadlineSettings | null;
   deadlineAnchorIssues: MatterAnchorAlert[];
-  accountingError: string | null;
-  isAccountingLoading: boolean;
   deadlineError: string | null;
   isCreateMode: boolean;
   defaultBoardId?: string;
@@ -49,31 +32,6 @@ type MatterDrawerProps = {
   onDeleteMatter: (matterId: string) => Promise<void>;
   onArchiveMatter: (matterId: string) => Promise<void>;
   onAddNote: (matterId: string, body: string, addToTaskList: boolean) => Promise<void>;
-  onSelectAccountingPeriod: (accountingPeriodId: string | null) => Promise<void>;
-  onCreateAccountingPeriod: (input: AccountingPeriodInput) => Promise<void>;
-  onUpdateAccountingPeriod: (
-    accountingPeriodId: string,
-    input: AccountingPeriodUpdateInput
-  ) => Promise<void>;
-  onFinalizeAccountingPeriod: (accountingPeriodId: string) => Promise<void>;
-  onCreateAccountingEntry: (input: LedgerEntryInput) => Promise<void>;
-  onUpdateAccountingEntry: (
-    entryId: string,
-    input: LedgerEntryUpdateInput
-  ) => Promise<void>;
-  onDeleteAccountingEntry: (entryId: string) => Promise<void>;
-  onCreateAccountingHeldAsset: (input: HeldAssetInput) => Promise<void>;
-  onUpdateAccountingHeldAsset: (
-    assetId: string,
-    input: HeldAssetUpdateInput
-  ) => Promise<void>;
-  onDeleteAccountingHeldAsset: (assetId: string) => Promise<void>;
-  onCreateAccountingProofLink: (input: ProofLinkInput) => Promise<void>;
-  onUpdateAccountingProofLink: (
-    proofLinkId: string,
-    input: ProofLinkUpdateInput
-  ) => Promise<void>;
-  onDeleteAccountingProofLink: (proofLinkId: string) => Promise<void>;
   onSaveDeadlineSettings: (
     matterId: string,
     input: MatterDeadlineSettingsInput
@@ -119,13 +77,9 @@ function isMatterInputComplete(input: MatterFormInput): boolean {
 export function MatterDrawer({
   matter,
   notes,
-  accountingPeriods,
-  accountingPeriod,
   deadlines,
   deadlineSettings,
   deadlineAnchorIssues,
-  accountingError,
-  isAccountingLoading,
   deadlineError,
   isCreateMode,
   defaultBoardId = "probate",
@@ -136,19 +90,6 @@ export function MatterDrawer({
   onDeleteMatter,
   onArchiveMatter,
   onAddNote,
-  onSelectAccountingPeriod,
-  onCreateAccountingPeriod,
-  onUpdateAccountingPeriod,
-  onFinalizeAccountingPeriod,
-  onCreateAccountingEntry,
-  onUpdateAccountingEntry,
-  onDeleteAccountingEntry,
-  onCreateAccountingHeldAsset,
-  onUpdateAccountingHeldAsset,
-  onDeleteAccountingHeldAsset,
-  onCreateAccountingProofLink,
-  onUpdateAccountingProofLink,
-  onDeleteAccountingProofLink,
   onSaveDeadlineSettings,
   onCreateDeadline,
   onUpdateDeadline,
@@ -561,29 +502,6 @@ export function MatterDrawer({
                 </div>
               </div>
             </form>
-
-            {!isCreateMode && matter ? (
-              <MatterAccountingSection
-                matter={matter}
-                periods={accountingPeriods}
-                selectedPeriod={accountingPeriod}
-                error={accountingError}
-                isLoading={isAccountingLoading}
-                onSelectPeriod={onSelectAccountingPeriod}
-                onCreatePeriod={onCreateAccountingPeriod}
-                onUpdatePeriod={onUpdateAccountingPeriod}
-                onFinalizePeriod={onFinalizeAccountingPeriod}
-                onCreateEntry={onCreateAccountingEntry}
-                onUpdateEntry={onUpdateAccountingEntry}
-                onDeleteEntry={onDeleteAccountingEntry}
-                onCreateHeldAsset={onCreateAccountingHeldAsset}
-                onUpdateHeldAsset={onUpdateAccountingHeldAsset}
-                onDeleteHeldAsset={onDeleteAccountingHeldAsset}
-                onCreateProofLink={onCreateAccountingProofLink}
-                onUpdateProofLink={onUpdateAccountingProofLink}
-                onDeleteProofLink={onDeleteAccountingProofLink}
-              />
-            ) : null}
 
             {!isCreateMode && matter ? (
               <MatterDeadlinesSection
