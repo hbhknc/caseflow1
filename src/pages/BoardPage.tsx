@@ -607,9 +607,13 @@ export function BoardPage() {
         <MatterDrawer
           matter={board.selectedMatter}
           notes={board.selectedMatterNotes}
+          accountingPeriods={board.selectedMatterAccountingPeriods}
+          accountingPeriod={board.selectedMatterAccountingPeriod}
           deadlines={board.selectedMatterDeadlines}
           deadlineSettings={board.selectedMatterDeadlineSettings}
           deadlineAnchorIssues={board.selectedMatterDeadlineAnchorIssues}
+          accountingError={board.accountingError}
+          isAccountingLoading={board.isAccountingLoading}
           deadlineError={board.deadlineError}
           isCreateMode={board.isCreateMode}
           defaultBoardId={currentBoard.id}
@@ -624,6 +628,19 @@ export function BoardPage() {
           onDeleteMatter={board.deleteMatter}
           onArchiveMatter={board.archiveMatter}
           onAddNote={board.addNote}
+          onSelectAccountingPeriod={board.selectAccountingPeriod}
+          onCreateAccountingPeriod={board.createAccountingPeriod}
+          onUpdateAccountingPeriod={board.updateAccountingPeriod}
+          onFinalizeAccountingPeriod={board.finalizeAccountingPeriod}
+          onCreateAccountingEntry={board.createAccountingEntry}
+          onUpdateAccountingEntry={board.updateAccountingEntry}
+          onDeleteAccountingEntry={board.deleteAccountingEntry}
+          onCreateAccountingHeldAsset={board.createAccountingHeldAsset}
+          onUpdateAccountingHeldAsset={board.updateAccountingHeldAsset}
+          onDeleteAccountingHeldAsset={board.deleteAccountingHeldAsset}
+          onCreateAccountingProofLink={board.createAccountingProofLink}
+          onUpdateAccountingProofLink={board.updateAccountingProofLink}
+          onDeleteAccountingProofLink={board.deleteAccountingProofLink}
           onSaveDeadlineSettings={board.saveMatterDeadlineSettings}
           onCreateDeadline={board.createDeadline}
           onUpdateDeadline={board.updateDeadline}

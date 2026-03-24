@@ -4,6 +4,16 @@ import type {
   PluginData as CloudflareAccessPluginData
 } from "@cloudflare/pages-plugin-cloudflare-access";
 import type {
+  AccountingPeriodInput,
+  AccountingPeriodUpdateInput,
+  HeldAssetInput,
+  HeldAssetUpdateInput,
+  LedgerEntryInput,
+  LedgerEntryUpdateInput,
+  ProofLinkInput,
+  ProofLinkUpdateInput
+} from "../../src/types/accounting";
+import type {
   DeadlineDashboardData,
   DeadlineInput,
   DeadlineReminderState,
@@ -230,6 +240,93 @@ export type MatterDeadlineCompleteInput = {
 
 export type MatterDeadlineDismissInput = {
   deadlineId: string;
+};
+
+export type AccountingPeriodRecord = {
+  id: string;
+  matter_id: string;
+  decedent_name?: string | null;
+  account_type: "annual" | "final";
+  accounting_period_start: string | null;
+  accounting_period_end: string | null;
+  date_of_death: string | null;
+  county: string | null;
+  file_number: string | null;
+  estate_type: "decedent" | "minor" | "adult_ward" | "trust" | null;
+  form_version_label: string | null;
+  beginning_personal_property_value_cents: number | null;
+  loss_from_sale_amount_cents: number | null;
+  loss_explanation: string | null;
+  is_locked: number;
+  created_by_email: string | null;
+  created_by_id: string | null;
+  locked_at: string | null;
+  locked_by_email: string | null;
+  locked_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AccountingLedgerEntryRecord = {
+  id: string;
+  accounting_period_id: string;
+  entry_type: "receipt" | "disbursement" | "distribution";
+  entry_date: string | null;
+  party_name: string | null;
+  description: string | null;
+  amount_cents: number | null;
+  category: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AccountingHeldAssetRecord = {
+  id: string;
+  accounting_period_id: string;
+  asset_type:
+    | "bank_deposit"
+    | "security"
+    | "tangible_personal_property"
+    | "real_estate"
+    | "other";
+  institution_or_description: string | null;
+  value_cents: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AccountingProofLinkRecord = {
+  id: string;
+  accounting_period_id: string;
+  ledger_entry_id: string | null;
+  label: string | null;
+  reference_url: string | null;
+  status: "pending" | "received" | "not_required" | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AccountingPeriodCreateInput = AccountingPeriodInput;
+
+export type AccountingPeriodPatchInput = AccountingPeriodUpdateInput;
+
+export type AccountingEntryCreateInput = LedgerEntryInput;
+
+export type AccountingEntryPatchInput = LedgerEntryUpdateInput;
+
+export type AccountingHeldAssetCreateInput = HeldAssetInput;
+
+export type AccountingHeldAssetPatchInput = HeldAssetUpdateInput;
+
+export type AccountingProofLinkCreateInput = ProofLinkInput;
+
+export type AccountingProofLinkPatchInput = ProofLinkUpdateInput;
+
+export type AccountingFinalizeInput = {
+  accountingPeriodId: string;
 };
 
 export type MatterDeadlineDashboardQuery = {
