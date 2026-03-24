@@ -15,6 +15,21 @@ import type {
   MatterAnchorAlert,
   MatterDeadlineSettings
 } from "../../src/types/deadlines";
+import type {
+  ProbateAccountingAssetRow,
+  ProbateAccountingDetail,
+  ProbateAccountingInput,
+  ProbateAccountingStatus,
+  ProbateAccountingSummary,
+  ProbateAccountingType
+} from "../../src/types/accounting";
+export type {
+  ProbateAccountingDetail,
+  ProbateAccountingInput,
+  ProbateAccountingStatus,
+  ProbateAccountingSummary,
+  ProbateAccountingType
+} from "../../src/types/accounting";
 
 export type Env = {
   DB: D1Database;
@@ -173,6 +188,62 @@ export type MatterDeadlineRecord = {
   file_number: string;
 };
 
+export type ProbateAccountingRecord = {
+  id: string;
+  account_id: string;
+  matter_id: string | null;
+  account_type: ProbateAccountingType;
+  status: ProbateAccountingStatus;
+  county: string | null;
+  file_number: string | null;
+  decedent_name: string | null;
+  fiduciary_name: string | null;
+  fiduciary_address: string | null;
+  co_fiduciary_name: string | null;
+  co_fiduciary_address: string | null;
+  date_of_death: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  opening_personal_property_cents: number | null;
+  loss_from_sale_cents: number | null;
+  loss_explanation: string | null;
+  created_at: string;
+  created_by_email: string | null;
+  created_by_id: string | null;
+  updated_at: string;
+  last_updated_by_email: string | null;
+  last_updated_by_id: string | null;
+  linked_matter_name?: string | null;
+  linked_matter_file_number?: string | null;
+  linked_matter_archived?: number | null;
+};
+
+export type ProbateAccountingEntryRecord = {
+  id: string;
+  accounting_id: string;
+  entry_type: "receipt" | "disbursement" | "distribution";
+  entry_date: string | null;
+  party_name: string | null;
+  description: string | null;
+  amount_cents: number | null;
+  proof_reference: string | null;
+  sort_order: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProbateAccountingAssetRecord = {
+  id: string;
+  accounting_id: string;
+  asset_type: ProbateAccountingAssetRow["assetType"];
+  description: string | null;
+  amount_cents: number | null;
+  proof_reference: string | null;
+  sort_order: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type MatterInput = {
   boardId: string;
   decedentName: string;
@@ -242,6 +313,12 @@ export type MatterDeadlineReminderState = DeadlineReminderState;
 
 export type MatterAnchorAlertRecord = MatterAnchorAlert;
 
+export type ProbateAccountingListQuery = {
+  search?: string;
+  status?: ProbateAccountingStatus | "all";
+  accountType?: ProbateAccountingType | "all";
+};
+
 export type BoardSettings = {
   columnCount: number;
   stageLabels: Record<MatterStage, string>;
@@ -275,3 +352,11 @@ export type PracticeBoard = {
 };
 
 export type DeadlineDashboardOverview = DeadlineDashboardData;
+
+export type ProbateAccountingOverview = {
+  accountings: ProbateAccountingSummary[];
+};
+
+export type ProbateAccountingResponse = {
+  accounting: ProbateAccountingDetail;
+};

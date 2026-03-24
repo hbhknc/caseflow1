@@ -48,6 +48,25 @@ export function SettingsPage() {
           </span>
           <span>Board</span>
         </Link>
+        <Link
+          to="/accounting"
+          className="sidebar-menu__item"
+          aria-label="Accounting"
+          title="Accounting"
+        >
+          <span className="sidebar-menu__icon" aria-hidden="true">
+            <svg viewBox="0 0 18 18" fill="none">
+              <path
+                d="M4 4.5h10M4 8.75h10M4 13h6.5M4.75 3.75h8.5a1 1 0 0 1 1 1v8.5a1 1 0 0 1-1 1h-8.5a1 1 0 0 1-1-1v-8.5a1 1 0 0 1 1-1Z"
+                stroke="currentColor"
+                strokeWidth="1.35"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span>Accounting</span>
+        </Link>
         <div
           className="sidebar-menu__item sidebar-menu__item--primary"
           aria-current="page"

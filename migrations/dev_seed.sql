@@ -78,3 +78,119 @@ INSERT INTO audit_events (id, entity_type, entity_id, action, details_json, crea
   ('audit_seed_002', 'matter_note', 'note_seed_001', 'note.created', '{"matterId":"matter_seed_001"}', '2026-03-12T16:45:00.000Z'),
   ('audit_seed_003', 'matter', 'matter_seed_005', 'matter.updated', '{"stage":"accounting_closing"}', '2026-03-10T12:00:00.000Z'),
   ('audit_seed_004', 'matter', 'matter_seed_006', 'matter.archived', '{"archivedAt":"2026-01-18T14:30:00.000Z"}', '2026-01-18T14:30:00.000Z');
+
+INSERT INTO probate_accountings (
+  id,
+  account_id,
+  matter_id,
+  account_type,
+  status,
+  county,
+  file_number,
+  decedent_name,
+  fiduciary_name,
+  fiduciary_address,
+  co_fiduciary_name,
+  co_fiduciary_address,
+  date_of_death,
+  period_start,
+  period_end,
+  opening_personal_property_cents,
+  loss_from_sale_cents,
+  loss_explanation,
+  created_at,
+  created_by_email,
+  created_by_id,
+  updated_at,
+  last_updated_by_email,
+  last_updated_by_id
+) VALUES
+  (
+    'accounting_seed_001',
+    'account_default',
+    'matter_seed_003',
+    'annual',
+    'draft',
+    'Wake',
+    'PR-2026-0021',
+    'Lucille Carver',
+    'Daniel Carver',
+    '451 Glenwood Ave\nRaleigh, NC 27603',
+    '',
+    '',
+    '2025-11-30',
+    '2026-01-01',
+    '2026-03-31',
+    2520000,
+    0,
+    '',
+    '2026-03-20T09:15:00.000Z',
+    'probate.team@example.com',
+    'seed_user_001',
+    '2026-03-22T14:10:00.000Z',
+    'probate.team@example.com',
+    'seed_user_001'
+  ),
+  (
+    'accounting_seed_002',
+    'account_default',
+    'matter_seed_005',
+    'final',
+    'review_ready',
+    'Mecklenburg',
+    'PR-2025-0119',
+    'Florence Avery',
+    'Jon Avery',
+    '18 Queens Road\nCharlotte, NC 28204',
+    '',
+    '',
+    '2025-10-18',
+    '2026-01-01',
+    '2026-02-28',
+    845000,
+    0,
+    '',
+    '2026-02-26T11:00:00.000Z',
+    'probate.team@example.com',
+    'seed_user_001',
+    '2026-03-10T12:15:00.000Z',
+    'probate.team@example.com',
+    'seed_user_001'
+  );
+
+INSERT INTO probate_accounting_entries (
+  id,
+  accounting_id,
+  entry_type,
+  entry_date,
+  party_name,
+  description,
+  amount_cents,
+  proof_reference,
+  sort_order,
+  created_at,
+  updated_at
+) VALUES
+  ('accounting_entry_seed_001', 'accounting_seed_001', 'receipt', '2026-02-14', 'Capital Bank', 'Interest posted to estate checking', 12000, '', 1, '2026-03-20T09:15:00.000Z', '2026-03-20T09:15:00.000Z'),
+  ('accounting_entry_seed_002', 'accounting_seed_001', 'disbursement', '2026-03-01', 'Wake County Tax Office', '2026 property taxes', 58000, 'Check 248', 2, '2026-03-20T09:15:00.000Z', '2026-03-20T09:15:00.000Z'),
+  ('accounting_entry_seed_003', 'accounting_seed_001', 'distribution', '2026-03-28', 'Daniel Carver', 'Partial distribution to beneficiary', 274000, 'Receipt signed 2026-03-28', 3, '2026-03-20T09:15:00.000Z', '2026-03-20T09:15:00.000Z'),
+  ('accounting_entry_seed_004', 'accounting_seed_002', 'receipt', '2026-01-12', 'Estate checking', 'Refund from canceled insurance premium', 5000, '', 1, '2026-02-26T11:00:00.000Z', '2026-02-26T11:00:00.000Z'),
+  ('accounting_entry_seed_005', 'accounting_seed_002', 'disbursement', '2026-01-20', 'Clerk of Superior Court', 'Final costs and fees', 50000, 'Check 310', 2, '2026-02-26T11:00:00.000Z', '2026-02-26T11:00:00.000Z'),
+  ('accounting_entry_seed_006', 'accounting_seed_002', 'distribution', '2026-02-18', 'Jon Avery', 'Final distribution to beneficiary', 800000, 'Receipt signed 2026-02-18', 3, '2026-02-26T11:00:00.000Z', '2026-02-26T11:00:00.000Z');
+
+INSERT INTO probate_accounting_assets (
+  id,
+  accounting_id,
+  asset_type,
+  description,
+  amount_cents,
+  proof_reference,
+  sort_order,
+  created_at,
+  updated_at
+) VALUES
+  ('accounting_asset_seed_001', 'accounting_seed_001', 'bank', 'Capital Bank estate checking', 2200000, 'Statement ending 2026-03-31', 1, '2026-03-20T09:15:00.000Z', '2026-03-20T09:15:00.000Z');
+
+INSERT INTO audit_events (id, entity_type, entity_id, action, details_json, created_at) VALUES
+  ('audit_seed_005', 'probate_accounting', 'accounting_seed_001', 'probate_accounting.created', '{"accountType":"annual","matterId":"matter_seed_003"}', '2026-03-20T09:15:00.000Z'),
+  ('audit_seed_006', 'probate_accounting', 'accounting_seed_002', 'probate_accounting.created', '{"accountType":"final","matterId":"matter_seed_005"}', '2026-02-26T11:00:00.000Z');

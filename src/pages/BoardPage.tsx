@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAppChrome } from "@/app/AppChrome";
 import { EmptyState } from "@/components/EmptyState";
 import { SearchField } from "@/components/SearchField";
@@ -324,6 +325,20 @@ export function BoardPage() {
       <nav className="sidebar-menu" aria-label="Board actions">
         <section className="sidebar-menu__section" aria-label="Workspace">
           <p className="sidebar-menu__section-label">Workspace</p>
+          <Link to="/accounting" className="sidebar-menu__item" aria-label="Accounting" title="Accounting">
+            <span className="sidebar-menu__icon" aria-hidden="true">
+              <svg viewBox="0 0 18 18" fill="none">
+                <path
+                  d="M4 4.5h10M4 8.75h10M4 13h6.5M4.75 3.75h8.5a1 1 0 0 1 1 1v8.5a1 1 0 0 1-1 1h-8.5a1 1 0 0 1-1-1v-8.5a1 1 0 0 1 1-1Z"
+                  stroke="currentColor"
+                  strokeWidth="1.35"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span>Accounting</span>
+          </Link>
           <button
             type="button"
             className="sidebar-menu__item sidebar-menu__item--primary"

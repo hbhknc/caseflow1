@@ -1738,7 +1738,7 @@ async function getAppSettingMap(db: D1Database, keys: string[]) {
   return new Map(results.map((row) => [row.key, row.value]));
 }
 
-async function ensureDefaultAccountData(db: D1Database) {
+export async function ensureDefaultAccountData(db: D1Database) {
   await ensureAccountScopeSchema(db);
 
   const timestamp = nowIso();
