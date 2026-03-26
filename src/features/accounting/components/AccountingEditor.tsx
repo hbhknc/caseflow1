@@ -55,6 +55,12 @@ function buildInput(accounting: ProbateAccountingDetail): ProbateAccountingInput
 export function AccountingEditor({ accounting, onSaved }: AccountingEditorProps) {
   const navigate = useNavigate();
   const [draft, setDraft] = useState<ProbateAccountingInput>(() => buildInput(accounting));
+  const [openingPersonalPropertyDisplay, setOpeningPersonalPropertyDisplay] = useState(() =>
+    formatCentsForInput(accounting.openingPersonalPropertyCents)
+  );
+  const [lossFromSaleDisplay, setLossFromSaleDisplay] = useState(() =>
+    formatCentsForInput(accounting.lossFromSaleCents)
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<{
     tone: "neutral" | "success" | "warn";
@@ -67,6 +73,10 @@ export function AccountingEditor({ accounting, onSaved }: AccountingEditorProps)
 
   useEffect(() => {
     setDraft(buildInput(accounting));
+    setOpeningPersonalPropertyDisplay(
+      formatCentsForInput(accounting.openingPersonalPropertyCents)
+    );
+    setLossFromSaleDisplay(formatCentsForInput(accounting.lossFromSaleCents));
     setFeedback({
       tone: "neutral",
       message: "Save a draft as you work, then mark it review ready when all issues are cleared."
@@ -370,28 +380,38 @@ export function AccountingEditor({ accounting, onSaved }: AccountingEditorProps)
               <label className="field">
                 <span>Opening Personal Property</span>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formatCentsForInput(draft.openingPersonalPropertyCents)}
-                  onChange={(event) =>
+                  type="text"
+                  inputMode="decimal"
+                  value={openingPersonalPropertyDisplay}
+                  onChange={(event) => {
+                    setOpeningPersonalPropertyDisplay(event.target.value);
                     setField(
                       "openingPersonalPropertyCents",
                       parseCurrencyInputToCents(event.target.value)
+                    );
+                  }}
+                  onBlur={() =>
+                    setOpeningPersonalPropertyDisplay(
+                      formatCentsForInput(draft.openingPersonalPropertyCents)
                     )
                   }
+                  placeholder="0.00"
                 />
               </label>
               <label className="field">
                 <span>Loss From Sale</span>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formatCentsForInput(draft.lossFromSaleCents)}
-                  onChange={(event) =>
-                    setField("lossFromSaleCents", parseCurrencyInputToCents(event.target.value))
+                  type="text"
+                  inputMode="decimal"
+                  value={lossFromSaleDisplay}
+                  onChange={(event) => {
+                    setLossFromSaleDisplay(event.target.value);
+                    setField("lossFromSaleCents", parseCurrencyInputToCents(event.target.value));
+                  }}
+                  onBlur={() =>
+                    setLossFromSaleDisplay(formatCentsForInput(draft.lossFromSaleCents))
                   }
+                  placeholder="0.00"
                 />
               </label>
               <label className="field accounting-form-grid__wide">
