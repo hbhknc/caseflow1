@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  PROBATE_ACCOUNTING_ENTRY_TYPE_LABELS,
   PROBATE_ACCOUNTING_ASSET_TYPE_LABELS,
   PROBATE_ACCOUNTING_STATUS_LABELS,
   PROBATE_ACCOUNTING_TYPE_LABELS,
@@ -20,6 +21,7 @@ import {
 import type {
   ProbateAccountingAssetRow,
   ProbateAccountingDetail,
+  ProbateAccountingEntryType,
   ProbateAccountingInput,
   ProbateAccountingLedgerEntry,
   ProbateAccountingStatus
@@ -51,6 +53,39 @@ function buildInput(accounting: ProbateAccountingDetail): ProbateAccountingInput
     entries: accounting.entries.map((entry) => ({ ...entry })),
     assets: accounting.assets.map((asset) => ({ ...asset }))
   };
+}
+
+function getLedgerPartyLabel(entryType: ProbateAccountingEntryType) {
+  switch (entryType) {
+    case "receipt":
+      return "Received From";
+    case "disbursement":
+      return "Paid To";
+    case "distribution":
+      return "Distributed To";
+  }
+}
+
+function getLedgerPartyPlaceholder(entryType: ProbateAccountingEntryType) {
+  switch (entryType) {
+    case "receipt":
+      return "Who paid the estate?";
+    case "disbursement":
+      return "Who was paid?";
+    case "distribution":
+      return "Who received the distribution?";
+  }
+}
+
+function getLedgerDescriptionPlaceholder(entryType: ProbateAccountingEntryType) {
+  switch (entryType) {
+    case "receipt":
+      return "What came into the estate?";
+    case "disbursement":
+      return "What was paid from the estate?";
+    case "distribution":
+      return "What was distributed?";
+  }
 }
 
 export function AccountingEditor({ accounting, onSaved }: AccountingEditorProps) {
@@ -134,6 +169,16 @@ export function AccountingEditor({ accounting, onSaved }: AccountingEditorProps)
       decedentName: selectedMatter ? selectedMatter.decedentName : current.decedentName,
       fileNumber: selectedMatter ? selectedMatter.fileNumber : current.fileNumber,
       fiduciaryName: selectedMatter ? selectedMatter.clientName : current.fiduciaryName
+    }));
+  }
+
+  function addEntry(entryType: ProbateAccountingEntryType) {
+    setDraft((current) => ({
+      ...current,
+      entries: [
+        ...current.entries,
+        createEmptyProbateAccountingEntry(entryType, current.entries.length + 1)
+      ]
     }));
   }
 
@@ -441,151 +486,49 @@ export function AccountingEditor({ accounting, onSaved }: AccountingEditorProps)
                 <h2>Unified Ledger</h2>
                 <p>Receipts, disbursements, and distributions all live in one ordered ledger.</p>
               </div>
-              <div className="button-row">
+              <div className="accounting-ledger__toolbar">
                 <button
                   type="button"
                   className="button button--ghost button--small"
-                  onClick={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      entries: [
-                        ...current.entries,
-                        createEmptyProbateAccountingEntry("receipt", current.entries.length + 1)
-                      ]
-                    }))
-                  }
+                  onClick={() => addEntry("receipt")}
                 >
                   Add Receipt
                 </button>
                 <button
                   type="button"
                   className="button button--ghost button--small"
-                  onClick={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      entries: [
-                        ...current.entries,
-                        createEmptyProbateAccountingEntry(
-                          "disbursement",
-                          current.entries.length + 1
-                        )
-                      ]
-                    }))
-                  }
+                  onClick={() => addEntry("disbursement")}
                 >
                   Add Disbursement
                 </button>
                 <button
                   type="button"
                   className="button button--ghost button--small"
-                  onClick={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      entries: [
-                        ...current.entries,
-                        createEmptyProbateAccountingEntry(
-                          "distribution",
-                          current.entries.length + 1
-                        )
-                      ]
-                    }))
-                  }
+                  onClick={() => addEntry("distribution")}
                 >
                   Add Distribution
                 </button>
               </div>
             </div>
             {draft.entries.length ? (
-              <div className="accounting-ledger">
-                {draft.entries.map((entry) => (
-                  <div key={entry.id} className="accounting-ledger__row">
-                    <label className="field">
-                      <span>Type</span>
-                      <select
-                        value={entry.entryType}
-                        onChange={(event) =>
-                          updateEntry(entry.id, (current) => ({
-                            ...current,
-                            entryType: event.target.value as ProbateAccountingLedgerEntry["entryType"]
-                          }))
-                        }
-                      >
-                        <option value="receipt">Receipt</option>
-                        <option value="disbursement">Disbursement</option>
-                        <option value="distribution">Distribution</option>
-                      </select>
-                    </label>
-                    <label className="field">
-                      <span>Date</span>
-                      <input
-                        type="date"
-                        value={entry.entryDate ?? ""}
-                        onChange={(event) =>
-                          updateEntry(entry.id, (current) => ({
-                            ...current,
-                            entryDate: event.target.value || null
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Party</span>
-                      <input
-                        value={entry.partyName}
-                        onChange={(event) =>
-                          updateEntry(entry.id, (current) => ({
-                            ...current,
-                            partyName: event.target.value
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="field accounting-ledger__wide">
-                      <span>Description</span>
-                      <input
-                        value={entry.description}
-                        onChange={(event) =>
-                          updateEntry(entry.id, (current) => ({
-                            ...current,
-                            description: event.target.value
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Amount</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formatCentsForInput(entry.amountCents)}
-                        onChange={(event) =>
-                          updateEntry(entry.id, (current) => ({
-                            ...current,
-                            amountCents: parseCurrencyInputToCents(event.target.value)
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Proof Reference</span>
-                      <input
-                        value={entry.proofReference}
-                        onChange={(event) =>
-                          updateEntry(entry.id, (current) => ({
-                            ...current,
-                            proofReference: event.target.value
-                          }))
-                        }
-                        placeholder={
-                          entry.entryType === "receipt" ? "Optional" : "Check, receipt, or statement ref"
-                        }
-                      />
-                    </label>
-                    <div className="accounting-ledger__actions">
+              <div className="accounting-ledger accounting-ledger--entries">
+                {draft.entries.map((entry, index) => (
+                  <article
+                    key={entry.id}
+                    className={`accounting-ledger__entry accounting-ledger__entry--${entry.entryType}`}
+                  >
+                    <div className="accounting-ledger__entry-header">
+                      <div className="accounting-ledger__entry-meta">
+                        <span className="accounting-ledger__entry-index">Entry {index + 1}</span>
+                        <span
+                          className={`accounting-ledger__entry-badge accounting-ledger__entry-badge--${entry.entryType}`}
+                        >
+                          {PROBATE_ACCOUNTING_ENTRY_TYPE_LABELS[entry.entryType]}
+                        </span>
+                      </div>
                       <button
                         type="button"
-                        className="button button--ghost button--small"
+                        className="button button--ghost button--small accounting-ledger__entry-remove"
                         onClick={() =>
                           setDraft((current) => ({
                             ...current,
@@ -596,7 +539,102 @@ export function AccountingEditor({ accounting, onSaved }: AccountingEditorProps)
                         Remove
                       </button>
                     </div>
-                  </div>
+
+                    <div className="accounting-ledger__entry-grid accounting-ledger__entry-grid--top">
+                      <label className="field">
+                        <span>Type</span>
+                        <select
+                          value={entry.entryType}
+                          onChange={(event) =>
+                            updateEntry(entry.id, (current) => ({
+                              ...current,
+                              entryType:
+                                event.target.value as ProbateAccountingLedgerEntry["entryType"]
+                            }))
+                          }
+                        >
+                          <option value="receipt">Receipt</option>
+                          <option value="disbursement">Disbursement</option>
+                          <option value="distribution">Distribution</option>
+                        </select>
+                      </label>
+                      <label className="field">
+                        <span>Date</span>
+                        <input
+                          type="date"
+                          value={entry.entryDate ?? ""}
+                          onChange={(event) =>
+                            updateEntry(entry.id, (current) => ({
+                              ...current,
+                              entryDate: event.target.value || null
+                            }))
+                          }
+                        />
+                      </label>
+                      <label className="field accounting-ledger__entry-field--amount">
+                        <span>Amount</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formatCentsForInput(entry.amountCents)}
+                          onChange={(event) =>
+                            updateEntry(entry.id, (current) => ({
+                              ...current,
+                              amountCents: parseCurrencyInputToCents(event.target.value)
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <div className="accounting-ledger__entry-grid accounting-ledger__entry-grid--bottom">
+                      <label className="field">
+                        <span>{getLedgerPartyLabel(entry.entryType)}</span>
+                        <input
+                          value={entry.partyName}
+                          onChange={(event) =>
+                            updateEntry(entry.id, (current) => ({
+                              ...current,
+                              partyName: event.target.value
+                            }))
+                          }
+                          placeholder={getLedgerPartyPlaceholder(entry.entryType)}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Proof Reference</span>
+                        <input
+                          value={entry.proofReference}
+                          onChange={(event) =>
+                            updateEntry(entry.id, (current) => ({
+                              ...current,
+                              proofReference: event.target.value
+                            }))
+                          }
+                          placeholder={
+                            entry.entryType === "receipt"
+                              ? "Optional"
+                              : "Check, receipt, or statement ref"
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <label className="field">
+                      <span>Description</span>
+                      <input
+                        value={entry.description}
+                        onChange={(event) =>
+                          updateEntry(entry.id, (current) => ({
+                            ...current,
+                            description: event.target.value
+                          }))
+                        }
+                        placeholder={getLedgerDescriptionPlaceholder(entry.entryType)}
+                      />
+                    </label>
+                  </article>
                 ))}
               </div>
             ) : (

@@ -1780,6 +1780,97 @@
   grid-column: 1 / -1;
 }
 
+.accounting-ledger__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-10);
+}
+
+.accounting-ledger__entry {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-14);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(243, 246, 253, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.accounting-ledger__entry--receipt {
+  border-left: 4px solid rgba(44, 127, 93, 0.65);
+}
+
+.accounting-ledger__entry--disbursement {
+  border-left: 4px solid rgba(192, 122, 54, 0.7);
+}
+
+.accounting-ledger__entry--distribution {
+  border-left: 4px solid rgba(124, 86, 186, 0.7);
+}
+
+.accounting-ledger__entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding-bottom: var(--space-10);
+  border-bottom: 1px solid rgba(118, 132, 158, 0.18);
+}
+
+.accounting-ledger__entry-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-10);
+}
+
+.accounting-ledger__entry-index {
+  color: var(--ink-500);
+  font-size: var(--font-size-11);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.accounting-ledger__entry-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: var(--font-size-12);
+  font-weight: 700;
+}
+
+.accounting-ledger__entry-badge--receipt {
+  background: rgba(44, 127, 93, 0.12);
+  color: #216a4c;
+}
+
+.accounting-ledger__entry-badge--disbursement {
+  background: rgba(192, 122, 54, 0.14);
+  color: #8b5722;
+}
+
+.accounting-ledger__entry-badge--distribution {
+  background: rgba(124, 86, 186, 0.14);
+  color: #5e429a;
+}
+
+.accounting-ledger__entry-grid {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.accounting-ledger__entry-grid--top {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(168px, 0.7fr);
+}
+
+.accounting-ledger__entry-grid--bottom {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+}
+
 .accounting-ledger__row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr)) 1.3fr 1.5fr repeat(2, minmax(0, 1fr)) auto;
@@ -1935,8 +2026,14 @@
     position: static;
   }
 
+  .accounting-ledger__entry-grid--top,
+  .accounting-ledger__entry-grid--bottom,
   .accounting-ledger__row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .accounting-ledger__entry-field--amount {
+    grid-column: 1 / -1;
   }
 
   .accounting-ledger__actions {
@@ -1955,9 +2052,24 @@
 
   .accounting-card__details,
   .accounting-editor__summary-strip,
+  .accounting-ledger__entry-header,
   .accounting-print__header,
   .accounting-print__status-block {
     display: grid;
+  }
+
+  .accounting-ledger__toolbar {
+    justify-content: flex-start;
+  }
+
+  .accounting-ledger__entry-grid,
+  .accounting-ledger__entry-grid--top,
+  .accounting-ledger__entry-grid--bottom {
+    grid-template-columns: 1fr;
+  }
+
+  .accounting-ledger__entry-field--amount {
+    grid-column: auto;
   }
 
   .accounting-print-page {
