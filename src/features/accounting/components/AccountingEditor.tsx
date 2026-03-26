@@ -14,6 +14,7 @@ import {
 import { formatDateTime } from "@/lib/dates";
 import {
   deleteProbateAccounting,
+  getProbateAccountingOfficialFormUrl,
   saveProbateAccounting
 } from "@/services/accountings";
 import type {
@@ -215,6 +216,14 @@ export function AccountingEditor({ accounting, onSaved }: AccountingEditorProps)
             >
               Print Worksheet
             </button>
+            <a
+              className="button button--ghost"
+              href={getProbateAccountingOfficialFormUrl(accounting.id)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Official AOC-E-506 PDF
+            </a>
             <button
               type="button"
               className="button button--secondary"

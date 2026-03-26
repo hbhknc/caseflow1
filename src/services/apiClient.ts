@@ -26,6 +26,10 @@ export class ApiError extends Error {
   }
 }
 
+export function getApiUrl(path: string) {
+  return `${API_BASE}${path}`;
+}
+
 async function readErrorMessage(response: Response) {
   const text = await response.text();
 
@@ -45,7 +49,7 @@ export async function requestJson<T>(
   path: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(getApiUrl(path), {
     method: options.method ?? "GET",
     credentials: "include",
     headers: {

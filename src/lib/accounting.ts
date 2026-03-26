@@ -135,10 +135,12 @@ export function formatCentsForInput(value: number) {
 }
 
 export function formatCurrencyFromCents(value: number) {
+  const cents = Number.isFinite(Number(value)) ? Math.round(Number(value)) : 0;
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD"
-  }).format(normalizeCents(value) / 100);
+  }).format(cents / 100);
 }
 
 export function normalizeProbateAccountingInput(

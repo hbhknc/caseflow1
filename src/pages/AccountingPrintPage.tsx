@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState } from "@/components/EmptyState";
 import { AccountingPrintDocument } from "@/features/accounting/components/AccountingPrintDocument";
-import { getProbateAccounting } from "@/services/accountings";
+import {
+  getProbateAccounting,
+  getProbateAccountingOfficialFormUrl
+} from "@/services/accountings";
 import type { ProbateAccountingDetail } from "@/types/accounting";
 
 export function AccountingPrintPage() {
@@ -52,6 +55,16 @@ export function AccountingPrintPage() {
         >
           Back to Accounting
         </Link>
+        {accountingId ? (
+          <a
+            href={getProbateAccountingOfficialFormUrl(accountingId)}
+            target="_blank"
+            rel="noreferrer"
+            className="button button--ghost"
+          >
+            Official AOC-E-506 PDF
+          </a>
+        ) : null}
         <button type="button" className="button" onClick={() => window.print()}>
           Print
         </button>

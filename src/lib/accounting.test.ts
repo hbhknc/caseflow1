@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createEmptyProbateAccountingAsset,
   createEmptyProbateAccountingEntry,
+  formatCurrencyFromCents,
   hasProbateAccountingContentChanges,
   summarizeProbateAccounting
 } from "@/lib/accounting";
@@ -118,5 +119,11 @@ describe("hasProbateAccountingContentChanges", () => {
     );
 
     expect(hasProbateAccountingContentChanges(original, next)).toBe(true);
+  });
+});
+
+describe("formatCurrencyFromCents", () => {
+  it("preserves negative computed balances", () => {
+    expect(formatCurrencyFromCents(-1234)).toBe("-$12.34");
   });
 });

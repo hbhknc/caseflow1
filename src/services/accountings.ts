@@ -1,4 +1,4 @@
-import { requestJsonWithFallback } from "@/services/apiClient";
+import { getApiUrl, requestJsonWithFallback } from "@/services/apiClient";
 import type {
   ProbateAccountingDetail,
   ProbateAccountingInput,
@@ -93,4 +93,12 @@ export async function deleteProbateAccounting(accountingId: string) {
     },
     () => accountingFallbackError()
   );
+}
+
+export function getProbateAccountingOfficialFormUrl(accountingId: string) {
+  const query = new URLSearchParams({
+    accountingId
+  });
+
+  return getApiUrl(`/accountings/official-form?${query.toString()}`);
 }
